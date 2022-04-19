@@ -22,14 +22,64 @@
  * SOFTWARE.
  */
 
-#include "value/denValueInteger.h"
-#include "value/denValueFloating.h"
+#pragma once
 
-void dummy(){
-	denValueInteger1 test(denValue::Format::uint32);
-	test.SetValue(8);
+#include "denValue.h"
+
+/**
+ * \brief Floating network state value.
+ */
+template<class T> class denValueFloating : public denValue{
+public:
+	/** \brief Shared pointer. */
+	typedef std::shared_ptr<denValueFloating<T>> Ref;
 	
-	denValueFloating1 test2(denValue::Format::float32);
-	test2.SetPrecision(0.01);
-	test2.SetValue(8);
-}
+	/** \brief Create network value. */
+	denValueFloating(Format format) : denValue(Type::integer), pFormat(format){
+		switch(format){
+		case Format::float16:
+		case Format::float32:
+		case Format::float64:
+			break;
+			
+		default:
+			throw std::invalid_argument("format");
+		}
+	}
+	
+public:
+	/** \brief Format. */
+	inline Format GetFormat() const{
+		return pFormat;
+	}
+	
+	/** \brief Value. */
+	inline T GetValue() const{
+		return pValue;
+	}
+	
+	/** \brief Set value. */
+	inline void SetValue(T value){
+		pValue = value;
+	}
+	
+	/** \brief Precision. */
+	inline T GetPrecision() const{
+		return pPrecision;
+	}
+	
+	/** \brief Set precision. */
+	inline void SetPrecision(T precision){
+		pPrecision = std::max(precision, (T)0);
+	}
+	
+private:
+	const Format pFormat;
+	T pValue;
+	T pPrecision;
+};
+
+/**
+ * \brief Single component floating value.
+ */
+typedef denValueFloating<double> denValueFloating1;

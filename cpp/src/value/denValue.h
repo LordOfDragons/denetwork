@@ -22,14 +22,57 @@
  * SOFTWARE.
  */
 
-#include "value/denValueInteger.h"
-#include "value/denValueFloating.h"
+#pragma once
 
-void dummy(){
-	denValueInteger1 test(denValue::Format::uint32);
-	test.SetValue(8);
+#include <memory>
+#include <stdexcept>
+#include "../config.h"
+
+/**
+ * \brief Network state value.
+ */
+class denValue{
+public:
+	/** \brief Shared pointer. */
+	typedef std::shared_ptr<denValue> Ref;
 	
-	denValueFloating1 test2(denValue::Format::float32);
-	test2.SetPrecision(0.01);
-	test2.SetValue(8);
-}
+	/** \brief Value type. */
+	enum class Type{
+		integer,
+		floating,
+		string,
+		data,
+		point2,
+		point3,
+		vector2,
+		vector3,
+		quaternion
+	};
+	
+	/** \brief Value formats. */
+	enum class Format{
+		sint8, /** \brief 8-Bit signed integer. */
+		uint8, /** \brief 8-Bit unsigned integer. */
+		sint16, /** \brief 16-Bit signed integer. */
+		uint16, /** \brief 16-Bit unsigned integer. */
+		sint32, /** \brief 32-Bit signed integer. */
+		uint32, /** \brief 32-Bit unsigned integer. */
+		sint64, /** \brief 64-Bit signed integer. */
+		uint64, /** \brief 64-Bit unsigned integer. */
+		float16, /** \brief 16-Bit float. */
+		float32, /** \brief 32-Bit float. */
+		float64 /** \brief 64-Bit float. */
+	};
+	
+	/** \brief Create network value. */
+	denValue(Type type);
+	
+	/** \brief Clean up value. */
+	virtual ~denValue();
+	
+	/** \brief Type. */
+	inline Type GetType() const{ return pType; }
+	
+private:
+	const Type pType;
+};

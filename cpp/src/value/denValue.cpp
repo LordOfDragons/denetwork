@@ -22,14 +22,11 @@
  * SOFTWARE.
  */
 
-#include "value/denValueInteger.h"
-#include "value/denValueFloating.h"
+#include "denValue.h"
 
-void dummy(){
-	denValueInteger1 test(denValue::Format::uint32);
-	test.SetValue(8);
-	
-	denValueFloating1 test2(denValue::Format::float32);
-	test2.SetPrecision(0.01);
-	test2.SetValue(8);
+denValue::denValue(Type type) :
+pType(type){
+}
+
+denValue::~denValue(){
 }

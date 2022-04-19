@@ -22,14 +22,59 @@
  * SOFTWARE.
  */
 
-#include "value/denValueInteger.h"
-#include "value/denValueFloating.h"
+#pragma once
 
-void dummy(){
-	denValueInteger1 test(denValue::Format::uint32);
-	test.SetValue(8);
+#include <stdint.h>
+#include "denValue.h"
+
+/**
+ * \brief Integer network state value.
+ */
+template<class T> class denValueInteger : public denValue{
+public:
+	/** \brief Shared pointer. */
+	typedef std::shared_ptr<denValueInteger<T>> Ref;
 	
-	denValueFloating1 test2(denValue::Format::float32);
-	test2.SetPrecision(0.01);
-	test2.SetValue(8);
-}
+	/** \brief Create network value. */
+	denValueInteger(Format format) : denValue(Type::integer), pFormat(format){
+		switch(format){
+		case Format::sint8:
+		case Format::sint16:
+		case Format::sint32:
+		case Format::sint64:
+		case Format::uint8:
+		case Format::uint16:
+		case Format::uint32:
+		case Format::uint64:
+			break;
+			
+		default:
+			throw std::invalid_argument("format");
+		}
+	}
+	
+public:
+	/** \brief Format. */
+	inline Format GetFormat() const{
+		return pFormat;
+	}
+	
+	/** \brief Value. */
+	inline T GetValue() const{
+		return pValue;
+	}
+	
+	/** \brief Set value. */
+	inline void SetValue(T value){
+		pValue = value;
+	}
+	
+private:
+	const Format pFormat;
+	T pValue;
+};
+
+/**
+ * \brief Single component integer value.
+ */
+typedef denValueInteger<uint64_t> denValueInteger1;
