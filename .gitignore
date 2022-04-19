@@ -1,2 +1,7 @@
 *.kdev*
 .scons*
+build
+__pycache__
+*.pyc
+config.log
+lastConfig.py
