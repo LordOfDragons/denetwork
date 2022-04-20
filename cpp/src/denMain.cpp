@@ -22,11 +22,11 @@
  * SOFTWARE.
  */
 
+#include "denState.h"
 #include "value/denValueInteger.h"
 #include "value/denValueFloating.h"
 #include "value/denValueString.h"
 #include "value/denValueData.h"
-#include "state/denState.h"
 #include "message/denMessage.h"
 #include "message/denMessageWriter.h"
 #include "message/denMessageReader.h"
@@ -62,14 +62,15 @@ void dummy(){
 	
 	{
 	denMessage::Ref message(std::make_shared<denMessage>());
+	
 	{
-	denMessageWriter writer(message->GetBuffer());
+	denMessageWriter writer(*message);
 	writer.WriteUShort(80).WriteInt(210).WriteUInt(99443).WriteFloat(1.34f);
 	}
 	
 	{
-	message->GetBuffer().seekg(0);
-	denMessageReader reader(message->GetBuffer());
+	message->GetData().seekg(0);
+	denMessageReader reader(*message);
 	const uint16_t mv1 = reader.ReadUShort();
 	const int32_t mv2 = reader.ReadInt();
 	const uint32_t mv3 = reader.ReadUInt();

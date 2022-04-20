@@ -22,38 +22,17 @@
  * SOFTWARE.
  */
 
-#pragma once
+#include <stdexcept>
+#include "denServer.h"
 
-#include <memory>
-#include <vector>
-#include "../config.h"
-#include "../value/denValue.h"
+denServer::denServer(){
+}
 
-/**
- * \brief Network state.
- */
-class denState{
-public:
-	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denState> Ref;
-	
-	/** \brief Value list. */
-	typedef std::vector<denValue::Ref> Values;
-	
-	/** \brief Create state. */
-	denState(bool readOnly);
-	
-	/** \brief Clean up state. */
-	virtual ~denState();
-	
-	/** \brief Values. */
-	inline Values &GetValues(){ return pValues; }
-	inline const Values &GetValues() const{ return pValues; }
-	
-	/** \brief Read only state. */
-	inline bool GetReadOnly() const{ return pReadOnly; }
-	
-private:
-	Values pValues;
-	bool pReadOnly;
-};
+denServer::~denServer(){
+}
+
+void denServer::ListenOn(const std::string &address){
+}
+
+void denServer::StopListening(){
+}

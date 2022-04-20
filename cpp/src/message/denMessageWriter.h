@@ -31,13 +31,16 @@
 #include "../math/denVector3.h"
 #include "../math/denQuaternion.h"
 
+class denMessage;
+
 /**
  * \brief Network message writer.
  * 
- * Basically provides binary writing support to std::ostream.
+ * Provides binary writing support to std::ostream.
  */
 class denMessageWriter{
 public:
+	denMessageWriter(denMessage &message);
 	denMessageWriter(std::ostream &stream);
 	
 	denMessageWriter &WriteChar(int8_t value);
@@ -60,7 +63,6 @@ public:
 	denMessageWriter &WritePoint3(const denPoint3 &point);
 	denMessageWriter &WriteDVector(const denVector3 &vector);
 	
-protected:
 	denMessageWriter &Write(const void *buffer, size_t length);
 	
 private:

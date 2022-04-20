@@ -26,54 +26,32 @@
 
 #include <memory>
 #include <vector>
-#include <ctime>
-#include <chrono>
-#include <sstream>
-#include "../config.h"
+#include <string>
+#include "config.h"
 
 /**
- * \brief Network message.
+ * \brief Network server.
  */
-class denMessage{
+class denServer{
 public:
 	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denMessage> Ref;
+	typedef std::shared_ptr<denServer> Ref;
 	
-	/** \brief Buffer. */
-	typedef std::stringstream Data;
+	/** \brief Create server. */
+	denServer();
 	
-	/** \brief Timestamp. */
-	typedef std::chrono::time_point<std::chrono::system_clock> Timestamp;
+	/** \brief Clean up server. */
+	virtual ~denServer();
 	
-	/** \brief Message states. */
-	enum class State{
-		pending, //<! Message is pending to be send.
-		send, //<! Message has been send awaiting ack.
-		done //<! Message is done.
-	};
+	/** \brief Address. */
+	inline const std::string &GetAddress() const{ return pAddress; }
 	
-	/** \brief Create message. */
-	denMessage();
+	/** \brief Start listening on address for incoming connections. */
+	void ListenOn(const std::string &address);
 	
-	/** \brief Clean up message. */
-	virtual ~denMessage();
-	
-	/** \brief Timestamp. */
-	inline const Timestamp &GetTimestamp() const{ return pTimestamp; }
-	
-	/** \brief Set timestamp. */
-	void SetTimestamp(const Timestamp &timestamp);
-	
-	/** \brief Data. */
-	inline Data &GetData(){ return pData; }
-	inline const Data &GetData() const{ return pData; }
+	/** \brief Stop listening. */
+	void StopListening();
 	
 private:
-	Data pData;
-	Timestamp pTimestamp;
-	
-	int pNumber;
-	State pState;
-	int pType;
-	float pSecSinceSend;
+	std::string pAddress;
 };

@@ -24,7 +24,11 @@
 
 #include <memory.h>
 #include <stdexcept>
+#include "denMessage.h"
 #include "denMessageWriter.h"
+
+denMessageWriter::denMessageWriter(denMessage& message) : pStream(message.GetData()){
+}
 
 denMessageWriter::denMessageWriter(std::ostream& stream) : pStream(stream){
 }

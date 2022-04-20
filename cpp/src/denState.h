@@ -26,54 +26,34 @@
 
 #include <memory>
 #include <vector>
-#include <ctime>
-#include <chrono>
-#include <sstream>
-#include "../config.h"
+#include "config.h"
+#include "value/denValue.h"
 
 /**
- * \brief Network message.
+ * \brief Network state.
  */
-class denMessage{
+class denState{
 public:
 	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denMessage> Ref;
+	typedef std::shared_ptr<denState> Ref;
 	
-	/** \brief Buffer. */
-	typedef std::stringstream Data;
+	/** \brief Value list. */
+	typedef std::vector<denValue::Ref> Values;
 	
-	/** \brief Timestamp. */
-	typedef std::chrono::time_point<std::chrono::system_clock> Timestamp;
+	/** \brief Create state. */
+	denState(bool readOnly);
 	
-	/** \brief Message states. */
-	enum class State{
-		pending, //<! Message is pending to be send.
-		send, //<! Message has been send awaiting ack.
-		done //<! Message is done.
-	};
+	/** \brief Clean up state. */
+	virtual ~denState();
 	
-	/** \brief Create message. */
-	denMessage();
+	/** \brief Values. */
+	inline Values &GetValues(){ return pValues; }
+	inline const Values &GetValues() const{ return pValues; }
 	
-	/** \brief Clean up message. */
-	virtual ~denMessage();
-	
-	/** \brief Timestamp. */
-	inline const Timestamp &GetTimestamp() const{ return pTimestamp; }
-	
-	/** \brief Set timestamp. */
-	void SetTimestamp(const Timestamp &timestamp);
-	
-	/** \brief Data. */
-	inline Data &GetData(){ return pData; }
-	inline const Data &GetData() const{ return pData; }
+	/** \brief Read only state. */
+	inline bool GetReadOnly() const{ return pReadOnly; }
 	
 private:
-	Data pData;
-	Timestamp pTimestamp;
-	
-	int pNumber;
-	State pState;
-	int pType;
-	float pSecSinceSend;
+	Values pValues;
+	bool pReadOnly;
 };

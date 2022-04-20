@@ -31,13 +31,16 @@
 #include "../math/denVector3.h"
 #include "../math/denQuaternion.h"
 
+class denMessage;
+
 /**
  * \brief Network message writer.
  * 
- * Basically provides binary writing support to std::istream.
+ * Provides binary writing support to std::istream.
  */
 class denMessageReader{
 public:
+	denMessageReader(denMessage &message);
 	denMessageReader(std::istream &stream);
 	
 	int8_t ReadChar();
@@ -60,7 +63,6 @@ public:
 	denPoint3 ReadPoint3();
 	denVector3 ReadDVector();
 	
-protected:
 	void Read(void *buffer, size_t length);
 	
 private:
