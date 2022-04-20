@@ -27,6 +27,9 @@
 #include "value/denValueString.h"
 #include "value/denValueData.h"
 #include "state/denState.h"
+#include "message/denMessage.h"
+#include "message/denMessageWriter.h"
+#include "message/denMessageReader.h"
 
 void dummy(){
 	denState::Ref state(std::make_shared<denState>(false));
@@ -56,4 +59,26 @@ void dummy(){
 	denValueData::Ref test6(std::make_shared<denValueData>());
 	test6->SetValue(denValueData::Data{5, 2, 80, 45, 60, 30});
 	state->GetValues().push_back(test6);
+	
+	{
+	denMessage::Ref message(std::make_shared<denMessage>());
+	{
+	denMessageWriter writer(message->GetBuffer());
+	writer.WriteUShort(80).WriteInt(210).WriteUInt(99443).WriteFloat(1.34f);
+	}
+	
+	{
+	message->GetBuffer().seekg(0);
+	denMessageReader reader(message->GetBuffer());
+	const uint16_t mv1 = reader.ReadUShort();
+	const int32_t mv2 = reader.ReadInt();
+	const uint32_t mv3 = reader.ReadUInt();
+	const float mv4 = reader.ReadFloat();
+	printf("message: %d %d %d %g\n", mv1, mv2, mv3, mv4);
+	}
+	}
+}
+
+int main(int, char*[]){
+	dummy();
 }

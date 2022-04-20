@@ -129,3 +129,5 @@ targetLibrary.install.extend(env.Install('denetwork-{}/lib'.format(versionString
 targetLibrary.aliasInstall(env, 'denetworkcpp')
 
 targetLibrary.addParametersBuildCPP(env, ['denetworkcpp'], 'include')
+
+Default(env.Program(target='denetwork_test', source=objects))
