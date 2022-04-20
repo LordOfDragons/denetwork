@@ -22,17 +22,43 @@
  * SOFTWARE.
  */
 
-#include "denMessage.h"
+#pragma once
 
-denMessage::denMessage() :
-pTimestamp(std::chrono::system_clock::now()){
-}
+#include <memory>
+#include <vector>
+#include <ctime>
+#include <chrono>
+#include <sstream>
+#include "../config.h"
+#include "../message/denMessage.h"
 
-denMessage::~denMessage(){
-}
-
-void denMessage::SetTimestamp(const Timestamp &timestamp){
-	pTimestamp = timestamp;
-}
-
-denPool<denMessage> denMessage::pPool;
+/**
+ * \brief Real message send across the network.
+ */
+class denRealMessage{
+public:
+	typedef denPoolItem<denRealMessage>::Ref Ref;
+	
+	enum class State{
+		pending, //<! Message is pending to be send.
+		send, //<! Message has been send awaiting ack.
+		done //<! Message is done.
+	};
+	
+	denRealMessage();
+	
+	virtual ~denRealMessage();
+	
+	denMessage::Ref message;
+	
+	int number;
+	State state;
+	int type;
+	float secSinceSend;
+	
+	/** \brief Pool. */
+	inline static denPool<denRealMessage> &Pool(){ return pPool; }
+	
+private:
+	static denPool<denRealMessage> pPool;
+};

@@ -27,7 +27,8 @@
 #include "denMessage.h"
 #include "denMessageReader.h"
 
-denMessageReader::denMessageReader(denMessage& message) : pStream(message.GetData()){
+denMessageReader::denMessageReader(const denMessage::Ref &message) :
+pStream(message->Item().GetData()){
 }
 
 denMessageReader::denMessageReader(std::istream& stream) : pStream(stream){

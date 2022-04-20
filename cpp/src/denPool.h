@@ -26,48 +26,68 @@
 
 #include <memory>
 #include <vector>
-#include <ctime>
-#include <chrono>
-#include <sstream>
-#include "../config.h"
-#include "../denPool.h"
+#include "config.h"
+
+template<class T> class denPool;
 
 /**
- * \brief Network message.
+ * \brief Pool item.
  */
-class denMessage{
+template<class T> class denPoolItem{
 public:
-	/** \brief Shared pointer. */
-	typedef denPoolItem<denMessage>::Ref Ref;
+	typedef std::shared_ptr<denPoolItem<T>> Ref;
 	
-	/** \brief Buffer. */
-	typedef std::stringstream Data;
+	denPoolItem(denPool<T> &pool, const std::shared_ptr<T> &item) : pPool(pool), pRealItem(item){
+	}
 	
-	/** \brief Timestamp. */
-	typedef std::chrono::time_point<std::chrono::system_clock> Timestamp;
+	~denPoolItem(){
+		pPool.Return(pRealItem);
+	}
 	
-	/** \brief Create message. */
-	denMessage();
-	
-	/** \brief Clean up message. */
-	virtual ~denMessage();
-	
-	/** \brief Timestamp. */
-	inline const Timestamp &GetTimestamp() const{ return pTimestamp; }
-	
-	/** \brief Set timestamp. */
-	void SetTimestamp(const Timestamp &timestamp);
-	
-	/** \brief Data. */
-	inline Data &GetData(){ return pData; }
-	inline const Data &GetData() const{ return pData; }
-	
-	/** \brief Pool. */
-	inline static denPool<denMessage> &Pool(){ return pPool; }
+	inline T& Item() const{ return *pRealItem; }
 	
 private:
-	Data pData;
-	Timestamp pTimestamp;
+	denPool<T> &pPool;
+	std::shared_ptr<T> pRealItem;
+};
+
+/**
+ * \brief Pool.
+ */
+template<class T> class denPool{
+public:
+	/** \brief Create pool. */
+	denPool(){
+	}
 	
-	static denPool<denMessage> pPool;
+	/** \brief Clean up pool. */
+	~denPool(){
+	}
+	
+	/** \brief Get item from pool or create a new one if empty. */
+	typename denPoolItem<T>::Ref Get(){
+		if(pItems.empty()){
+			return std::make_shared<denPoolItem<T>>(*this, std::make_shared<T>());
+		}else{
+			typename std::vector<std::shared_ptr<T>>::iterator iter(pItems.end() - 1);
+			const typename denPoolItem<T>::Ref item(std::make_shared<denPoolItem<T>>(*this, *iter));
+			pItems.erase(iter);
+			return item;
+		}
+	}
+	
+	/** \brief Clear pool. */
+	void Clear(){
+		pItems.clear();
+	}
+	
+private:
+	friend class denPoolItem<T>;
+	
+	/** \brief Return item to pool. */
+	void Return(const std::shared_ptr<T> &realItem){
+		pItems.push_back(realItem);
+	}
+	
+	std::vector<std::shared_ptr<T>> pItems;
 };

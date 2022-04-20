@@ -22,17 +22,12 @@
  * SOFTWARE.
  */
 
-#include "denMessage.h"
+#include "denRealMessage.h"
 
-denMessage::denMessage() :
-pTimestamp(std::chrono::system_clock::now()){
+denRealMessage::denRealMessage(){
 }
 
-denMessage::~denMessage(){
+denRealMessage::~denRealMessage(){
 }
 
-void denMessage::SetTimestamp(const Timestamp &timestamp){
-	pTimestamp = timestamp;
-}
-
-denPool<denMessage> denMessage::pPool;
+denPool<denRealMessage> denRealMessage::pPool;

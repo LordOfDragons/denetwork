@@ -23,6 +23,7 @@
  */
 
 #include "denState.h"
+#include "denPool.h"
 #include "value/denValueInteger.h"
 #include "value/denValueFloating.h"
 #include "value/denValueString.h"
@@ -30,6 +31,7 @@
 #include "message/denMessage.h"
 #include "message/denMessageWriter.h"
 #include "message/denMessageReader.h"
+#include "internal/denRealMessage.h"
 
 void dummy(){
 	denState::Ref state(std::make_shared<denState>(false));
@@ -61,23 +63,36 @@ void dummy(){
 	state->GetValues().push_back(test6);
 	
 	{
-	denMessage::Ref message(std::make_shared<denMessage>());
+	denMessage::Ref message(denMessage::Pool().Get());
 	
 	{
-	denMessageWriter writer(*message);
+	denMessageWriter writer(message);
 	writer.WriteUShort(80).WriteInt(210).WriteUInt(99443).WriteFloat(1.34f);
 	}
 	
 	{
-	message->GetData().seekg(0);
-	denMessageReader reader(*message);
+	message->Item().GetData().seekg(0);
+	denMessageReader reader(message);
 	const uint16_t mv1 = reader.ReadUShort();
 	const int32_t mv2 = reader.ReadInt();
 	const uint32_t mv3 = reader.ReadUInt();
 	const float mv4 = reader.ReadFloat();
 	printf("message: %d %d %d %g\n", mv1, mv2, mv3, mv4);
 	}
+	
+	{
+	denRealMessage::Ref realMessage(denRealMessage::Pool().Get());
+	realMessage->Item().message = message;
 	}
+	}
+	
+	// just if somebody uses leak detection. pools are static class members and as such
+	// they are cleaned up during application destruction. leak detection can notice
+	// them as "still reachable" which is only true because the leak detection has to
+	// run before such memory is cleaned up. doing an explicit clear helps to locate
+	// real memory leaks
+	denMessage::Pool().Clear();
+	denRealMessage::Pool().Clear();
 }
 
 int main(int, char*[]){

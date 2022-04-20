@@ -30,8 +30,7 @@
 #include "../math/denVector2.h"
 #include "../math/denVector3.h"
 #include "../math/denQuaternion.h"
-
-class denMessage;
+#include "../message/denMessage.h"
 
 /**
  * \brief Network message writer.
@@ -40,7 +39,7 @@ class denMessage;
  */
 class denMessageReader{
 public:
-	denMessageReader(denMessage &message);
+	denMessageReader(const denMessage::Ref &message);
 	denMessageReader(std::istream &stream);
 	
 	int8_t ReadChar();
