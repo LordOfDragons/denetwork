@@ -24,39 +24,8 @@
 
 #pragma once
 
-#include <memory>
+#include <math.h>
+#include <stdint.h>
 #include "../config.h"
 
-/**
- * \brief Network state value.
- */
-class denValue{
-public:
-	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denValue> Ref;
-	
-	/** \brief Value type. */
-	enum class Type{
-		integer,
-		floating,
-		string,
-		data,
-		point2,
-		point3,
-		vector2,
-		vector3,
-		quaternion
-	};
-	
-	/** \brief Create network value. */
-	denValue(Type type);
-	
-	/** \brief Clean up value. */
-	virtual ~denValue();
-	
-	/** \brief Type. */
-	inline Type GetType() const{ return pType; }
-	
-private:
-	const Type pType;
-};
+#define DENM_THRESHOLD_DOUBLE 1e-15

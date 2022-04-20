@@ -22,41 +22,10 @@
  * SOFTWARE.
  */
 
-#pragma once
+#include "denState.h"
 
-#include <memory>
-#include "../config.h"
+denState::denState(bool readOnly) : pReadOnly(readOnly){
+}
 
-/**
- * \brief Network state value.
- */
-class denValue{
-public:
-	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denValue> Ref;
-	
-	/** \brief Value type. */
-	enum class Type{
-		integer,
-		floating,
-		string,
-		data,
-		point2,
-		point3,
-		vector2,
-		vector3,
-		quaternion
-	};
-	
-	/** \brief Create network value. */
-	denValue(Type type);
-	
-	/** \brief Clean up value. */
-	virtual ~denValue();
-	
-	/** \brief Type. */
-	inline Type GetType() const{ return pType; }
-	
-private:
-	const Type pType;
-};
+denState::~denState(){
+}

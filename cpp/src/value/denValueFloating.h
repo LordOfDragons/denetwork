@@ -25,61 +25,110 @@
 #pragma once
 
 #include "denValue.h"
+#include "../math/denVector2.h"
+#include "../math/denVector3.h"
+#include "../math/denQuaternion.h"
+
+/** \brief Value formats. */
+enum class denValueFloatingFormat{
+	float16, /** \brief 16-Bit float. */
+	float32, /** \brief 32-Bit float. */
+	float64 /** \brief 64-Bit float. */
+};
 
 /**
  * \brief Floating network state value.
  */
 template<class T> class denValueFloating : public denValue{
 public:
-	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denValueFloating<T>> Ref;
-	
 	/** \brief Create network value. */
-	denValueFloating(Format format) : denValue(Type::integer), pFormat(format){
-		switch(format){
-		case Format::float16:
-		case Format::float32:
-		case Format::float64:
-			break;
-			
-		default:
-			throw std::invalid_argument("format");
-		}
+	denValueFloating(Type type, denValueFloatingFormat format, T minPrecision) :
+	denValue(type),
+	pFormat(format),
+	pMinPrecision(minPrecision){
 	}
 	
 public:
 	/** \brief Format. */
-	inline Format GetFormat() const{
+	denValueFloatingFormat GetFormat() const{
 		return pFormat;
 	}
 	
 	/** \brief Value. */
-	inline T GetValue() const{
+	T GetValue() const{
 		return pValue;
 	}
 	
 	/** \brief Set value. */
-	inline void SetValue(T value){
+	void SetValue(T value){
 		pValue = value;
 	}
 	
 	/** \brief Precision. */
-	inline T GetPrecision() const{
+	T GetPrecision() const{
 		return pPrecision;
 	}
 	
 	/** \brief Set precision. */
-	inline void SetPrecision(T precision){
-		pPrecision = std::max(precision, (T)0);
+	void SetPrecision(T precision){
+		pPrecision = std::max(precision, pMinPrecision);
 	}
 	
 private:
-	const Format pFormat;
+	const denValueFloatingFormat pFormat;
 	T pValue;
 	T pPrecision;
+	const T pMinPrecision;
 };
 
 /**
  * \brief Single component floating value.
  */
-typedef denValueFloating<double> denValueFloating1;
+class denValueFloat : public denValueFloating<double>{
+public:
+	/** \brief Shared pointer. */
+	typedef std::shared_ptr<denValueFloating<double>> Ref;
+	
+	/** \brief Create network value. */
+	inline denValueFloat(denValueFloatingFormat format) :
+	denValueFloating<double>(Type::floating, format, DENM_THRESHOLD_DOUBLE){}
+};
+
+/**
+ * \brief 2 component floating vector value.
+ */
+class denValueVector2 : public denValueFloating<denVector2>{
+public:
+	/** \brief Shared pointer. */
+	typedef std::shared_ptr<denValueFloating<denVector2>> Ref;
+	
+	/** \brief Create network value. */
+	inline denValueVector2(denValueFloatingFormat format) :
+	denValueFloating<denVector2>(Type::vector2, format, denVector2(DENM_THRESHOLD_DOUBLE)){}
+};
+
+/**
+ * \brief 3 component floating vector value.
+ */
+class denValueVector3 : public denValueFloating<denVector3>{
+public:
+	/** \brief Shared pointer. */
+	typedef std::shared_ptr<denValueFloating<denVector3>> Ref;
+	
+	/** \brief Create network value. */
+	inline denValueVector3(denValueFloatingFormat format) :
+	denValueFloating<denVector3>(Type::vector3, format, denVector3(DENM_THRESHOLD_DOUBLE)){}
+};
+
+/**
+ * \brief 4 component floating quaternion value.
+ */
+class denValueQuaternion : public denValueFloating<denQuaternion>{
+public:
+	/** \brief Shared pointer. */
+	typedef std::shared_ptr<denValueFloating<denQuaternion>> Ref;
+	
+	/** \brief Create network value. */
+	inline denValueQuaternion(denValueFloatingFormat format) :
+	denValueFloating<denQuaternion>(Type::quaternion, format, denQuaternion(DENM_THRESHOLD_DOUBLE)){}
+};

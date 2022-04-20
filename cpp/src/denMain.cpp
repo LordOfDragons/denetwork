@@ -24,12 +24,36 @@
 
 #include "value/denValueInteger.h"
 #include "value/denValueFloating.h"
+#include "value/denValueString.h"
+#include "value/denValueData.h"
+#include "state/denState.h"
 
 void dummy(){
-	denValueInteger1 test(denValue::Format::uint32);
-	test.SetValue(8);
+	denState::Ref state(std::make_shared<denState>(false));
 	
-	denValueFloating1 test2(denValue::Format::float32);
-	test2.SetPrecision(0.01);
-	test2.SetValue(8);
+	denValueInt::Ref test(std::make_shared<denValueInt>(denValueIntegerFormat::uint32));
+	test->SetValue(8);
+	state->GetValues().push_back(test);
+	
+	denValueFloat::Ref test2(std::make_shared<denValueFloat>(denValueFloatingFormat::float32));
+	test2->SetPrecision(0.01);
+	test2->SetValue(8);
+	state->GetValues().push_back(test2);
+	
+	denValueVector3::Ref test3(std::make_shared<denValueVector3>(denValueFloatingFormat::float32));
+	test3->SetPrecision(denVector3(0.01));
+	test3->SetValue(denVector3(1, 2, 3));
+	state->GetValues().push_back(test3);
+	
+	denValuePoint2::Ref test4(std::make_shared<denValuePoint2>(denValueIntegerFormat::sint32));
+	test4->SetValue(denPoint2(1, 2));
+	state->GetValues().push_back(test4);
+	
+	denValueString::Ref test5(std::make_shared<denValueString>());
+	test5->SetValue("this is a test");
+	state->GetValues().push_back(test5);
+	
+	denValueData::Ref test6(std::make_shared<denValueData>());
+	test6->SetValue(denValueData::Data{5, 2, 80, 45, 60, 30});
+	state->GetValues().push_back(test6);
 }

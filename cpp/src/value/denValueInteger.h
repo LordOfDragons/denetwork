@@ -24,57 +24,90 @@
 
 #pragma once
 
-#include <stdint.h>
 #include "denValue.h"
+#include "../math/denPoint2.h"
+#include "../math/denPoint3.h"
+
+/**
+ * \brief Value formats.
+ */
+enum class denValueIntegerFormat{
+	sint8, /** \brief 8-Bit signed integer. */
+	uint8, /** \brief 8-Bit unsigned integer. */
+	sint16, /** \brief 16-Bit signed integer. */
+	uint16, /** \brief 16-Bit unsigned integer. */
+	sint32, /** \brief 32-Bit signed integer. */
+	uint32, /** \brief 32-Bit unsigned integer. */
+	sint64, /** \brief 64-Bit signed integer. */
+	uint64 /** \brief 64-Bit unsigned integer. */
+};
 
 /**
  * \brief Integer network state value.
  */
 template<class T> class denValueInteger : public denValue{
 public:
-	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denValueInteger<T>> Ref;
-	
 	/** \brief Create network value. */
-	denValueInteger(Format format) : denValue(Type::integer), pFormat(format){
-		switch(format){
-		case Format::sint8:
-		case Format::sint16:
-		case Format::sint32:
-		case Format::sint64:
-		case Format::uint8:
-		case Format::uint16:
-		case Format::uint32:
-		case Format::uint64:
-			break;
-			
-		default:
-			throw std::invalid_argument("format");
-		}
+	denValueInteger(Type type, denValueIntegerFormat format) : denValue(type), pFormat(format){
 	}
 	
 public:
 	/** \brief Format. */
-	inline Format GetFormat() const{
+	denValueIntegerFormat GetFormat() const{
 		return pFormat;
 	}
 	
 	/** \brief Value. */
-	inline T GetValue() const{
+	T GetValue() const{
 		return pValue;
 	}
 	
 	/** \brief Set value. */
-	inline void SetValue(T value){
+	void SetValue(T value){
 		pValue = value;
 	}
 	
 private:
-	const Format pFormat;
+	const denValueIntegerFormat pFormat;
 	T pValue;
 };
+
 
 /**
  * \brief Single component integer value.
  */
-typedef denValueInteger<uint64_t> denValueInteger1;
+class denValueInt : public denValueInteger<uint64_t>{
+public:
+	/** \brief Shared pointer. */
+	typedef std::shared_ptr<denValueInteger<uint64_t>> Ref;
+	
+	/** \brief Create network value. */
+	inline denValueInt(denValueIntegerFormat format) :
+	denValueInteger<uint64_t>(Type::integer, format){}
+};
+
+/**
+ * \brief 2 component integer vector value.
+ */
+class denValuePoint2 : public denValueInteger<denPoint2>{
+public:
+	/** \brief Shared pointer. */
+	typedef std::shared_ptr<denValueInteger<denPoint2>> Ref;
+	
+	/** \brief Create network value. */
+	inline denValuePoint2(denValueIntegerFormat format) :
+	denValueInteger<denPoint2>(Type::point2, format){}
+};
+
+/**
+ * \brief 3 component integer vector value.
+ */
+class denValuePoint3 : public denValueInteger<denPoint3>{
+public:
+	/** \brief Shared pointer. */
+	typedef std::shared_ptr<denValueInteger<denPoint3>> Ref;
+	
+	/** \brief Create network value. */
+	inline denValuePoint3(denValueIntegerFormat format) :
+	denValueInteger<denPoint3>(Type::vector3, format){}
+};

@@ -24,39 +24,36 @@
 
 #pragma once
 
-#include <memory>
-#include "../config.h"
+#include <stdint.h>
+#include <vector>
+#include "denValue.h"
 
 /**
- * \brief Network state value.
+ * \brief Data network state value.
  */
-class denValue{
+class denValueData : public denValue{
 public:
 	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denValue> Ref;
+	typedef std::shared_ptr<denValueData> Ref;
 	
-	/** \brief Value type. */
-	enum class Type{
-		integer,
-		floating,
-		string,
-		data,
-		point2,
-		point3,
-		vector2,
-		vector3,
-		quaternion
-	};
+	/** \brief Data type. */
+	typedef std::vector<uint8_t> Data;
 	
 	/** \brief Create network value. */
-	denValue(Type type);
+	denValueData() : denValue(Type::data){
+	}
 	
-	/** \brief Clean up value. */
-	virtual ~denValue();
+public:
+	/** \brief Value. */
+	const Data &GetValue() const{
+		return pValue;
+	}
 	
-	/** \brief Type. */
-	inline Type GetType() const{ return pType; }
+	/** \brief Set value. */
+	void SetValue(const Data &value){
+		pValue = value;
+	}
 	
 private:
-	const Type pType;
+	Data pValue;
 };

@@ -24,39 +24,32 @@
 
 #pragma once
 
-#include <memory>
-#include "../config.h"
+#include <string>
+#include "denValue.h"
 
 /**
- * \brief Network state value.
+ * \brief String network state value.
  */
-class denValue{
+class denValueString : public denValue{
 public:
 	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denValue> Ref;
-	
-	/** \brief Value type. */
-	enum class Type{
-		integer,
-		floating,
-		string,
-		data,
-		point2,
-		point3,
-		vector2,
-		vector3,
-		quaternion
-	};
+	typedef std::shared_ptr<denValueString> Ref;
 	
 	/** \brief Create network value. */
-	denValue(Type type);
+	denValueString() : denValue(Type::string){
+	}
 	
-	/** \brief Clean up value. */
-	virtual ~denValue();
+public:
+	/** \brief Value. */
+	const std::string &GetValue() const{
+		return pValue;
+	}
 	
-	/** \brief Type. */
-	inline Type GetType() const{ return pType; }
+	/** \brief Set value. */
+	void SetValue(const std::string &value){
+		pValue = value;
+	}
 	
 private:
-	const Type pType;
+	std::string pValue;
 };
