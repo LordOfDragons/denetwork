@@ -43,7 +43,7 @@ public:
 	denConnection();
 	
 	/** \brief Clean up server. */
-	virtual ~denConnection();
+	~denConnection();
 	
 	/** \brief Local address. */
 	inline const std::string &GetLocalAddress() const{ return pLocalAddress; }

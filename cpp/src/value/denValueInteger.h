@@ -51,6 +51,10 @@ public:
 	denValueInteger(Type type, denValueIntegerFormat format) : denValue(type), pFormat(format){
 	}
 	
+	/** \brief Clean up network value. */
+	virtual ~denValueInteger() override{
+	}
+	
 public:
 	/** \brief Format. */
 	denValueIntegerFormat GetFormat() const{

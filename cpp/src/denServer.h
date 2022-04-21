@@ -41,7 +41,7 @@ public:
 	denServer();
 	
 	/** \brief Clean up server. */
-	virtual ~denServer();
+	~denServer();
 	
 	/** \brief Address. */
 	inline const std::string &GetAddress() const{ return pAddress; }

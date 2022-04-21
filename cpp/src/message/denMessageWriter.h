@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include <ostream>
+#include <sstream>
 #include "../math/denPoint2.h"
 #include "../math/denPoint3.h"
 #include "../math/denVector2.h"
@@ -34,13 +34,11 @@
 
 /**
  * \brief Network message writer.
- * 
- * Provides binary writing support to std::ostream.
  */
 class denMessageWriter{
 public:
-	denMessageWriter(const denMessage::Ref &message);
-	denMessageWriter(std::ostream &stream);
+	denMessageWriter(denMessage &message);
+	~denMessageWriter();
 	
 	denMessageWriter &WriteChar(int8_t value);
 	denMessageWriter &WriteByte(uint8_t value);
@@ -65,5 +63,6 @@ public:
 	denMessageWriter &Write(const void *buffer, size_t length);
 	
 private:
-	std::ostream &pStream;
+	denMessage &pMessage;
+	std::ostringstream pStream;
 };

@@ -27,11 +27,14 @@
 #include "denMessage.h"
 #include "denMessageWriter.h"
 
-denMessageWriter::denMessageWriter(const denMessage::Ref &message) :
-pStream(message->Item().GetData()){
+denMessageWriter::denMessageWriter(denMessage &message) :
+pMessage(message),
+pStream(message.GetData()){
 }
 
-denMessageWriter::denMessageWriter(std::ostream& stream) : pStream(stream){
+denMessageWriter::~denMessageWriter(){
+	pMessage.SetData(pStream.str());
+	pMessage.SetLength(pStream.tellp());
 }
 
 denMessageWriter &denMessageWriter::WriteChar(int8_t value){

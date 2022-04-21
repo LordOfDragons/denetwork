@@ -48,7 +48,10 @@ public:
 	pMinPrecision(minPrecision){
 	}
 	
-public:
+	/** \brief Clean up network value. */
+	virtual ~denValueFloating() override{
+	}
+	
 	/** \brief Format. */
 	denValueFloatingFormat GetFormat() const{
 		return pFormat;

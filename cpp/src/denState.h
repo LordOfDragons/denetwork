@@ -44,7 +44,7 @@ public:
 	denState(bool readOnly);
 	
 	/** \brief Clean up state. */
-	virtual ~denState();
+	~denState();
 	
 	/** \brief Values. */
 	inline Values &GetValues(){ return pValues; }

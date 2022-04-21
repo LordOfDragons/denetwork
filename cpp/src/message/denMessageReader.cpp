@@ -23,15 +23,12 @@
  */
 
 #include <memory.h>
+#include <sstream>
 #include <stdexcept>
-#include "denMessage.h"
 #include "denMessageReader.h"
 
-denMessageReader::denMessageReader(const denMessage::Ref &message) :
-pStream(message->Item().GetData()){
-}
-
-denMessageReader::denMessageReader(std::istream& stream) : pStream(stream){
+denMessageReader::denMessageReader(denMessage &message) :
+pStream(message.GetData()){
 }
 
 int8_t denMessageReader::ReadChar(){

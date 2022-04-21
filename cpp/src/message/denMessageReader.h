@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include <istream>
+#include <sstream>
 #include "../math/denPoint2.h"
 #include "../math/denPoint3.h"
 #include "../math/denVector2.h"
@@ -34,13 +34,10 @@
 
 /**
  * \brief Network message writer.
- * 
- * Provides binary writing support to std::istream.
  */
 class denMessageReader{
 public:
-	denMessageReader(const denMessage::Ref &message);
-	denMessageReader(std::istream &stream);
+	denMessageReader(denMessage &message);
 	
 	int8_t ReadChar();
 	uint8_t ReadByte();
@@ -65,5 +62,5 @@ public:
 	void Read(void *buffer, size_t length);
 	
 private:
-	std::istream &pStream;
+	std::istringstream pStream;
 };

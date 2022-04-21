@@ -28,7 +28,7 @@
 #include <vector>
 #include <ctime>
 #include <chrono>
-#include <sstream>
+#include <string>
 #include "../config.h"
 #include "../denPool.h"
 
@@ -40,9 +40,6 @@ public:
 	/** \brief Shared pointer. */
 	typedef denPoolItem<denMessage>::Ref Ref;
 	
-	/** \brief Buffer. */
-	typedef std::stringstream Data;
-	
 	/** \brief Timestamp. */
 	typedef std::chrono::time_point<std::chrono::system_clock> Timestamp;
 	
@@ -50,7 +47,7 @@ public:
 	denMessage();
 	
 	/** \brief Clean up message. */
-	virtual ~denMessage();
+	~denMessage();
 	
 	/** \brief Timestamp. */
 	inline const Timestamp &GetTimestamp() const{ return pTimestamp; }
@@ -59,14 +56,24 @@ public:
 	void SetTimestamp(const Timestamp &timestamp);
 	
 	/** \brief Data. */
-	inline Data &GetData(){ return pData; }
-	inline const Data &GetData() const{ return pData; }
+	inline std::string &GetData(){ return pData; }
+	inline const std::string &GetData() const{ return pData; }
+	
+	/** \brief Set data. */
+	void SetData(const std::string &data);
+	
+	/** \brief Data length which can be less than the data size. */
+	inline size_t GetLength() const{ return pLength; }
+	
+	/** \brief Set data length which can be less than the data size. */
+	void SetLength(size_t length);
 	
 	/** \brief Pool. */
 	inline static denPool<denMessage> &Pool(){ return pPool; }
 	
 private:
-	Data pData;
+	std::string pData;
+	size_t pLength;
 	Timestamp pTimestamp;
 	
 	static denPool<denMessage> pPool;

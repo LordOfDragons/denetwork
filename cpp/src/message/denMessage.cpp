@@ -25,6 +25,7 @@
 #include "denMessage.h"
 
 denMessage::denMessage() :
+pLength(0),
 pTimestamp(std::chrono::system_clock::now()){
 }
 
@@ -33,6 +34,14 @@ denMessage::~denMessage(){
 
 void denMessage::SetTimestamp(const Timestamp &timestamp){
 	pTimestamp = timestamp;
+}
+
+void denMessage::SetData(const std::string &data){
+	pData = data;
+}
+
+void denMessage::SetLength(size_t length){
+	pLength = length;
 }
 
 denPool<denMessage> denMessage::pPool;

@@ -24,36 +24,35 @@
 
 #pragma once
 
-#include <string>
-#include "denValue.h"
+#include "denAddress.h"
+#include "../message/denMessage.h"
 
 /**
- * \brief String network state value.
+ * \brief Socket.
  */
-class denValueString : public denValue{
+class denSocket{
 public:
-	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denValueString> Ref;
+	denSocket();
 	
-	/** \brief Create network value. */
-	denValueString() : denValue(Type::string){
-	}
+	~denSocket();
 	
-	/** \brief Clean up network value. */
-	virtual ~denValueString() override{
-	}
+	inline const denAddress &GetAddress() const{ return pAddress; }
 	
-public:
-	/** \brief Value. */
-	const std::string &GetValue() const{
-		return pValue;
-	}
+	/** \brief Bind socket to stored address. */
+	void Bind();
 	
-	/** \brief Set value. */
-	void SetValue(const std::string &value){
-		pValue = value;
-	}
+	/**
+	 * \brief Receive datagram from socket.
+	 * \returns true if a message has been receives or false otherwise.
+	 */
+	bool ReceiveDatagram(denMessage &message, denAddress &address);
+	
+	/**
+	 * \brief Send datagram.
+	 */
+	void SendDatagram(const denMessage &message, const denAddress &address);
 	
 private:
-	std::string pValue;
+	denAddress pAddress;
+	int pSocket;
 };

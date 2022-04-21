@@ -66,13 +66,12 @@ void dummy(){
 	denMessage::Ref message(denMessage::Pool().Get());
 	
 	{
-	denMessageWriter writer(message);
+	denMessageWriter writer(message->Item());
 	writer.WriteUShort(80).WriteInt(210).WriteUInt(99443).WriteFloat(1.34f);
 	}
 	
 	{
-	message->Item().GetData().seekg(0);
-	denMessageReader reader(message);
+	denMessageReader reader(message->Item());
 	const uint16_t mv1 = reader.ReadUShort();
 	const int32_t mv2 = reader.ReadInt();
 	const uint32_t mv3 = reader.ReadUInt();

@@ -47,7 +47,7 @@ public:
 	
 	denRealMessage();
 	
-	virtual ~denRealMessage();
+	~denRealMessage();
 	
 	denMessage::Ref message;
 	

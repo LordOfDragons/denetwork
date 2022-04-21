@@ -43,6 +43,10 @@ public:
 	denValueData() : denValue(Type::data){
 	}
 	
+	/** \brief Clean up network value. */
+	virtual ~denValueData() override{
+	}
+	
 public:
 	/** \brief Value. */
 	const Data &GetValue() const{

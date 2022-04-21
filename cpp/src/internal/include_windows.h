@@ -24,36 +24,34 @@
 
 #pragma once
 
-#include <string>
-#include "denValue.h"
+#include "../config.h"
 
-/**
- * \brief String network state value.
- */
-class denValueString : public denValue{
-public:
-	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denValueString> Ref;
-	
-	/** \brief Create network value. */
-	denValueString() : denValue(Type::string){
-	}
-	
-	/** \brief Clean up network value. */
-	virtual ~denValueString() override{
-	}
-	
-public:
-	/** \brief Value. */
-	const std::string &GetValue() const{
-		return pValue;
-	}
-	
-	/** \brief Set value. */
-	void SetValue(const std::string &value){
-		pValue = value;
-	}
-	
-private:
-	std::string pValue;
-};
+#ifdef OS_W32
+
+#ifndef OS_W32_VS
+	// this is required to fix problem with function related to Read-Write-Lock not found
+	// (InitializeSRWLock, ...)
+	#ifdef _WIN32_WINNT
+		#undef _WIN32_WINNT
+	#endif
+	#define _WIN32_WINNT _WIN32_WINNT_WIN7
+#endif
+
+#include <windows.h>
+
+#ifdef OS_W32_UWP
+	// for getting timeval
+	#include <WinSock2.h>
+#endif
+
+// prevent certain macros from causing troubles
+
+#ifdef OS_W32_VS
+	#undef min
+	#undef max
+#else
+	#undef near
+	#undef far
+#endif // OS_W32_VS
+
+#endif // OS_W32
