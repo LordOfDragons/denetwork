@@ -22,7 +22,6 @@
  * SOFTWARE.
  */
 
-#include "denState.h"
 #include "denPool.h"
 #include "value/denValueInteger.h"
 #include "value/denValueFloating.h"
@@ -31,6 +30,7 @@
 #include "message/denMessage.h"
 #include "message/denMessageWriter.h"
 #include "message/denMessageReader.h"
+#include "state/denState.h"
 #include "internal/denRealMessage.h"
 
 void dummy(){

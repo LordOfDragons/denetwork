@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <memory>
 #include "denAddress.h"
 #include "../message/denMessage.h"
 
@@ -32,6 +33,9 @@
  */
 class denSocket{
 public:
+	/** \brief Shared pointer. */
+	typedef std::shared_ptr<denSocket> Ref;
+	
 	denSocket();
 	
 	~denSocket();

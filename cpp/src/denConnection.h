@@ -26,10 +26,19 @@
 
 #include <memory>
 #include <vector>
+#include <queue>
 #include <string>
+#include <list>
 #include "config.h"
-#include "denState.h"
 #include "message/denMessage.h"
+#include "state/denState.h"
+#include "state/denStateLink.h"
+#include "internal/denAddress.h"
+#include "internal/denSocket.h"
+#include "internal/denProtocolEnums.h"
+
+class denMessageReader;
+
 
 /**
  * \brief Network connection.
@@ -38,6 +47,22 @@ class denConnection{
 public:
 	/** \brief Shared pointer. */
 	typedef std::shared_ptr<denConnection> Ref;
+	
+	/** \brief State link list. */
+	typedef std::list<denStateLink*> StateLinks;
+	
+	/** \brief Modified state link list. */
+	typedef std::list<denStateLink*> ModifiedStateLinks;
+	
+	/** \brief Link list. */
+	typedef std::queue<denMessage::Ref> Messages;
+	
+	/** \brief State of the connection. */
+	enum class ConnectionState{
+		disconnected,
+		connecting,
+		connected
+	};
 	
 	/** \brief Create server. */
 	denConnection();
@@ -89,8 +114,56 @@ public:
 	 */
 	void LinkState(const denMessage::Ref &message, const denState::Ref &state, bool readOnly);
 	
+	
+	
+	/** \warning Internal use. Do not call directly. */
+	inline const denSocket::Ref &GetSocket() const{ return pSocket; }
+	inline int GetIdentifier() const{ return pIdentifier; }
+	void SetIdentifier(int identifier);
+	inline denProtocol::Protocols GetProtocol() const{ return pProtocol; }
+	
+	void AddModifiedStateLink(denStateLink *link);
+	void Process(float elapsedTime);
+	void InvalidateState(denState &state);
+	bool Matches(const denSocket &bnSocket, const denAddress &address) const;
+	void AcceptConnection(denSocket &bnSocket, denAddress &address, denProtocol::Protocols protocol);
+	void ProcessConnectionAck(denMessageReader &reader);
+	void ProcessConnectionClose(denMessageReader &reader);
+	void ProcessMessage(denMessageReader &reader);
+	void ProcessReliableMessage(denMessageReader &reader);
+	void ProcessReliableLinkState(denMessageReader &reader);
+	void ProcessReliableAck(denMessageReader &reader);
+	void ProcessLinkUp(denMessageReader &reader);
+	void ProcessLinkDown(denMessageReader &reader);
+	void ProcessLinkUpdate(denMessageReader &reader);
+	
 private:
 	std::string pLocalAddress;
 	std::string pRemoteAddress;
 	bool pConnected;
+	
+	denSocket::Ref pSocket;
+	denAddress pRealRemoteAddress;
+	ConnectionState pConnectionState;
+	int pIdentifier;
+	
+	denProtocol::Protocols pProtocol;
+	StateLinks pStateLinks;
+	ModifiedStateLinks pModifiedStateLinks;
+	
+	Messages pReliableMessagesSend;
+	Messages pReliableMessagesRecv;
+	int pReliableNumberSend;
+	int pReliableNumberRecv;
+	int pReliableWindowSize;
+	
+	void pDisconnect();
+	void pUpdateStates();
+	void pUpdateTimeouts(float elapsedTime);
+	void pProcessQueuedMessages();
+	void pProcessReliableMessage(int number, denMessageReader &reader);
+	void pProcessLinkState(int number, denMessageReader &reader);
+	void pAddReliableReceive(int type, int number, denMessageReader &reader);
+	void pRemoveSendReliablesDone();
+	void pSendPendingReliables();
 };

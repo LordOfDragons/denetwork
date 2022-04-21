@@ -22,10 +22,18 @@
  * SOFTWARE.
  */
 
+#include <algorithm>
 #include <stdexcept>
 #include "denConnection.h"
 
-denConnection::denConnection(){
+denConnection::denConnection() :
+pConnected(false),
+pConnectionState(ConnectionState::disconnected),
+pIdentifier(-1),
+pProtocol(denProtocol::Protocols::DENetworkProtocol),
+pReliableNumberSend(0),
+pReliableNumberRecv(0),
+pReliableWindowSize(10){
 }
 
 denConnection::~denConnection(){
@@ -44,4 +52,70 @@ void denConnection::SendReliableMessage(const denMessage::Ref &message){
 }
 
 void denConnection::LinkState(const denMessage::Ref &message, const denState::Ref &state, bool readOnly){
+}
+
+void denConnection::SetIdentifier(int identifier){
+	pIdentifier = identifier;
+}
+
+void denConnection::AddModifiedStateLink(denStateLink *link){
+	pModifiedStateLinks.push_back(link);
+}
+
+void denConnection::Process(float elapsedTime){
+	if(pConnectionState == ConnectionState::connected){
+		pUpdateTimeouts(elapsedTime);
+		pUpdateStates();
+	}
+}
+
+void denConnection::InvalidateState(denState &state){
+	StateLinks::iterator iter;
+	for(iter = pStateLinks.begin(); iter != pStateLinks.end(); ){
+		denStateLink * const link = *iter;
+		if(&link->GetState() == &state){
+			denState::StateLinks::iterator iter2(state.FindLink(link));
+			if(iter2 != state.GetLinks().end()){
+				state.GetLinks().erase(iter2);
+			}
+			
+			pStateLinks.erase(StateLinks::iterator(iter++));
+			
+		}else{
+			iter++;
+		}
+	}
+}
+
+bool denConnection::Matches(const denSocket &bnSocket, const denAddress &address) const{
+}
+
+void denConnection::AcceptConnection(denSocket &bnSocket, denAddress &address, denProtocol::Protocols protocol){
+}
+
+void denConnection::ProcessConnectionAck(denMessageReader &reader){
+}
+
+void denConnection::ProcessConnectionClose(denMessageReader &reader){
+}
+
+void denConnection::ProcessMessage(denMessageReader &reader){
+}
+
+void denConnection::ProcessReliableMessage(denMessageReader &reader){
+}
+
+void denConnection::ProcessReliableLinkState(denMessageReader &reader){
+}
+
+void denConnection::ProcessReliableAck(denMessageReader &reader){
+}
+
+void denConnection::ProcessLinkUp(denMessageReader &reader){
+}
+
+void denConnection::ProcessLinkDown(denMessageReader &reader){
+}
+
+void denConnection::ProcessLinkUpdate(denMessageReader &reader){
 }

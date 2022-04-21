@@ -22,10 +22,23 @@
  * SOFTWARE.
  */
 
+#include <algorithm>
 #include "denState.h"
 
 denState::denState(bool readOnly) : pReadOnly(readOnly){
 }
 
 denState::~denState(){
+}
+
+denState::StateLinks::iterator denState::FindLink(denStateLink *link){
+	return std::find_if(pLinks.begin(), pLinks.end(), [&](const denStateLink::Ref &each){
+		return each.get() == link;
+	});
+}
+
+denState::StateLinks::const_iterator denState::FindLink(denStateLink *link) const{
+	return std::find_if(pLinks.cbegin(), pLinks.cend(), [&](const denStateLink::Ref &each){
+		return each.get() == link;
+	});
 }

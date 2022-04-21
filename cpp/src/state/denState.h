@@ -26,8 +26,10 @@
 
 #include <memory>
 #include <vector>
-#include "config.h"
-#include "value/denValue.h"
+#include <list>
+#include "denStateLink.h"
+#include "../config.h"
+#include "../value/denValue.h"
 
 /**
  * \brief Network state.
@@ -40,6 +42,9 @@ public:
 	/** \brief Value list. */
 	typedef std::vector<denValue::Ref> Values;
 	
+	/** \brief State link list. */
+	typedef std::list<denStateLink::Ref> StateLinks;
+	
 	/** \brief Create state. */
 	denState(bool readOnly);
 	
@@ -50,10 +55,19 @@ public:
 	inline Values &GetValues(){ return pValues; }
 	inline const Values &GetValues() const{ return pValues; }
 	
+	/** \brief State links. */
+	inline StateLinks GetLinks(){ return pLinks; }
+	inline const StateLinks GetLinks() const{ return pLinks; }
+	
+	/** \brief Find link. */
+	StateLinks::iterator FindLink(denStateLink *link);
+	StateLinks::const_iterator FindLink(denStateLink *link) const;
+	
 	/** \brief Read only state. */
 	inline bool GetReadOnly() const{ return pReadOnly; }
 	
 private:
 	Values pValues;
+	StateLinks pLinks;
 	bool pReadOnly;
 };
