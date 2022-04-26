@@ -28,7 +28,12 @@
 #include "denMessageReader.h"
 
 denMessageReader::denMessageReader(denMessage &message) :
-pStream(message.GetData()){
+pStream(message.GetData()),
+pLength(message.GetLength()){
+}
+
+size_t denMessageReader::GetPosition(){
+	return pStream.tellg();
 }
 
 int8_t denMessageReader::ReadChar(){
@@ -172,4 +177,8 @@ denVector3 denMessageReader::ReadDVector(){
 
 void denMessageReader::Read(void *buffer, size_t length){
 	pStream.read((char*)buffer, length);
+}
+
+void denMessageReader::Read(denMessage &message){
+	Read((void*)message.GetData().c_str(), message.GetLength());
 }

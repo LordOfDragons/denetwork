@@ -25,6 +25,9 @@
 #include <algorithm>
 #include <stdexcept>
 #include "denConnection.h"
+#include "message/denMessage.h"
+#include "message/denMessageReader.h"
+#include "message/denMessageWriter.h"
 
 denConnection::denConnection() :
 pConnected(false),
@@ -37,6 +40,10 @@ pReliableWindowSize(10){
 }
 
 denConnection::~denConnection(){
+}
+
+void denConnection::SetListener(const denConnectionListener::Ref &listener){
+	pListener = listener;
 }
 
 void denConnection::ConnectTo(const std::string &address){
@@ -87,28 +94,166 @@ void denConnection::InvalidateState(denState &state){
 	}
 }
 
-bool denConnection::Matches(const denSocket &bnSocket, const denAddress &address) const{
+bool denConnection::Matches(denSocket *bnSocket, const denAddress &address) const{
+	return pSocket.get() == bnSocket && address == pRealRemoteAddress;
 }
 
-void denConnection::AcceptConnection(denSocket &bnSocket, denAddress &address, denProtocol::Protocols protocol){
+void denConnection::AcceptConnection(const denSocket::Ref &bnSocket, denAddress &address, denProtocol::Protocols protocol){
+	pSocket = bnSocket;
+	pRealRemoteAddress = address;
+	pRemoteAddress = address.ToString();
+	pConnectionState = ConnectionState::connected;
+	pProtocol = protocol;
 }
 
 void denConnection::ProcessConnectionAck(denMessageReader &reader){
+	if(pConnectionState != ConnectionState::connecting){
+		throw std::invalid_argument("Not connecting");
+	}
+	
+	switch((denProtocol::ConnectionAck)reader.ReadByte()){
+	case denProtocol::ConnectionAck::accepted:
+		pProtocol = (denProtocol::Protocols)reader.ReadUShort();
+		pConnectionState = ConnectionState::connected;
+		break;
+		
+	case denProtocol::ConnectionAck::rejected:
+	case denProtocol::ConnectionAck::noCommonProtocol:
+	default:
+		pConnectionState = ConnectionState::disconnected;
+		if(pListener){
+			pListener->ConnectionClosed(*this);
+		}
+	}
 }
 
-void denConnection::ProcessConnectionClose(denMessageReader &reader){
+void denConnection::ProcessConnectionClose(denMessageReader&){
+	if(pConnectionState != ConnectionState::connected){
+		return;
+	}
+	
+	pDisconnect();
+	
+	if(pListener){
+		pListener->ConnectionClosed(*this);
+	}
 }
 
 void denConnection::ProcessMessage(denMessageReader &reader){
+	/*const int flags = */ reader.ReadByte();
+	
+	const denMessage::Ref message(denMessage::Pool().Get());
+	message->Item().SetLength(reader.GetLength() - reader.GetPosition());
+	reader.Read(message->Item());
+	
+	if(pListener){
+		pListener->MessageReceived(message);
+	}
 }
 
 void denConnection::ProcessReliableMessage(denMessageReader &reader){
+	if(pConnectionState != ConnectionState::connected){
+		throw std::invalid_argument("Reliable message received although not connected.");
+	}
+	
+	const int number = reader.ReadUShort();
+	bool validNumber;
+	
+	if(number < pReliableNumberRecv){
+		validNumber = number < (pReliableNumberRecv + pReliableWindowSize) % 65535;
+		
+	}else{
+		validNumber = number < pReliableNumberRecv + pReliableWindowSize;
+	}
+	if(!validNumber){
+		throw std::invalid_argument("Reliable message: invalid sequence number.");
+	}
+	
+	const denMessage::Ref ackMessage(denMessage::Pool().Get());
+	{
+	denMessageWriter ackWriter(ackMessage->Item());
+	ackWriter.WriteByte((uint8_t)denProtocol::CommandCodes::reliableAck);
+	ackWriter.WriteUShort((uint16_t)number);
+	ackWriter.WriteByte((uint8_t)denProtocol::ReliableAck::success);
+	}
+	pSocket->SendDatagram(ackMessage->Item(), pRealRemoteAddress);
+	
+	if(number == pReliableNumberRecv){
+		pProcessReliableMessage(number, reader);
+		pReliableNumberRecv = (pReliableNumberRecv + 1) % 65535;
+		pProcessQueuedMessages();
+		
+	}else{
+		pAddReliableReceive(denProtocol::CommandCodes::reliableMessage, number, reader);
+	}
 }
 
 void denConnection::ProcessReliableLinkState(denMessageReader &reader){
+	if(pConnectionState != ConnectionState::connected){
+		throw std::invalid_argument("Link state: not connected.");
+	}
+	
+	const int number = reader.ReadUShort();
+	bool validNumber;
+	
+	if( number < pReliableNumberRecv ){
+		validNumber = number < (pReliableNumberRecv + pReliableWindowSize) % 65535;
+		
+	}else{
+		validNumber = number < pReliableNumberRecv + pReliableWindowSize;
+	}
+	if( ! validNumber ){
+		throw std::invalid_argument("Link state: invalid sequence number.");
+	}
+	
+	const denMessage::Ref ackMessage(denMessage::Pool().Get());
+	{
+	denMessageWriter ackWriter(ackMessage->Item());
+	ackWriter.WriteByte((uint8_t)denProtocol::CommandCodes::connectionAck);
+	ackWriter.WriteUShort((uint16_t)number);
+	ackWriter.WriteByte((uint8_t)denProtocol::ReliableAck::success);
+	}
+	pSocket->SendDatagram(ackMessage->Item(), pRealRemoteAddress);
+	
+	if(number == pReliableNumberRecv){
+		pProcessLinkState(number, reader);
+		pReliableNumberRecv = (pReliableNumberRecv + 1) % 65535;
+		pProcessQueuedMessages();
+		
+	}else{
+		pAddReliableReceive(denProtocol::CommandCodes::reliableLinkState, number, reader);
+	}
 }
 
 void denConnection::ProcessReliableAck(denMessageReader &reader){
+	if(pConnectionState != ConnectionState::connected){
+		throw std::invalid_argument("Reliable ack: not connected.");
+	}
+	
+	const int number = reader.ReadUShort();
+	const denProtocol::ReliableAck code = (denProtocol::ReliableAck)reader.ReadByte();
+	
+	Messages::const_iterator iter(std::find_if(pReliableMessagesSend.begin(),
+		pReliableMessagesSend.end(), [&](const denMessage::Ref &each){
+			return (*each).Item().pNumber == number;
+		}));
+	if(iter == pReliableMessagesSend.cend()){
+		throw std::invalid_argument("Reliable ack: no reliable transmission with this number waiting for an ack!");
+	}
+	
+	const denMessage::Ref message(*iter);
+	
+	switch(code){
+	case denProtocol::ReliableAck::success:
+		message->Item().pState = denMessage::State::done;
+		pRemoveSendReliablesDone();
+		break;
+		
+	case denProtocol::ReliableAck::failed:
+		message->Item().pSecondsSinceSend = 0.0f;
+		pSocket->SendDatagram(message->Item(), pRealRemoteAddress);
+		break;
+	}
 }
 
 void denConnection::ProcessLinkUp(denMessageReader &reader){

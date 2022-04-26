@@ -22,29 +22,38 @@
  * SOFTWARE.
  */
 
-#include "denMessage.h"
+#pragma once
 
-denMessage::denMessage() :
-pLength(0),
-pTimestamp(std::chrono::system_clock::now()),
-pNumber(-1),
-pState(State::pending),
-pSecondsSinceSend(0){
-}
+#include "message/denMessage.h"
 
-denMessage::~denMessage(){
-}
+class denConnection;
 
-void denMessage::SetTimestamp(const Timestamp &timestamp){
-	pTimestamp = timestamp;
-}
-
-void denMessage::SetData(const std::string &data){
-	pData = data;
-}
-
-void denMessage::SetLength(size_t length){
-	pLength = length;
-}
-
-denPool<denMessage> denMessage::pPool;
+/**
+ * \brief Connection listener.
+ */
+class denConnectionListener{
+public:
+	/** \brief Shared pointer. */
+	typedef std::shared_ptr<denConnectionListener> Ref;
+	
+	/**
+	 * \brief Create connection listener.
+	 */
+	denConnectionListener();
+	
+	/**
+	 * \brief Clean up connection listener.
+	 */
+	virtual ~denConnectionListener();
+	
+	/**
+	 * \brief Connection closed.
+	 */
+	virtual void ConnectionClosed(denConnection &connection) = 0;
+	
+	/**
+	 * \brief Message received.
+	 * \param[in] message Received message. Reference can be stored for later use.
+	 */
+	virtual void MessageReceived(const denMessage::Ref &message) = 0;
+};

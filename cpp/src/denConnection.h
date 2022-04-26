@@ -30,6 +30,7 @@
 #include <string>
 #include <list>
 #include "config.h"
+#include "denConnectionListener.h"
 #include "message/denMessage.h"
 #include "state/denState.h"
 #include "state/denStateLink.h"
@@ -55,7 +56,7 @@ public:
 	typedef std::list<denStateLink*> ModifiedStateLinks;
 	
 	/** \brief Link list. */
-	typedef std::queue<denMessage::Ref> Messages;
+	typedef std::deque<denMessage::Ref> Messages;
 	
 	/** \brief State of the connection. */
 	enum class ConnectionState{
@@ -78,6 +79,9 @@ public:
 	
 	/** \brief Connection to a remote host is established. */
 	inline bool GetConnected() const{ return pConnected; }
+	
+	/** \brief Set connection listener or nullptr to clear. */
+	void SetListener(const denConnectionListener::Ref &listener);
 	
 	/** \brief Connect to connection object on host at address. */
 	void ConnectTo(const std::string &address);
@@ -125,8 +129,8 @@ public:
 	void AddModifiedStateLink(denStateLink *link);
 	void Process(float elapsedTime);
 	void InvalidateState(denState &state);
-	bool Matches(const denSocket &bnSocket, const denAddress &address) const;
-	void AcceptConnection(denSocket &bnSocket, denAddress &address, denProtocol::Protocols protocol);
+	bool Matches(denSocket *bnSocket, const denAddress &address) const;
+	void AcceptConnection(const denSocket::Ref &bnSocket, denAddress &address, denProtocol::Protocols protocol);
 	void ProcessConnectionAck(denMessageReader &reader);
 	void ProcessConnectionClose(denMessageReader &reader);
 	void ProcessMessage(denMessageReader &reader);
@@ -157,13 +161,15 @@ private:
 	int pReliableNumberRecv;
 	int pReliableWindowSize;
 	
+	denConnectionListener::Ref pListener;
+	
 	void pDisconnect();
 	void pUpdateStates();
 	void pUpdateTimeouts(float elapsedTime);
 	void pProcessQueuedMessages();
 	void pProcessReliableMessage(int number, denMessageReader &reader);
 	void pProcessLinkState(int number, denMessageReader &reader);
-	void pAddReliableReceive(int type, int number, denMessageReader &reader);
+	void pAddReliableReceive(denProtocol::CommandCodes command, int number, denMessageReader &reader);
 	void pRemoveSendReliablesDone();
 	void pSendPendingReliables();
 };

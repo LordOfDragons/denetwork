@@ -39,6 +39,9 @@ class denMessageReader{
 public:
 	denMessageReader(denMessage &message);
 	
+	inline size_t GetLength() const{ return pLength; }
+	size_t GetPosition();
+	
 	int8_t ReadChar();
 	uint8_t ReadByte();
 	int16_t ReadShort();
@@ -60,7 +63,9 @@ public:
 	denVector3 ReadDVector();
 	
 	void Read(void *buffer, size_t length);
+	void Read(denMessage &message);
 	
 private:
 	std::istringstream pStream;
+	const size_t pLength;
 };
