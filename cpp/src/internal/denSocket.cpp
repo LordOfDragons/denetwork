@@ -81,8 +81,7 @@ bool denSocket::ReceiveDatagram(denMessage &message, denAddress &address){
 	struct sockaddr_in sa;
 #ifdef OS_UNIX
 	struct pollfd ufd;
-#endif
-#ifdef OS_W32
+#elif defined OS_W32
 	fd_set fd;
 #endif
 	size_t dataLen = 0;
@@ -91,8 +90,7 @@ bool denSocket::ReceiveDatagram(denMessage &message, denAddress &address){
 	ufd.fd = pSocket;
 	ufd.events = POLLIN;
 	if(poll(&ufd, 1, 0) > 0)
-#endif
-#ifdef OS_W32
+#elif defined OS_W32
 	FD_ZERO(&fd);
 	FD_SET(pSocket, &fd);
 	

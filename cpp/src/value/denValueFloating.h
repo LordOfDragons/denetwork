@@ -45,11 +45,9 @@ public:
 	denValueFloating(Type type, denValueFloatingFormat format, T minPrecision) :
 	denValue(type),
 	pFormat(format),
+	pValue(0),
+	pLastValue(0),
 	pMinPrecision(minPrecision){
-	}
-	
-	/** \brief Clean up network value. */
-	virtual ~denValueFloating() override{
 	}
 	
 	/** \brief Format. */
@@ -77,9 +75,24 @@ public:
 		pPrecision = std::max(precision, pMinPrecision);
 	}
 	
-private:
+	/**
+	 * \brief Update value.
+	 * \returns true if value needs to by synchronized otherwise false if not changed enough.
+	 */
+	bool UpdateValue(bool force) override{
+		if(!force && std::abs(pValue - pLastValue) <= pPrecision){
+			return false;
+			
+		}else{
+			pLastValue = pValue;
+			return true;
+		}
+	}
+	
+protected:
 	const denValueFloatingFormat pFormat;
 	T pValue;
+	T pLastValue;
 	T pPrecision;
 	const T pMinPrecision;
 };
@@ -93,8 +106,13 @@ public:
 	typedef std::shared_ptr<denValueFloating<double>> Ref;
 	
 	/** \brief Create network value. */
-	inline denValueFloat(denValueFloatingFormat format) :
-	denValueFloating<double>(Type::floating, format, DENM_THRESHOLD_DOUBLE){}
+	denValueFloat(denValueFloatingFormat format);
+	
+	/** \brief Read value from message. */
+	void Read(denMessageReader &reader) override;
+	
+	/** \brief Write value to message. */
+	void Write(denMessageWriter &writer) override;
 };
 
 /**
@@ -106,8 +124,13 @@ public:
 	typedef std::shared_ptr<denValueFloating<denVector2>> Ref;
 	
 	/** \brief Create network value. */
-	inline denValueVector2(denValueFloatingFormat format) :
-	denValueFloating<denVector2>(Type::vector2, format, denVector2(DENM_THRESHOLD_DOUBLE)){}
+	denValueVector2(denValueFloatingFormat format);
+	
+	/** \brief Read value from message. */
+	void Read(denMessageReader &reader) override;
+	
+	/** \brief Write value to message. */
+	void Write(denMessageWriter &writer) override;
 };
 
 /**
@@ -119,8 +142,13 @@ public:
 	typedef std::shared_ptr<denValueFloating<denVector3>> Ref;
 	
 	/** \brief Create network value. */
-	inline denValueVector3(denValueFloatingFormat format) :
-	denValueFloating<denVector3>(Type::vector3, format, denVector3(DENM_THRESHOLD_DOUBLE)){}
+	denValueVector3(denValueFloatingFormat format);
+	
+	/** \brief Read value from message. */
+	void Read(denMessageReader &reader) override;
+	
+	/** \brief Write value to message. */
+	void Write(denMessageWriter &writer) override;
 };
 
 /**
@@ -132,6 +160,11 @@ public:
 	typedef std::shared_ptr<denValueFloating<denQuaternion>> Ref;
 	
 	/** \brief Create network value. */
-	inline denValueQuaternion(denValueFloatingFormat format) :
-	denValueFloating<denQuaternion>(Type::quaternion, format, denQuaternion(DENM_THRESHOLD_DOUBLE)){}
+	denValueQuaternion(denValueFloatingFormat format);
+	
+	/** \brief Read value from message. */
+	void Read(denMessageReader &reader) override;
+	
+	/** \brief Write value to message. */
+	void Write(denMessageWriter &writer) override;
 };

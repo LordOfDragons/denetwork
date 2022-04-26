@@ -27,6 +27,9 @@
 #include <memory>
 #include "../config.h"
 
+class denMessageReader;
+class denMessageWriter;
+
 /**
  * \brief Network state value.
  */
@@ -57,6 +60,19 @@ public:
 	/** \brief Type. */
 	inline Type GetType() const{ return pType; }
 	
-private:
+	/** \brief Read value from message. */
+	virtual void Read(denMessageReader &reader) = 0;
+	
+	/** \brief Write value to message. */
+	virtual void Write(denMessageWriter &writer) = 0;
+	
+	/**
+	 * \brief Update value.
+	 * \returns true if value needs to by synchronized otherwise false if not changed enough.
+	 */
+	virtual bool UpdateValue(bool force) = 0;
+	
+	
+protected:
 	const Type pType;
 };

@@ -22,46 +22,32 @@
  * SOFTWARE.
  */
 
-#pragma once
+#include "denValueData.h"
+#include "../message/denMessageReader.h"
+#include "../message/denMessageWriter.h"
 
-#include <string>
-#include "denValue.h"
 
-/**
- * \brief String network state value.
- */
-class denValueString : public denValue{
-public:
-	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denValueString> Ref;
-	
-	/** \brief Create network value. */
-	denValueString();
-	
-public:
-	/** \brief Value. */
-	const std::string &GetValue() const{
-		return pValue;
+denValueData::denValueData() :
+denValue(Type::data){
+}
+
+void denValueData::Read(denMessageReader &reader){
+	pValue.assign(reader.ReadUShort(), 0);
+	reader.Read(pValue.data(), pValue.size());
+	pLastValue = pValue;
+}
+
+void denValueData::Write(denMessageWriter &writer){
+	writer.WriteUShort((uint16_t)pValue.size());
+	writer.Write(pValue.data(), pValue.size());
+}
+
+bool denValueData::UpdateValue(bool force){
+	if(!force && pValue == pLastValue){
+		return false;
+		
+	}else{
+		pLastValue = pValue;
+		return true;
 	}
-	
-	/** \brief Set value. */
-	void SetValue(const std::string &value){
-		pValue = value;
-	}
-	
-	/** \brief Read value from message. */
-	void Read(denMessageReader &reader) override;
-	
-	/** \brief Write value to message. */
-	void Write(denMessageWriter &writer) override;
-	
-	/**
-	 * \brief Update value.
-	 * \returns true if value needs to by synchronized otherwise false if not changed enough.
-	 */
-	bool UpdateValue(bool force) override;
-	
-private:
-	std::string pValue;
-	std::string pLastValue;
-};
+}

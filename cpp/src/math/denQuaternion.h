@@ -60,6 +60,11 @@ public:
 			&& std::fabs(vector.w - w) < threshold;
 	}
 	
+	/** \brief Absolute value. */
+	inline denQuaternion Absolute() const{
+		return denQuaternion(fabs(x), fabs(y), fabs(z), fabs(w));
+	}
+	
 	/** \brief Assign. */
 	inline denQuaternion &operator=(const denQuaternion &vector){
 		x = vector.x;
@@ -142,3 +147,9 @@ public:
 		return *this;
 	}
 };
+
+namespace std{
+	inline denQuaternion abs(const denQuaternion &q){
+		return q.Absolute();
+	}
+}

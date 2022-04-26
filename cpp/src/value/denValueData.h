@@ -40,12 +40,7 @@ public:
 	typedef std::vector<uint8_t> Data;
 	
 	/** \brief Create network value. */
-	denValueData() : denValue(Type::data){
-	}
-	
-	/** \brief Clean up network value. */
-	virtual ~denValueData() override{
-	}
+	denValueData();
 	
 public:
 	/** \brief Value. */
@@ -58,6 +53,19 @@ public:
 		pValue = value;
 	}
 	
+	/** \brief Read value from message. */
+	void Read(denMessageReader &reader) override;
+	
+	/** \brief Write value to message. */
+	void Write(denMessageWriter &writer) override;
+	
+	/**
+	 * \brief Update value.
+	 * \returns true if value needs to by synchronized otherwise false if not changed enough.
+	 */
+	bool UpdateValue(bool force) override;
+	
 private:
 	Data pValue;
+	Data pLastValue;
 };

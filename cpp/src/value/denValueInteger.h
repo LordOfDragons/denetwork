@@ -48,11 +48,11 @@ enum class denValueIntegerFormat{
 template<class T> class denValueInteger : public denValue{
 public:
 	/** \brief Create network value. */
-	denValueInteger(Type type, denValueIntegerFormat format) : denValue(type), pFormat(format){
-	}
-	
-	/** \brief Clean up network value. */
-	virtual ~denValueInteger() override{
+	denValueInteger(Type type, denValueIntegerFormat format) :
+	denValue(type),
+	pFormat(format),
+	pValue(0),
+	pLastValue(0){
 	}
 	
 public:
@@ -71,9 +71,24 @@ public:
 		pValue = value;
 	}
 	
-private:
+	/**
+	 * \brief Update value.
+	 * \returns true if value needs to by synchronized otherwise false if not changed enough.
+	 */
+	bool UpdateValue(bool force) override{
+		if(!force && pValue == pLastValue ){
+			return false;
+			
+		}else{
+			pLastValue = pValue;
+			return true;
+		}
+	}
+	
+protected:
 	const denValueIntegerFormat pFormat;
 	T pValue;
+	T pLastValue;
 };
 
 
@@ -86,8 +101,13 @@ public:
 	typedef std::shared_ptr<denValueInteger<uint64_t>> Ref;
 	
 	/** \brief Create network value. */
-	inline denValueInt(denValueIntegerFormat format) :
-	denValueInteger<uint64_t>(Type::integer, format){}
+	denValueInt(denValueIntegerFormat format);
+	
+	/** \brief Read value from message. */
+	void Read(denMessageReader &reader) override;
+	
+	/** \brief Write value to message. */
+	void Write(denMessageWriter &writer) override;
 };
 
 /**
@@ -99,8 +119,13 @@ public:
 	typedef std::shared_ptr<denValueInteger<denPoint2>> Ref;
 	
 	/** \brief Create network value. */
-	inline denValuePoint2(denValueIntegerFormat format) :
-	denValueInteger<denPoint2>(Type::point2, format){}
+	denValuePoint2(denValueIntegerFormat format);
+	
+	/** \brief Read value from message. */
+	void Read(denMessageReader &reader) override;
+	
+	/** \brief Write value to message. */
+	void Write(denMessageWriter &writer) override;
 };
 
 /**
@@ -112,6 +137,11 @@ public:
 	typedef std::shared_ptr<denValueInteger<denPoint3>> Ref;
 	
 	/** \brief Create network value. */
-	inline denValuePoint3(denValueIntegerFormat format) :
-	denValueInteger<denPoint3>(Type::vector3, format){}
+	denValuePoint3(denValueIntegerFormat format);
+	
+	/** \brief Read value from message. */
+	void Read(denMessageReader &reader) override;
+	
+	/** \brief Write value to message. */
+	void Write(denMessageWriter &writer) override;
 };

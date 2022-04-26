@@ -56,6 +56,11 @@ public:
 			&& std::fabs(vector.y - y) < threshold;
 	}
 	
+	/** \brief Absolute value. */
+	inline denVector2 Absolute() const{
+		return denVector2(fabs(x), fabs(y));
+	}
+	
 	/** \brief Assign. */
 	inline denVector2 &operator=(const denVector2 &vector){
 		x = vector.x;
@@ -132,3 +137,9 @@ public:
 		return *this;
 	}
 };
+
+namespace std{
+	inline denVector2 abs(const denVector2 &v){
+		return v.Absolute();
+	}
+}
