@@ -72,21 +72,9 @@ public:
 	inline static denPool<denMessage> &Pool(){ return pPool; }
 	
 private:
-	friend class denConnection;
-	
-	enum class State{
-		pending,
-		send,
-		done
-	};
-	
 	std::string pData;
 	size_t pLength;
 	Timestamp pTimestamp;
-	
-	int pNumber;
-	State pState;
-	float pSecondsSinceSend;
 	
 	static denPool<denMessage> pPool;
 };

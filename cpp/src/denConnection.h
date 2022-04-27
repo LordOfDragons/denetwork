@@ -37,6 +37,7 @@
 #include "internal/denAddress.h"
 #include "internal/denSocket.h"
 #include "internal/denProtocolEnums.h"
+#include "internal/denRealMessage.h"
 
 class denMessageReader;
 
@@ -50,13 +51,13 @@ public:
 	typedef std::shared_ptr<denConnection> Ref;
 	
 	/** \brief State link list. */
-	typedef std::list<denStateLink*> StateLinks;
+	typedef std::list<denStateLink::Ref> StateLinks;
 	
 	/** \brief Modified state link list. */
 	typedef std::list<denStateLink*> ModifiedStateLinks;
 	
 	/** \brief Link list. */
-	typedef std::deque<denMessage::Ref> Messages;
+	typedef std::deque<denRealMessage::Ref> Messages;
 	
 	/** \brief State of the connection. */
 	enum class ConnectionState{
@@ -78,7 +79,7 @@ public:
 	inline const std::string &GetRemoteAddress() const{ return pRemoteAddress; }
 	
 	/** \brief Connection to a remote host is established. */
-	inline bool GetConnected() const{ return pConnected; }
+	bool GetConnected() const;
 	
 	/** \brief Set connection listener or nullptr to clear. */
 	void SetListener(const denConnectionListener::Ref &listener);
@@ -144,7 +145,6 @@ public:
 private:
 	std::string pLocalAddress;
 	std::string pRemoteAddress;
-	bool pConnected;
 	
 	denSocket::Ref pSocket;
 	denAddress pRealRemoteAddress;
@@ -154,6 +154,7 @@ private:
 	denProtocol::Protocols pProtocol;
 	StateLinks pStateLinks;
 	ModifiedStateLinks pModifiedStateLinks;
+	int pNextLinkIdentifier;
 	
 	Messages pReliableMessagesSend;
 	Messages pReliableMessagesRecv;

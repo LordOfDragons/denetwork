@@ -28,12 +28,13 @@
 #include "message/denMessage.h"
 #include "message/denMessageReader.h"
 #include "message/denMessageWriter.h"
+#include "internal/denRealMessage.h"
 
 denConnection::denConnection() :
-pConnected(false),
 pConnectionState(ConnectionState::disconnected),
 pIdentifier(-1),
 pProtocol(denProtocol::Protocols::DENetworkProtocol),
+pNextLinkIdentifier(0),
 pReliableNumberSend(0),
 pReliableNumberRecv(0),
 pReliableWindowSize(10){
@@ -42,23 +43,188 @@ pReliableWindowSize(10){
 denConnection::~denConnection(){
 }
 
+bool denConnection::GetConnected() const{
+	return pConnectionState == ConnectionState::connected;
+}
+
 void denConnection::SetListener(const denConnectionListener::Ref &listener){
 	pListener = listener;
 }
 
 void denConnection::ConnectTo(const std::string &address){
+	if(pSocket || pConnectionState != ConnectionState::disconnected){
+		throw std::invalid_argument("already connected");
+	}
+	
+	pSocket = std::make_shared<denSocket>();
+	pSocket->GetAddress().SetIPv4Any();
+	pSocket->Bind();
+	
+	pLocalAddress = pSocket->GetAddress().ToString();
+	
+	const denMessage::Ref connectRequest(denMessage::Pool().Get());
+	{
+	denMessageWriter writer(connectRequest->Item());
+	writer.WriteByte((uint8_t)denProtocol::CommandCodes::connectionRequest);
+	writer.WriteUShort( 1 ); // version
+	writer.WriteUShort((uint8_t)denProtocol::Protocols::DENetworkProtocol);
+	}
+	pRealRemoteAddress.SetIPv4FromString(address);
+	pRemoteAddress = address;
+	
+	pSocket->SendDatagram(connectRequest->Item(), pRealRemoteAddress);
+	
+	pConnectionState = ConnectionState::connecting;
 }
 
 void denConnection::Disconnect(){
+	if(!pSocket){
+		return;
+	}
+	
+	if(pConnectionState == ConnectionState::connected){
+		const denMessage::Ref connectionClose(denMessage::Pool().Get());
+		{
+		denMessageWriter writer(connectionClose->Item());
+		writer.WriteByte((uint8_t)denProtocol::CommandCodes::connectionClose);
+		}
+		pSocket->SendDatagram(connectionClose->Item(), pRealRemoteAddress);
+	}
+	
+	pDisconnect();
 }
 
 void denConnection::SendMessage(const denMessage::Ref &message, int maxDelay){
+	if(!message){
+		throw std::invalid_argument("message is nullptr");
+	}
+	if(message->Item().GetLength() < 1){
+		throw std::invalid_argument("message has 0 length");
+	}
+	if(pConnectionState != ConnectionState::connected){
+		throw std::invalid_argument("not connected");
+	}
+	
+	// send message
+	const denMessage::Ref unrealMessage(denMessage::Pool().Get());
+	{
+	denMessageWriter writer(unrealMessage->Item());
+	writer.WriteByte((uint8_t)denProtocol::CommandCodes::message);
+	writer.Write(message->Item());
+	}
+	
+	pSocket->SendDatagram(unrealMessage->Item(), pRealRemoteAddress);
 }
 
 void denConnection::SendReliableMessage(const denMessage::Ref &message){
+	if(!message){
+		throw std::invalid_argument("message is nullptr");
+	}
+	if(message->Item().GetLength() < 1){
+		throw std::invalid_argument("message has 0 length");
+	}
+	if(pConnectionState != ConnectionState::connected){
+		throw std::invalid_argument("not connected");
+	}
+	
+	const denRealMessage::Ref realMessage(denRealMessage::Pool().Get());
+	realMessage->Item().type = denProtocol::CommandCodes::reliableMessage;
+	realMessage->Item().number = (pReliableNumberSend + pReliableMessagesSend.size()) % 65535;
+	realMessage->Item().state = denRealMessage::State::pending;
+	
+	{
+	denMessageWriter writer(realMessage->Item().message->Item());
+	writer.WriteByte((uint8_t)denProtocol::CommandCodes::reliableMessage);
+	writer.WriteUShort((uint16_t)realMessage->Item().number);
+	writer.Write(message->Item());
+	}
+	
+	pReliableMessagesSend.push_back(realMessage);
+	
+	// if the message fits into the window send it right now
+	if(pReliableMessagesSend.size() <= (size_t)pReliableWindowSize){
+		pSocket->SendDatagram(realMessage->Item().message->Item(), pRealRemoteAddress);
+		
+		realMessage->Item().state = denRealMessage::State::send;
+		realMessage->Item().secondsSinceSend = 0.0f;
+	}
 }
 
 void denConnection::LinkState(const denMessage::Ref &message, const denState::Ref &state, bool readOnly){
+	if(!message){
+		throw std::invalid_argument("message is nullptr");
+	}
+	if(message->Item().GetLength() < 1){
+		throw std::invalid_argument("message has 0 length");
+	}
+	if(message->Item().GetLength() > 0xffff){
+		throw std::invalid_argument("message too long");
+	}
+	if(!state){
+		throw std::invalid_argument("state is nullptr");
+	}
+	if(pConnectionState != ConnectionState::connected){
+		throw std::invalid_argument("not connected");
+	}
+	
+	// check if a link exists with this state already that is not broken
+	StateLinks::const_iterator iterLink(std::find_if(pStateLinks.cbegin(), pStateLinks.cend(), [&](const denStateLink::Ref &each){
+		return &each->GetState() == state.get();
+	}));
+	
+	if(iterLink != pStateLinks.cend() && (*iterLink)->GetLinkState() != denStateLink::State::down){
+		throw std::invalid_argument("link with state present");
+	}
+	
+	// create the link if not existing, assign it a new identifier and add it
+	if(iterLink == pStateLinks.cend()){
+		const int lastNextLinkIdentifier = pNextLinkIdentifier;
+		
+		while(std::find_if(pStateLinks.cbegin(), pStateLinks.cend(), [&](const denStateLink::Ref &each){
+			return each->GetIdentifier() == pNextLinkIdentifier;
+		}) != pStateLinks.cend()){
+			pNextLinkIdentifier = (pNextLinkIdentifier + 1) % 65535;
+			if(pNextLinkIdentifier == lastNextLinkIdentifier){
+				throw std::invalid_argument("too many state links");
+			}
+		}
+		
+		const denStateLink::Ref link(std::make_shared<denStateLink>(*this, *state));
+		link->SetIdentifier(pNextLinkIdentifier);
+		pStateLinks.push_back(link);
+		iterLink = pStateLinks.cend();
+		
+		state->GetLinks().push_back(link);
+	}
+	
+	// add message
+	const denRealMessage::Ref realMessage(denRealMessage::Pool().Get());
+	realMessage->Item().type = denProtocol::CommandCodes::reliableLinkState;
+	realMessage->Item().number = (pReliableNumberSend + pReliableMessagesSend.size()) % 65535;
+	realMessage->Item().state = denRealMessage::State::pending;
+	
+	{
+	denMessageWriter writer(realMessage->Item().message->Item());
+	writer.WriteByte((uint8_t)denProtocol::CommandCodes::reliableLinkState);
+	writer.WriteUShort((uint16_t)realMessage->Item().number);
+	writer.WriteUShort((uint16_t)(*iterLink)->GetIdentifier());
+	writer.WriteByte(readOnly ? 1 : 0); // flags: readOnly=0x1
+	writer.WriteUShort((uint16_t)message->Item().GetLength());
+	writer.Write(message->Item());
+	state->LinkWriteValuesWithVerify(writer);
+	}
+	
+	pReliableMessagesSend.push_back(realMessage);
+	
+	// if the message fits into the window send it right now
+	if(pReliableMessagesSend.size() <= (size_t)pReliableWindowSize){
+		pSocket->SendDatagram(realMessage->Item().message->Item(), pRealRemoteAddress);
+		
+		realMessage->Item().state = denRealMessage::State::send;
+		realMessage->Item().secondsSinceSend = 0.0f;
+	}
+	
+	(*iterLink)->SetLinkState(denStateLink::State::listening);
 }
 
 void denConnection::SetIdentifier(int identifier){
@@ -79,7 +245,7 @@ void denConnection::Process(float elapsedTime){
 void denConnection::InvalidateState(denState &state){
 	StateLinks::iterator iter;
 	for(iter = pStateLinks.begin(); iter != pStateLinks.end(); ){
-		denStateLink * const link = *iter;
+		denStateLink * const link = iter->get();
 		if(&link->GetState() == &state){
 			denState::StateLinks::iterator iter2(state.FindLink(link));
 			if(iter2 != state.GetLinks().end()){
@@ -234,33 +400,171 @@ void denConnection::ProcessReliableAck(denMessageReader &reader){
 	const denProtocol::ReliableAck code = (denProtocol::ReliableAck)reader.ReadByte();
 	
 	Messages::const_iterator iter(std::find_if(pReliableMessagesSend.begin(),
-		pReliableMessagesSend.end(), [&](const denMessage::Ref &each){
-			return (*each).Item().pNumber == number;
+		pReliableMessagesSend.end(), [&](const denRealMessage::Ref &each){
+			return (*each).Item().number == number;
 		}));
 	if(iter == pReliableMessagesSend.cend()){
 		throw std::invalid_argument("Reliable ack: no reliable transmission with this number waiting for an ack!");
 	}
 	
-	const denMessage::Ref message(*iter);
+	const denRealMessage::Ref message(*iter);
 	
 	switch(code){
 	case denProtocol::ReliableAck::success:
-		message->Item().pState = denMessage::State::done;
+		message->Item().state = denRealMessage::State::done;
 		pRemoveSendReliablesDone();
 		break;
 		
 	case denProtocol::ReliableAck::failed:
-		message->Item().pSecondsSinceSend = 0.0f;
-		pSocket->SendDatagram(message->Item(), pRealRemoteAddress);
+		message->Item().secondsSinceSend = 0.0f;
+		pSocket->SendDatagram(message->Item().message->Item(), pRealRemoteAddress);
 		break;
 	}
 }
 
 void denConnection::ProcessLinkUp(denMessageReader &reader){
+	if(pConnectionState != ConnectionState::connected){
+		throw std::invalid_argument("Reliable ack: not connected.");
+	}
+	
+	const int identifier = reader.ReadUShort();
+	
+	StateLinks::const_iterator iterLink(std::find_if(pStateLinks.cbegin(), pStateLinks.cend(), [&](const denStateLink::Ref &each){
+		return each->GetIdentifier() == identifier;
+	}));
+	
+	if(iterLink == pStateLinks.cend() || (*iterLink)->GetLinkState() != denStateLink::State::listening){
+		throw std::invalid_argument("up link with identifier absent or not listening");
+	}
+	
+	(*iterLink)->SetLinkState(denStateLink::State::up);
 }
 
 void denConnection::ProcessLinkDown(denMessageReader &reader){
+	if(pConnectionState != ConnectionState::connected){
+		throw std::invalid_argument("Reliable ack: not connected.");
+	}
+	
+	const int identifier = reader.ReadUShort();
+	
+	StateLinks::const_iterator iterLink(std::find_if(pStateLinks.cbegin(), pStateLinks.cend(), [&](const denStateLink::Ref &each){
+		return each->GetIdentifier() == identifier;
+	}));
+	
+	if(iterLink == pStateLinks.cend() || (*iterLink)->GetLinkState() != denStateLink::State::listening){
+		throw std::invalid_argument("down link with identifier absent or not listening");
+	}
+	
+	(*iterLink)->SetLinkState(denStateLink::State::down);
 }
 
 void denConnection::ProcessLinkUpdate(denMessageReader &reader){
+	if(pConnectionState != ConnectionState::connected){
+		throw std::invalid_argument("Reliable ack: not connected.");
+	}
+	
+	const int count = reader.ReadByte();
+	int i;
+	for(i=0; i<count; i++){
+		const int identifier = reader.ReadUShort();
+		
+		StateLinks::const_iterator iterLink(std::find_if(pStateLinks.cbegin(), pStateLinks.cend(), [&](const denStateLink::Ref &each){
+			return each->GetIdentifier() == identifier;
+		}));
+		
+		if(iterLink == pStateLinks.cend() || (*iterLink)->GetLinkState() != denStateLink::State::up){
+			throw std::invalid_argument("invalid link identifier");
+		}
+		
+		(*iterLink)->GetState().LinkReadValues(reader, *iterLink->get());
+	}
+}
+
+
+
+void denConnection::pDisconnect(){
+	pModifiedStateLinks.clear();
+	
+	StateLinks::const_iterator iterLink;
+	for(iterLink = pStateLinks.cbegin(); iterLink != pStateLinks.cend(); iterLink++){
+		(*iterLink)->GetState().GetLinks().remove_if([&](const denStateLink::Ref &each){
+			return each == *iterLink;
+		});
+	}
+	pStateLinks.clear();
+	
+	pReliableMessagesRecv.clear();
+	pReliableMessagesSend.clear();
+	
+	pConnectionState = ConnectionState::disconnected;
+	pSocket.reset();
+}
+
+void denConnection::pUpdateStates(){
+	int linkCount = (int)pModifiedStateLinks.size();
+	if(linkCount == 0){
+		return;
+	}
+	
+	ModifiedStateLinks::iterator iter;
+	int changedCount = 0;
+	for(iter = pModifiedStateLinks.begin(); iter != pModifiedStateLinks.end(); iter++){
+		if((*iter)->GetLinkState() == denStateLink::State::up && (*iter)->GetChanged()){
+			changedCount++;
+		}
+	}
+	if(changedCount == 0){
+		return;
+	}
+	changedCount = std::min(changedCount, 255);
+	
+	const denMessage::Ref updateMessage(denMessage::Pool().Get());
+	{
+	denMessageWriter writer(updateMessage->Item());
+	writer.WriteByte((uint8_t)denProtocol::CommandCodes::linkUpdate);
+	writer.WriteByte((uint8_t)changedCount);
+	
+	for(iter = pModifiedStateLinks.begin(); iter != pModifiedStateLinks.end(); ){
+		if((*iter)->GetLinkState() != denStateLink::State::up || !(*iter)->GetChanged()){
+			iter++;
+			continue;
+		}
+		
+		writer.WriteUShort((uint16_t)((*iter)->GetIdentifier()));
+		(*iter)->GetState().LinkWriteValues(writer, **iter);
+		
+		pModifiedStateLinks.erase(ModifiedStateLinks::iterator(iter++));
+		linkCount--;
+		
+		changedCount--;
+		if(changedCount == 0){
+			break;
+		}
+	}
+	}
+	
+	pSocket->SendDatagram(updateMessage->Item(), pRealRemoteAddress);
+}
+
+void denConnection::pUpdateTimeouts(float elapsedTime){
+	// increase the timeouts on all send packages
+	Messages::const_iterator iter;
+	float timeout = 3.0f;
+	
+	for(iter = pReliableMessagesSend.cbegin(); iter != pReliableMessagesSend.cend(); iter++){
+		if((*iter)->Item().state != denRealMessage::State::send){
+			continue;
+		}
+		
+		(*iter)->Item().secondsSinceSend += elapsedTime;
+		
+		if((*iter)->Item().secondsSinceSend > timeout){
+			// resend message
+			pSocket->SendDatagram((*iter)->Item().message->Item(), pRealRemoteAddress);
+			(*iter)->Item().secondsSinceSend = 0.0f;
+		}
+	}
+}
+
+void denConnection::pProcessQueuedMessages(){
 }

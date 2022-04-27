@@ -26,6 +26,7 @@
 
 #include <memory>
 #include "../config.h"
+#include "../internal/denProtocolEnums.h"
 
 class denMessageReader;
 class denMessageWriter;
@@ -60,6 +61,9 @@ public:
 	/** \brief Type. */
 	inline Type GetType() const{ return pType; }
 	
+	/** \brief Data type. */
+	inline denProtocol::ValueTypes GetDataType() const{ return pDataType; }
+	
 	/** \brief Read value from message. */
 	virtual void Read(denMessageReader &reader) = 0;
 	
@@ -75,4 +79,5 @@ public:
 	
 protected:
 	const Type pType;
+	denProtocol::ValueTypes pDataType;
 };

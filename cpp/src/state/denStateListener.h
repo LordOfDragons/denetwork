@@ -22,12 +22,32 @@
  * SOFTWARE.
  */
 
-#include "denValue.h"
+#pragma once
 
-denValue::denValue(Type type) :
-pType(type),
-pDataType(denProtocol::ValueTypes::data){
-}
+#include "../message/denMessage.h"
 
-denValue::~denValue(){
-}
+class denState;
+
+/**
+ * \brief State listener.
+ */
+class denStateListener{
+public:
+	/** \brief Shared pointer. */
+	typedef std::shared_ptr<denStateListener> Ref;
+	
+	/**
+	 * \brief Create connection listener.
+	 */
+	denStateListener();
+	
+	/**
+	 * \brief Clean up connection listener.
+	 */
+	virtual ~denStateListener();
+	
+	/**
+	 * \brief Value changed.
+	 */
+	virtual void ValueChanged(denState &state, int index) = 0;
+};

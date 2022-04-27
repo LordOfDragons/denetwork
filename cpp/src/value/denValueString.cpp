@@ -28,7 +28,9 @@
 
 
 denValueString::denValueString() :
-denValue(Type::string){
+denValue(Type::string)
+{
+	pDataType = denProtocol::ValueTypes::string;
 }
 
 void denValueString::Read(denMessageReader &reader){

@@ -29,6 +29,7 @@
 #include <ctime>
 #include <chrono>
 #include <sstream>
+#include "denProtocolEnums.h"
 #include "../config.h"
 #include "../message/denMessage.h"
 
@@ -53,8 +54,8 @@ public:
 	
 	int number;
 	State state;
-	int type;
-	float secSinceSend;
+	denProtocol::CommandCodes type;
+	float secondsSinceSend;
 	
 	/** \brief Pool. */
 	inline static denPool<denRealMessage> &Pool(){ return pPool; }

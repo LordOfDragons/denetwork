@@ -24,7 +24,12 @@
 
 #include "denRealMessage.h"
 
-denRealMessage::denRealMessage(){
+denRealMessage::denRealMessage() :
+message(denMessage::Pool().Get()),
+number(-1),
+state(State::pending),
+type(denProtocol::CommandCodes::reliableMessage),
+secondsSinceSend(0.0f){
 }
 
 denRealMessage::~denRealMessage(){

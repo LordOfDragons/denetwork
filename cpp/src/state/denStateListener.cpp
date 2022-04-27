@@ -22,12 +22,11 @@
  * SOFTWARE.
  */
 
-#include "denValue.h"
+#include "denStateListener.h"
 
-denValue::denValue(Type type) :
-pType(type),
-pDataType(denProtocol::ValueTypes::data){
+
+denStateListener::denStateListener(){
 }
 
-denValue::~denValue(){
+denStateListener::~denStateListener(){
 }

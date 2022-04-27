@@ -28,8 +28,12 @@
 #include <vector>
 #include <list>
 #include "denStateLink.h"
+#include "denStateListener.h"
 #include "../config.h"
 #include "../value/denValue.h"
+
+class denMessageReader;
+class denMessageWriter;
 
 /**
  * \brief Network state.
@@ -48,9 +52,6 @@ public:
 	/** \brief Create state. */
 	denState(bool readOnly);
 	
-	/** \brief Clean up state. */
-	~denState();
-	
 	/** \brief Values. */
 	inline Values &GetValues(){ return pValues; }
 	inline const Values &GetValues() const{ return pValues; }
@@ -63,11 +64,58 @@ public:
 	StateLinks::iterator FindLink(denStateLink *link);
 	StateLinks::const_iterator FindLink(denStateLink *link) const;
 	
+	/** \brief Set listener or null to clear. */
+	void SetListener(const denStateListener::Ref &listener);
+	
 	/** \brief Read only state. */
 	inline bool GetReadOnly() const{ return pReadOnly; }
+	
+	/** \brief Update state. */
+	void Update();
+	
+	/** \brief Read values from message. */
+	void LinkReadValues(denMessageReader &reader, denStateLink &link);
+	
+	/** \brief Read all values from message. */
+	void LinkReadAllValues(denMessageReader &reader, denStateLink &link);
+	
+	/**
+	 * \brief Read all values from message including types.
+	 * 
+	 * Verifies that the values in the state match in type and update their values.
+	 * Returns true if the state matches and has been updated or false otherwise.
+	 */
+	bool LinkReadAndVerifyAllValues(denMessageReader &reader);
+	
+	/**
+	 * \brief Write all values to message.
+	 * \param[in] withTypes Include types.
+	 */
+	void LinkWriteValues(denMessageWriter &writer);
+	
+	/**
+	 * \brief Write all values to message.
+	 * \param[in] withTypes Include types.
+	 */
+	void LinkWriteValuesWithVerify(denMessageWriter &writer);
+	
+	/**
+	 * \brief Write values to message if changed in link.
+	 * \param[in] withTypes Include types. Value only if \em allValues is true.
+	 * \param[in] allValues Ignore changed flags and send all values.
+	 */
+	void LinkWriteValues(denMessageWriter &writer, denStateLink &link);
+	
+	/** \brief Invalid value in all state links. */
+	void InvalidateValue(int index);
+	
+	/** \brief Invalid value in all state links. */
+	void InvalidateValueExcept(int index, denStateLink &link);
+	
 	
 private:
 	Values pValues;
 	StateLinks pLinks;
 	bool pReadOnly;
+	denStateListener::Ref pListener;
 };

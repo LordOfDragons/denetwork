@@ -28,7 +28,41 @@
 
 
 denValueInt::denValueInt(denValueIntegerFormat format) :
-denValueInteger<uint64_t>(Type::integer, format){
+denValueInteger<uint64_t>(Type::integer, format)
+{
+	switch(format){
+	case denValueIntegerFormat::sint8:
+		pDataType = denProtocol::ValueTypes::sint8;
+		break;
+		
+	case denValueIntegerFormat::uint8:
+		pDataType = denProtocol::ValueTypes::uint8;
+		break;
+		
+	case denValueIntegerFormat::sint16:
+		pDataType = denProtocol::ValueTypes::sint16;
+		break;
+		
+	case denValueIntegerFormat::uint16:
+		pDataType = denProtocol::ValueTypes::uint16;
+		break;
+		
+	case denValueIntegerFormat::sint32:
+		pDataType = denProtocol::ValueTypes::sint32;
+		break;
+		
+	case denValueIntegerFormat::uint32:
+		pDataType = denProtocol::ValueTypes::uint32;
+		break;
+		
+	case denValueIntegerFormat::sint64:
+		pDataType = denProtocol::ValueTypes::sint64;
+		break;
+		
+	case denValueIntegerFormat::uint64:
+		pDataType = denProtocol::ValueTypes::uint64;
+		break;
+	};
 }
 
 void denValueInt::Read(denMessageReader &reader){
@@ -107,7 +141,41 @@ void denValueInt::Write(denMessageWriter &writer){
 
 
 denValuePoint2::denValuePoint2(denValueIntegerFormat format) :
-denValueInteger<denPoint2>(Type::vector2, format){
+denValueInteger<denPoint2>(Type::vector2, format)
+{
+	switch(format){
+	case denValueIntegerFormat::sint8:
+		pDataType = denProtocol::ValueTypes::point2S8;
+		break;
+		
+	case denValueIntegerFormat::uint8:
+		pDataType = denProtocol::ValueTypes::point2U8;
+		break;
+		
+	case denValueIntegerFormat::sint16:
+		pDataType = denProtocol::ValueTypes::point2S16;
+		break;
+		
+	case denValueIntegerFormat::uint16:
+		pDataType = denProtocol::ValueTypes::point2U16;
+		break;
+		
+	case denValueIntegerFormat::sint32:
+		pDataType = denProtocol::ValueTypes::point2S32;
+		break;
+		
+	case denValueIntegerFormat::uint32:
+		pDataType = denProtocol::ValueTypes::point2U32;
+		break;
+		
+	case denValueIntegerFormat::sint64:
+		pDataType = denProtocol::ValueTypes::point2S64;
+		break;
+		
+	case denValueIntegerFormat::uint64:
+		pDataType = denProtocol::ValueTypes::point2U64;
+		break;
+	};
 }
 
 void denValuePoint2::Read(denMessageReader &reader){
@@ -202,7 +270,41 @@ void denValuePoint2::Write(denMessageWriter &writer){
 
 
 denValuePoint3::denValuePoint3(denValueIntegerFormat format) :
-denValueInteger<denPoint3>(Type::vector3, format){
+denValueInteger<denPoint3>(Type::vector3, format)
+{
+	switch(format){
+	case denValueIntegerFormat::sint8:
+		pDataType = denProtocol::ValueTypes::point3S8;
+		break;
+		
+	case denValueIntegerFormat::uint8:
+		pDataType = denProtocol::ValueTypes::point3U8;
+		break;
+		
+	case denValueIntegerFormat::sint16:
+		pDataType = denProtocol::ValueTypes::point3S16;
+		break;
+		
+	case denValueIntegerFormat::uint16:
+		pDataType = denProtocol::ValueTypes::point3U16;
+		break;
+		
+	case denValueIntegerFormat::sint32:
+		pDataType = denProtocol::ValueTypes::point3S32;
+		break;
+		
+	case denValueIntegerFormat::uint32:
+		pDataType = denProtocol::ValueTypes::point3U32;
+		break;
+		
+	case denValueIntegerFormat::sint64:
+		pDataType = denProtocol::ValueTypes::point3S64;
+		break;
+		
+	case denValueIntegerFormat::uint64:
+		pDataType = denProtocol::ValueTypes::point3U64;
+		break;
+	};
 }
 
 void denValuePoint3::Read(denMessageReader &reader){

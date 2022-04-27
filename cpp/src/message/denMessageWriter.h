@@ -61,6 +61,7 @@ public:
 	denMessageWriter &WriteDVector(const denVector3 &vector);
 	
 	denMessageWriter &Write(const void *buffer, size_t length);
+	denMessageWriter &Write(const denMessage &message);
 	
 private:
 	denMessage &pMessage;

@@ -29,7 +29,21 @@
 
 
 denValueFloat::denValueFloat(denValueFloatingFormat format) :
-denValueFloating<double>(Type::floating, format, DENM_THRESHOLD_DOUBLE){
+denValueFloating<double>(Type::floating, format, DENM_THRESHOLD_DOUBLE)
+{
+	switch(format){
+	case denValueFloatingFormat::float16:
+		pDataType = denProtocol::ValueTypes::float16;
+		break;
+		
+	case denValueFloatingFormat::float32:
+		pDataType = denProtocol::ValueTypes::float32;
+		break;
+		
+	case denValueFloatingFormat::float64:
+		pDataType = denProtocol::ValueTypes::float64;
+		break;
+	};
 }
 
 void denValueFloat::Read(denMessageReader &reader){
@@ -68,7 +82,21 @@ void denValueFloat::Write(denMessageWriter &writer){
 
 
 denValueVector2::denValueVector2(denValueFloatingFormat format) :
-denValueFloating<denVector2>(Type::vector2, format, DENM_THRESHOLD_DOUBLE){
+denValueFloating<denVector2>(Type::vector2, format, DENM_THRESHOLD_DOUBLE)
+{
+	switch(format){
+	case denValueFloatingFormat::float16:
+		pDataType = denProtocol::ValueTypes::vector2F16;
+		break;
+		
+	case denValueFloatingFormat::float32:
+		pDataType = denProtocol::ValueTypes::vector2F32;
+		break;
+		
+	case denValueFloatingFormat::float64:
+		pDataType = denProtocol::ValueTypes::vector2F64;
+		break;
+	};
 }
 
 void denValueVector2::Read(denMessageReader &reader){
@@ -113,7 +141,21 @@ void denValueVector2::Write(denMessageWriter &writer){
 
 
 denValueVector3::denValueVector3(denValueFloatingFormat format) :
-denValueFloating<denVector3>(Type::vector3, format, DENM_THRESHOLD_DOUBLE){
+denValueFloating<denVector3>(Type::vector3, format, DENM_THRESHOLD_DOUBLE)
+{
+	switch(format){
+	case denValueFloatingFormat::float16:
+		pDataType = denProtocol::ValueTypes::vector3F16;
+		break;
+		
+	case denValueFloatingFormat::float32:
+		pDataType = denProtocol::ValueTypes::vector3F32;
+		break;
+		
+	case denValueFloatingFormat::float64:
+		pDataType = denProtocol::ValueTypes::vector3F64;
+		break;
+	};
 }
 
 void denValueVector3::Read(denMessageReader &reader){
@@ -164,7 +206,21 @@ void denValueVector3::Write(denMessageWriter &writer){
 
 
 denValueQuaternion::denValueQuaternion(denValueFloatingFormat format) :
-denValueFloating<denQuaternion>(Type::quaternion, format, DENM_THRESHOLD_DOUBLE){
+denValueFloating<denQuaternion>(Type::quaternion, format, DENM_THRESHOLD_DOUBLE)
+{
+	switch(format){
+	case denValueFloatingFormat::float16:
+		pDataType = denProtocol::ValueTypes::quaternionF16;
+		break;
+		
+	case denValueFloatingFormat::float32:
+		pDataType = denProtocol::ValueTypes::quaternionF32;
+		break;
+		
+	case denValueFloatingFormat::float64:
+		pDataType = denProtocol::ValueTypes::quaternionF64;
+		break;
+	};
 }
 
 void denValueQuaternion::Read(denMessageReader &reader){

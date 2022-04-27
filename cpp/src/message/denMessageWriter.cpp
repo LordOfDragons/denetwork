@@ -165,3 +165,7 @@ denMessageWriter &denMessageWriter::Write(const void *buffer, size_t length){
 	pStream.write((const char*)buffer, length);
 	return *this;
 }
+
+denMessageWriter & denMessageWriter::Write(const denMessage &message){
+	return Write(message.GetData().c_str(), message.GetLength());
+}

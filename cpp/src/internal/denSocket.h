@@ -40,6 +40,7 @@ public:
 	
 	~denSocket();
 	
+	inline denAddress &GetAddress(){ return pAddress; }
 	inline const denAddress &GetAddress() const{ return pAddress; }
 	
 	/** \brief Bind socket to stored address. */

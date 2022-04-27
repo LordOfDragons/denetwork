@@ -26,10 +26,7 @@
 
 denMessage::denMessage() :
 pLength(0),
-pTimestamp(std::chrono::system_clock::now()),
-pNumber(-1),
-pState(State::pending),
-pSecondsSinceSend(0){
+pTimestamp(std::chrono::system_clock::now()){
 }
 
 denMessage::~denMessage(){
