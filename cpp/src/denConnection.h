@@ -70,6 +70,9 @@ public:
 	/** \brief Create connection. */
 	denConnection();
 	
+	/** \brief Destroy connection. */
+	virtual ~denConnection();
+	
 	/** \brief Local address. */
 	inline const std::string &GetLocalAddress() const{ return pLocalAddress; }
 	

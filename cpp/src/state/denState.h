@@ -52,6 +52,15 @@ public:
 	/** \brief Create state. */
 	denState(bool readOnly);
 	
+	/** \brief Clean up state. */
+	virtual ~denState();
+	
+	/** \brief User data. */
+	inline void *GetUserData() const{ return pUserData; }
+	
+	/** \brief Set user data. */
+	void SetUserData(void *userData);
+	
 	/** \brief Values. */
 	inline Values &GetValues(){ return pValues; }
 	inline const Values &GetValues() const{ return pValues; }
@@ -114,6 +123,7 @@ public:
 	
 	
 private:
+	void *pUserData;
 	Values pValues;
 	StateLinks pLinks;
 	bool pReadOnly;

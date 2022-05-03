@@ -43,8 +43,8 @@ void denConnectionListener::MessageProgress(denConnection&, size_t){
 void denConnectionListener::MessageReceived(denConnection&, const denMessage::Ref&){
 }
 
-bool denConnectionListener::LinkState(denConnection&, const denState::Ref&, const denMessage::Ref&){
-	return false;
+denState::Ref denConnectionListener::LinkState(denConnection&, const denMessage::Ref&, bool){
+	return nullptr;
 }
 
 void denConnectionListener::Log(denConnection&, LogSeverity, const std::string&){

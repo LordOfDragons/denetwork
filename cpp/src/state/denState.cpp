@@ -28,7 +28,16 @@
 #include "../message/denMessageWriter.h"
 #include "../internal/denProtocolEnums.h"
 
-denState::denState(bool readOnly) : pReadOnly(readOnly){
+denState::denState(bool readOnly) :
+pUserData(nullptr),
+pReadOnly(readOnly){
+}
+
+denState::~denState(){
+}
+
+void denState::SetUserData(void *userData){
+	pUserData = userData;
 }
 
 denState::StateLinks::iterator denState::FindLink(denStateLink *link){

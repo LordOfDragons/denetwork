@@ -26,100 +26,100 @@
 
 namespace denProtocol{
 	/**
-	* \brief Protocol command codes
-	*/
+	 * \brief Protocol command codes
+	 */
 	enum class CommandCodes{
 		/**
-		*  Connection Request:
-		*  [ 0 ] [ protocols ]
-		*  
-		*  protocols:  // list of protocols supported by client
-		*     [ count:uint16 ] [ protocol:uint16 ]{ 1..n }
-		*/
+		 *  Connection Request:
+		 *  [ 0 ] [ protocols ]
+		 *  
+		 *  protocols:  // list of protocols supported by client
+		 *     [ count:uint16 ] [ protocol:uint16 ]{ 1..n }
+		 */
 		connectionRequest = 0,
 		
 		/**
-		* Connection Ack:
-		* [ 1 ] [ resultCode:uint8 ]
-		* 
-		* resultCode:
-		*    0: Connection Accepted
-		*    1: Connection Rejected
-		*    2: Connection Rejected because no common protocols
-		* 
-		* if connection is accepted the message also contains:
-		*    [ protocol:uint16 ]
-		* 
-		* protocol:
-		*    The chosen protocol
-		*/
+		 * Connection Ack:
+		 * [ 1 ] [ resultCode:uint8 ]
+		 * 
+		 * resultCode:
+		 *    0: Connection Accepted
+		 *    1: Connection Rejected
+		 *    2: Connection Rejected because no common protocols
+		 * 
+		 * if connection is accepted the message also contains:
+		 *    [ protocol:uint16 ]
+		 * 
+		 * protocol:
+		 *    The chosen protocol
+		 */
 		connectionAck = 1,
 		
 		/**
-		* Close Connection:
-		* [ 2 ]
-		*/
+		 * Close Connection:
+		 * [ 2 ]
+		 */
 		connectionClose = 2,
 		
 		/**
-		* Message:
-		* [ 3 ] [ data ]
-		*/
+		 * Message:
+		 * [ 3 ] [ data ]
+		 */
 		message = 3,
 		
 		/**
-		* Reliable message:
-		* [ 4 ] [ number:uint16 ] [ data ]
-		*/
+		 * Reliable message:
+		 * [ 4 ] [ number:uint16 ] [ data ]
+		 */
 		reliableMessage = 4,
 		
 		/**
-		* Link state:
-		* [ 5 ] [ number:uint16 ] [ link_id:uint16 ] [ flags ] [ message ] [ values ]
-		* 
-		* flags:
-		*    0x1: create read only state
-		* 
-		* message:
-		*    [ length:uint16 ] [ message_bytes:uint8 ]{ 1..n }
-		* 
-		* values:
-		*    [ value_count:uint16 ] ( [ value_type:uint8 ] [ value_data:* ] ){ 1..n }
-		*/
+		 * Link state:
+		 * [ 5 ] [ number:uint16 ] [ link_id:uint16 ] [ flags ] [ message ] [ values ]
+		 * 
+		 * flags:
+		 *    0x1: create read only state
+		 * 
+		 * message:
+		 *    [ length:uint16 ] [ message_bytes:uint8 ]{ 1..n }
+		 * 
+		 * values:
+		 *    [ value_count:uint16 ] ( [ value_type:uint8 ] [ value_data:* ] ){ 1..n }
+		 */
 		reliableLinkState = 5,
 		
 		/**
-		* Reliable ack:
-		* [ 6 ] [ number:uint16 ] [ code:uint8 ]
-		* 
-		* code:
-		*    [ 0 ] received successfully
-		*    [ 1 ] failed
-		*/
+		 * Reliable ack:
+		 * [ 6 ] [ number:uint16 ] [ code:uint8 ]
+		 * 
+		 * code:
+		 *    [ 0 ] received successfully
+		 *    [ 1 ] failed
+		 */
 		reliableAck = 6,
 		
 		/**
-		* Link up:
-		* [ 7 ] [ link_id:uint16 ]
-		*/
+		 * Link up:
+		 * [ 7 ] [ link_id:uint16 ]
+		 */
 		linkUp = 7,
 		
 		/**
-		* Link down:
-		* [ 8 ] [ link_id:uint16 ]
-		*/
+		 * Link down:
+		 * [ 8 ] [ link_id:uint16 ]
+		 */
 		linkDown = 8,
 		
 		/**
-		* Link update: 
-		* [ 9 ] [ link_count:uint8 ] [ link ]{ 1..link_count }
-		* 
-		* link:
-		*    [ link_id:uint16 ] [ value_count:uint8 ] [ value ]{ 1..value_count }
-		* 
-		* value:
-		*    [ value_index:uint16 ] [ value_data:* ]
-		*/
+		 * Link update: 
+		 * [ 9 ] [ link_count:uint8 ] [ link ]{ 1..link_count }
+		 * 
+		 * link:
+		 *    [ link_id:uint16 ] [ value_count:uint8 ] [ value ]{ 1..value_count }
+		 * 
+		 * value:
+		 *    [ value_index:uint16 ] [ value_data:* ]
+		 */
 		linkUpdate = 9
 	};
 

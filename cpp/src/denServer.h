@@ -49,7 +49,7 @@ public:
 	denServer();
 	
 	/** \brief Clean up server. */
-	~denServer();
+	virtual ~denServer();
 	
 	/** \brief Address. */
 	inline const std::string &GetAddress() const{ return pAddress; }
@@ -78,6 +78,13 @@ public:
 	 * \param[in] elapsedTime Elapsed time in seconds since the last call to Update();
 	 */
 	void Update(float elapsedTime);
+	
+	/**
+	 * \brief Create connection.
+	 * 
+	 * Default implementation creates instance of denConnection.
+	 */
+	virtual denConnection::Ref CreateConnection();
 	
 	/** \brief Set listener or nullptr to clear. */
 	void SetListener(const denServerListener::Ref &listener);

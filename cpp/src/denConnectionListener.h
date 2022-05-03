@@ -68,11 +68,10 @@ public:
 	
 	/**
 	 * \brief Host send state to link.
-	 * \param networkState Network state to use for this side of the link.
-	 * \param message Additional information.
-	 * \returns true to accept the link or false to deny it.
+	 * \returns State link or nullptr to reject.
 	 */
-	virtual bool LinkState(denConnection &connection, const denState::Ref &state, const denMessage::Ref &message );
+	virtual denState::Ref LinkState(denConnection &connection,
+		const denMessage::Ref &message, bool readOnly);
 	
 	/** \brief Logging. */
 	virtual void Log(denConnection &connection, LogSeverity severity, const std::string &message);

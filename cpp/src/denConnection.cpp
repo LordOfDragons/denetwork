@@ -43,6 +43,9 @@ pReliableWindowSize(10),
 pParentServer(nullptr){
 }
 
+denConnection::~denConnection(){
+}
+
 void denConnection::SetUserData(void *userData){
 	pUserData = userData;
 }
@@ -730,10 +733,7 @@ void denConnection::pProcessLinkState(denMessageReader &reader){
 	
 	denState::Ref state;
 	if(pListener){
-		state = std::make_shared<denState>(readOnly);
-		if(!pListener->LinkState(*this, state, message)){
-			state.reset();
-		}
+		state = pListener->LinkState(*this, message, readOnly);
 	}
 	
 	denProtocol::CommandCodes code = denProtocol::CommandCodes::linkDown;

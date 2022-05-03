@@ -176,6 +176,10 @@ void denServer::Update(float elapsedTime){
 	}
 }
 
+denConnection::Ref denServer::CreateConnection(){
+	return std::make_shared<denConnection>();
+}
+
 void denServer::SetListener(const denServerListener::Ref &listener){
 	pListener = listener;
 }
@@ -336,7 +340,7 @@ void denServer::ProcessConnectionRequest(const denAddress &address, denMessageRe
 	denProtocol::Protocols protocol = denProtocol::Protocols::DENetworkProtocol;
 	
 	// create connection 
-	const denConnection::Ref connection(std::make_shared<denConnection>());
+	const denConnection::Ref connection(CreateConnection());
 	connection->AcceptConnection(pSocket, address, protocol);
 	pConnections.push_back(connection);
 	
