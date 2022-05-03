@@ -32,6 +32,7 @@
 #include "internal/denRealMessage.h"
 
 denConnection::denConnection() :
+pUserData(nullptr),
 pConnectionState(ConnectionState::disconnected),
 pIdentifier(-1),
 pProtocol(denProtocol::Protocols::DENetworkProtocol),
@@ -40,6 +41,10 @@ pReliableNumberSend(0),
 pReliableNumberRecv(0),
 pReliableWindowSize(10),
 pParentServer(nullptr){
+}
+
+void denConnection::SetUserData(void *userData){
+	pUserData = userData;
 }
 
 bool denConnection::GetConnected() const{
@@ -246,7 +251,7 @@ void denConnection::Update(float elapsedTime){
 				
 			}catch(const std::exception &e){
 				if(pListener){
-					pListener->Log(denConnectionListener::LogSeverity::error,
+					pListener->Log(*this, denConnectionListener::LogSeverity::error,
 						std::string("denConnection::Update[1]: ") + e.what());
 				}
 			}
@@ -259,7 +264,7 @@ void denConnection::Update(float elapsedTime){
 		
 	}catch(const std::exception &e){
 		if(pListener){
-			pListener->Log(denConnectionListener::LogSeverity::error,
+			pListener->Log(*this, denConnectionListener::LogSeverity::error,
 				std::string("denConnection::Update[2]: ") + e.what());
 		}
 	}
@@ -302,6 +307,10 @@ const denAddress &address, denProtocol::Protocols protocol){
 	pRemoteAddress = address.ToString();
 	pConnectionState = ConnectionState::connected;
 	pProtocol = protocol;
+	
+	if(pListener){
+		pListener->ConnectionEstablished(*this);
+	}
 }
 
 void denConnection::ProcessDatagram(denMessageReader& reader){
@@ -356,6 +365,9 @@ void denConnection::ProcessConnectionAck(denMessageReader &reader){
 	case denProtocol::ConnectionAck::accepted:
 		pProtocol = (denProtocol::Protocols)reader.ReadUShort();
 		pConnectionState = ConnectionState::connected;
+		if(pListener){
+			pListener->ConnectionEstablished(*this);
+		}
 		break;
 		
 	case denProtocol::ConnectionAck::rejected:
@@ -388,7 +400,7 @@ void denConnection::ProcessMessage(denMessageReader &reader){
 	reader.Read(message->Item());
 	
 	if(pListener){
-		pListener->MessageReceived(message);
+		pListener->MessageReceived(*this, message);
 	}
 }
 
@@ -695,7 +707,7 @@ void denConnection::pProcessReliableMessage(denMessageReader &reader){
 	denMessage::Ref message(denMessage::Pool().Get());
 	message->Item().SetLength(reader.GetLength() - reader.GetPosition());
 	reader.Read(message->Item());
-	pListener->MessageReceived(message);
+	pListener->MessageReceived(*this, message);
 }
 
 void denConnection::pProcessLinkState(denMessageReader &reader){
@@ -719,7 +731,7 @@ void denConnection::pProcessLinkState(denMessageReader &reader){
 	denState::Ref state;
 	if(pListener){
 		state = std::make_shared<denState>(readOnly);
-		if(!pListener->LinkState(state, message)){
+		if(!pListener->LinkState(*this, state, message)){
 			state.reset();
 		}
 	}

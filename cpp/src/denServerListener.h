@@ -56,8 +56,8 @@ public:
 	virtual ~denServerListener();
 	
 	/** \brief Client connected. */
-	virtual void ClientConnected(const denConnection::Ref &connection);
+	virtual void ClientConnected(denServer &server, const denConnection::Ref &connection);
 	
 	/** \brief Logging. */
-	virtual void Log(LogSeverity severity, const std::string &message);
+	virtual void Log(denServer &server, LogSeverity severity, const std::string &message);
 };

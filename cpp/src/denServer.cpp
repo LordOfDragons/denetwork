@@ -51,12 +51,16 @@
 #endif
 
 denServer::denServer() :
-pListening(false)
-{
+pUserData(nullptr),
+pListening(false){
 }
 
 denServer::~denServer(){
 	StopListening();
+}
+
+void denServer::SetUserData(void *userData){
+	pUserData = userData;
 }
 
 void denServer::ListenOn(const std::string &address){
@@ -74,7 +78,7 @@ void denServer::ListenOn(const std::string &address){
 				std::vector<std::string>::const_iterator iter;
 				const std::string text("Found public address: ");
 				for(iter = publicAddresses.cbegin(); iter != publicAddresses.cend(); iter++){
-					pListener->Log(denServerListener::LogSeverity::info, text + *iter);
+					pListener->Log(*this, denServerListener::LogSeverity::info, text + *iter);
 				}
 			}
 			
@@ -82,14 +86,14 @@ void denServer::ListenOn(const std::string &address){
 			
 		}else{
 			if(pListener){
-				pListener->Log(denServerListener::LogSeverity::info, "No public address found. Using localhost");
+				pListener->Log(*this, denServerListener::LogSeverity::info, "No public address found. Using localhost");
 			}
 			useAddress = "127.0.0.1";
 		}
 	}
 	
 	if(pListener){
-		pListener->Log(denServerListener::LogSeverity::info, std::string("Listening on ") + useAddress);
+		pListener->Log(*this, denServerListener::LogSeverity::info, std::string("Listening on ") + useAddress);
 	}
 	
 	pSocket = std::make_shared<denSocket>();
@@ -150,7 +154,7 @@ void denServer::Update(float elapsedTime){
 			
 		}catch(const std::exception &e){
 			if(pListener){
-				pListener->Log(denServerListener::LogSeverity::error,
+				pListener->Log(*this, denServerListener::LogSeverity::error,
 					std::string("denServer::Update[1]: ") + e.what());
 			}
 		}
@@ -165,7 +169,7 @@ void denServer::Update(float elapsedTime){
 			
 		}catch(const std::exception &e){
 			if(pListener){
-				pListener->Log(denServerListener::LogSeverity::error,
+				pListener->Log(*this, denServerListener::LogSeverity::error,
 					std::string("denServer::Update[2]: ") + e.what());
 			}
 		}
@@ -347,6 +351,6 @@ void denServer::ProcessConnectionRequest(const denAddress &address, denMessageRe
 	pSocket->SendDatagram(message->Item(), address);
 	
 	if(pListener){
-		pListener->ClientConnected(connection);
+		pListener->ClientConnected(*this, connection);
 	}
 }

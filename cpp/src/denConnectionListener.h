@@ -45,29 +45,26 @@ public:
 	/** \brief Shared pointer. */
 	typedef std::shared_ptr<denConnectionListener> Ref;
 	
-	/**
-	 * \brief Create connection listener.
-	 */
+	/** \brief Create connection listener. */
 	denConnectionListener();
 	
-	/**
-	 * \brief Clean up connection listener.
-	 */
+	/** \brief Clean up connection listener. */
 	virtual ~denConnectionListener();
 	
-	/**
-	 * \brief Connection closed.
-	 */
+	/** \brief Connection established. */
+	virtual void ConnectionEstablished(denConnection &connection);
+	
+	/** \brief Connection closed. */
 	virtual void ConnectionClosed(denConnection &connection);
 	
 	/** \brief A long message is in progress of receiving. */
-	virtual void MessageProgress(size_t bytesReceived);
+	virtual void MessageProgress(denConnection &connection, size_t bytesReceived);
 	
 	/**
 	 * \brief Message received.
 	 * \param[in] message Received message. Reference can be stored for later use.
 	 */
-	virtual void MessageReceived(const denMessage::Ref &message);
+	virtual void MessageReceived(denConnection &connection, const denMessage::Ref &message);
 	
 	/**
 	 * \brief Host send state to link.
@@ -75,8 +72,8 @@ public:
 	 * \param message Additional information.
 	 * \returns true to accept the link or false to deny it.
 	 */
-	virtual bool LinkState(const denState::Ref &state, const denMessage::Ref &message );
+	virtual bool LinkState(denConnection &connection, const denState::Ref &state, const denMessage::Ref &message );
 	
 	/** \brief Logging. */
-	virtual void Log(LogSeverity severity, const std::string &message);
+	virtual void Log(denConnection &connection, LogSeverity severity, const std::string &message);
 };

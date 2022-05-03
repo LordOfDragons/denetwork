@@ -76,6 +76,12 @@ public:
 	/** \brief Remote address. */
 	inline const std::string &GetRemoteAddress() const{ return pRemoteAddress; }
 	
+	/** \brief User data. */
+	inline void *GetUserData() const{ return pUserData; }
+	
+	/** \brief Set user data. */
+	void SetUserData(void *userData);
+	
 	/** \brief Connection to a remote host is established. */
 	bool GetConnected() const;
 	
@@ -154,6 +160,7 @@ public:
 private:
 	std::string pLocalAddress;
 	std::string pRemoteAddress;
+	void *pUserData;
 	
 	denSocket::Ref pSocket;
 	denAddress pRealRemoteAddress;

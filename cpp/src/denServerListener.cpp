@@ -31,8 +31,8 @@ denServerListener::denServerListener(){
 denServerListener::~denServerListener(){
 }
 
-void denServerListener::ClientConnected(const denConnection::Ref&){
+void denServerListener::ClientConnected(denServer&, const denConnection::Ref&){
 }
 
-void denServerListener::Log(LogSeverity, const std::string&){
+void denServerListener::Log(denServer&, LogSeverity, const std::string&){
 }

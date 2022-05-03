@@ -31,18 +31,21 @@ denConnectionListener::denConnectionListener(){
 denConnectionListener::~denConnectionListener(){
 }
 
+void denConnectionListener::ConnectionEstablished(denConnection&){
+}
+
 void denConnectionListener::ConnectionClosed(denConnection&){
 }
 
-void denConnectionListener::MessageProgress(size_t){
+void denConnectionListener::MessageProgress(denConnection&, size_t){
 }
 
-void denConnectionListener::MessageReceived(const denMessage::Ref&){
+void denConnectionListener::MessageReceived(denConnection&, const denMessage::Ref&){
 }
 
-bool denConnectionListener::LinkState(const denState::Ref&, const denMessage::Ref&){
+bool denConnectionListener::LinkState(denConnection&, const denState::Ref&, const denMessage::Ref&){
 	return false;
 }
 
-void denConnectionListener::Log(LogSeverity, const std::string&){
+void denConnectionListener::Log(denConnection&, LogSeverity, const std::string&){
 }

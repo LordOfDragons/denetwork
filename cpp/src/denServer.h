@@ -54,6 +54,12 @@ public:
 	/** \brief Address. */
 	inline const std::string &GetAddress() const{ return pAddress; }
 	
+	/** \brief User data. */
+	inline void *GetUserData() const{ return pUserData; }
+	
+	/** \brief Set user data. */
+	void SetUserData(void *userData);
+	
 	/** \brief Server is listening for connections. */
 	inline bool IsListening() const{ return pListening; }
 	
@@ -88,6 +94,7 @@ private:
 	
 	
 	std::string pAddress;
+	void *pUserData;
 	
 	denSocket::Ref pSocket;
 	bool pListening;
