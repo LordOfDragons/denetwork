@@ -40,6 +40,7 @@
 #include "internal/denRealMessage.h"
 
 class denMessageReader;
+class denServer;
 
 
 /**
@@ -66,11 +67,8 @@ public:
 		connected
 	};
 	
-	/** \brief Create server. */
+	/** \brief Create connection. */
 	denConnection();
-	
-	/** \brief Clean up server. */
-	~denConnection();
 	
 	/** \brief Local address. */
 	inline const std::string &GetLocalAddress() const{ return pLocalAddress; }
@@ -100,7 +98,7 @@ public:
 	 */
 	void SendMessage(const denMessage::Ref &message, int maxDelay);
 	
-	/**
+	/**	
 	 * \brief Send reliable message to remote connection if connected.
 	 * 
 	 * The  message is append to already waiting reliable messages and send as
@@ -119,6 +117,16 @@ public:
 	 */
 	void LinkState(const denMessage::Ref &message, const denState::Ref &state, bool readOnly);
 	
+	/**
+	 * \brief Update connection.
+	 * 
+	 * Send and received queued messages. Call this on each frame update or in a loop
+	 * from inside a thread. If using a thread use a mutex to ensure thread safety.
+	 * 
+	 * \param[in] elapsedTime Elapsed time in seconds since the last call to Update();
+	 */
+	void Update(float elapsedTime);
+	
 	
 	
 	/** \warning Internal use. Do not call directly. */
@@ -128,10 +136,11 @@ public:
 	inline denProtocol::Protocols GetProtocol() const{ return pProtocol; }
 	
 	void AddModifiedStateLink(denStateLink *link);
-	void Process(float elapsedTime);
 	void InvalidateState(denState &state);
 	bool Matches(denSocket *bnSocket, const denAddress &address) const;
-	void AcceptConnection(const denSocket::Ref &bnSocket, denAddress &address, denProtocol::Protocols protocol);
+	void AcceptConnection(const denSocket::Ref &bnSocket,
+		const denAddress &address, denProtocol::Protocols protocol);
+	void ProcessDatagram(denMessageReader &reader);
 	void ProcessConnectionAck(denMessageReader &reader);
 	void ProcessConnectionClose(denMessageReader &reader);
 	void ProcessMessage(denMessageReader &reader);
@@ -168,9 +177,12 @@ private:
 	void pUpdateStates();
 	void pUpdateTimeouts(float elapsedTime);
 	void pProcessQueuedMessages();
-	void pProcessReliableMessage(int number, denMessageReader &reader);
-	void pProcessLinkState(int number, denMessageReader &reader);
-	void pAddReliableReceive(denProtocol::CommandCodes command, int number, denMessageReader &reader);
+	void pProcessReliableMessage(denMessageReader &reader);
+	void pProcessLinkState(denMessageReader &reader);
+	void pAddReliableReceive(denProtocol::CommandCodes type, int number, denMessageReader &reader);
 	void pRemoveSendReliablesDone();
 	void pSendPendingReliables();
+	
+	friend denServer;
+	denServer *pParentServer;
 };

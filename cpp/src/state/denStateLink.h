@@ -52,9 +52,6 @@ public:
 	/** \brief Create state link. */
 	denStateLink(denConnection &connection, denState &state);
 	
-	/** \brief Clean up state link. */
-	~denStateLink();
-	
 	/** \brief State. */
 	inline denState &GetState() const{ return pState; }
 	

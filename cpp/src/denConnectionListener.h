@@ -25,6 +25,7 @@
 #pragma once
 
 #include "message/denMessage.h"
+#include "state/denState.h"
 
 class denConnection;
 
@@ -33,6 +34,14 @@ class denConnection;
  */
 class denConnectionListener{
 public:
+	/** \brief Log severity. */
+	enum class LogSeverity{
+		error,
+		warning,
+		info,
+		debug
+	};
+	
 	/** \brief Shared pointer. */
 	typedef std::shared_ptr<denConnectionListener> Ref;
 	
@@ -49,11 +58,25 @@ public:
 	/**
 	 * \brief Connection closed.
 	 */
-	virtual void ConnectionClosed(denConnection &connection) = 0;
+	virtual void ConnectionClosed(denConnection &connection);
+	
+	/** \brief A long message is in progress of receiving. */
+	virtual void MessageProgress(size_t bytesReceived);
 	
 	/**
 	 * \brief Message received.
 	 * \param[in] message Received message. Reference can be stored for later use.
 	 */
-	virtual void MessageReceived(const denMessage::Ref &message) = 0;
+	virtual void MessageReceived(const denMessage::Ref &message);
+	
+	/**
+	 * \brief Host send state to link.
+	 * \param networkState Network state to use for this side of the link.
+	 * \param message Additional information.
+	 * \returns true to accept the link or false to deny it.
+	 */
+	virtual bool LinkState(const denState::Ref &state, const denMessage::Ref &message );
+	
+	/** \brief Logging. */
+	virtual void Log(LogSeverity severity, const std::string &message);
 };

@@ -48,13 +48,10 @@ public:
 	
 	/**
 	 * \brief Receive datagram from socket.
-	 * \returns true if a message has been receives or false otherwise.
 	 */
-	bool ReceiveDatagram(denMessage &message, denAddress &address);
+	denMessage::Ref ReceiveDatagram(denAddress &address);
 	
-	/**
-	 * \brief Send datagram.
-	 */
+	/** \brief Send datagram. */
 	void SendDatagram(const denMessage &message, const denAddress &address);
 	
 private:

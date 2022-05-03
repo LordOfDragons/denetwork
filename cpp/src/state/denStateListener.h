@@ -36,18 +36,12 @@ public:
 	/** \brief Shared pointer. */
 	typedef std::shared_ptr<denStateListener> Ref;
 	
-	/**
-	 * \brief Create connection listener.
-	 */
+	/** \brief Create connection listener. */
 	denStateListener();
 	
-	/**
-	 * \brief Clean up connection listener.
-	 */
+	/** \brief Clean up connection listener. */
 	virtual ~denStateListener();
 	
-	/**
-	 * \brief Value changed.
-	 */
-	virtual void ValueChanged(denState &state, int index) = 0;
+	/** \brief Value changed. */
+	virtual void ValueChanged(denState &state, int index);
 };

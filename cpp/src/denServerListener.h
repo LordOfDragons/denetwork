@@ -22,14 +22,42 @@
  * SOFTWARE.
  */
 
-#include "denRealMessage.h"
+#pragma once
 
-denRealMessage::denRealMessage() :
-message(denMessage::Pool().Get()),
-number(-1),
-state(State::pending),
-type(denProtocol::CommandCodes::reliableMessage),
-secondsSinceSend(0.0f){
-}
+#include "denConnection.h"
+#include "state/denState.h"
 
-denPool<denRealMessage> denRealMessage::pPool;
+class denServer;
+
+/**
+ * \brief Server listener.
+ */
+class denServerListener{
+public:
+	/** \brief Log severity. */
+	enum class LogSeverity{
+		error,
+		warning,
+		info,
+		debug
+	};
+	
+	/** \brief Shared pointer. */
+	typedef std::shared_ptr<denServerListener> Ref;
+	
+	/**
+	 * \brief Create server listener.
+	 */
+	denServerListener();
+	
+	/**
+	 * \brief Clean up server listener.
+	 */
+	virtual ~denServerListener();
+	
+	/** \brief Client connected. */
+	virtual void ClientConnected(const denConnection::Ref &connection);
+	
+	/** \brief Logging. */
+	virtual void Log(LogSeverity severity, const std::string &message);
+};

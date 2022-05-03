@@ -28,6 +28,11 @@
 #include <vector>
 #include <string>
 #include "config.h"
+#include "denConnection.h"
+#include "denServerListener.h"
+#include "internal/denSocket.h"
+
+class denMessageReader;
 
 /**
  * \brief Network server.
@@ -36,6 +41,9 @@ class denServer{
 public:
 	/** \brief Shared pointer. */
 	typedef std::shared_ptr<denServer> Ref;
+	
+	/** \brief Connection list. */
+	typedef std::list<denConnection::Ref> Connections;
 	
 	/** \brief Create server. */
 	denServer();
@@ -46,12 +54,45 @@ public:
 	/** \brief Address. */
 	inline const std::string &GetAddress() const{ return pAddress; }
 	
+	/** \brief Server is listening for connections. */
+	inline bool IsListening() const{ return pListening; }
+	
 	/** \brief Start listening on address for incoming connections. */
 	void ListenOn(const std::string &address);
 	
 	/** \brief Stop listening. */
 	void StopListening();
 	
+	/**
+	 * \brief Update server.
+	 * 
+	 * Send and received queued messages. Call this on each frame update or in a loop
+	 * from inside a thread. If using a thread use a mutex to ensure thread safety.
+	 * 
+	 * \param[in] elapsedTime Elapsed time in seconds since the last call to Update();
+	 */
+	void Update(float elapsedTime);
+	
+	/** \brief Set listener or nullptr to clear. */
+	void SetListener(const denServerListener::Ref &listener);
+	
+	/** \brief Find public addresses. */
+	static std::vector<std::string> FindPublicAddresses();
+	
 private:
+	friend denConnection;
+	
+	inline const denSocket::Ref &GetSocket() const{ return pSocket; }
+	
+	void ProcessConnectionRequest(const denAddress &address, denMessageReader &reader);
+	
+	
 	std::string pAddress;
+	
+	denSocket::Ref pSocket;
+	bool pListening;
+	
+	Connections pConnections;
+	
+	denServerListener::Ref pListener;
 };

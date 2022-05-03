@@ -29,9 +29,6 @@ pLength(0),
 pTimestamp(std::chrono::system_clock::now()){
 }
 
-denMessage::~denMessage(){
-}
-
 void denMessage::SetTimestamp(const Timestamp &timestamp){
 	pTimestamp = timestamp;
 }

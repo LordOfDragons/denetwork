@@ -57,12 +57,7 @@ private:
 template<class T> class denPool{
 public:
 	/** \brief Create pool. */
-	denPool(){
-	}
-	
-	/** \brief Clean up pool. */
-	~denPool(){
-	}
+	denPool() = default;
 	
 	/** \brief Get item from pool or create a new one if empty. */
 	typename denPoolItem<T>::Ref Get(){

@@ -30,3 +30,19 @@ denConnectionListener::denConnectionListener(){
 
 denConnectionListener::~denConnectionListener(){
 }
+
+void denConnectionListener::ConnectionClosed(denConnection&){
+}
+
+void denConnectionListener::MessageProgress(size_t){
+}
+
+void denConnectionListener::MessageReceived(const denMessage::Ref&){
+}
+
+bool denConnectionListener::LinkState(const denState::Ref&, const denMessage::Ref&){
+	return false;
+}
+
+void denConnectionListener::Log(LogSeverity, const std::string&){
+}

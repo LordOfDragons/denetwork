@@ -37,9 +37,6 @@ pChanged(false),
 pValueChanged(state.GetValues().size(), false){
 }
 
-denStateLink::~denStateLink(){
-}
-
 void denStateLink::SetIdentifier(int identifier){
 	if(identifier < -1){
 		throw std::invalid_argument("identifier < -1");

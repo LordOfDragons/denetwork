@@ -30,3 +30,6 @@ denStateListener::denStateListener(){
 
 denStateListener::~denStateListener(){
 }
+
+void denStateListener::ValueChanged(denState&, int){
+}

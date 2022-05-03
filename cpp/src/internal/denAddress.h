@@ -57,8 +57,6 @@ public:
 	denAddress();
 	denAddress(const denAddress &address);
 	
-	~denAddress();
-	
 	/**
 	 * \brief Set address to an IPv4 address.
 	 * 

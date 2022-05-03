@@ -48,8 +48,6 @@ public:
 	
 	denRealMessage();
 	
-	~denRealMessage();
-	
 	denMessage::Ref message;
 	
 	int number;

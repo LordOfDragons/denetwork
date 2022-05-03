@@ -46,9 +46,6 @@ public:
 	/** \brief Create message. */
 	denMessage();
 	
-	/** \brief Clean up message. */
-	~denMessage();
-	
 	/** \brief Timestamp. */
 	inline const Timestamp &GetTimestamp() const{ return pTimestamp; }
 	

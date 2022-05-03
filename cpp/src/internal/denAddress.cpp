@@ -57,9 +57,6 @@ port(address.port)
 	memcpy(&values, &address.values, sizeof(values));
 }
 
-denAddress::~denAddress(){
-}
-
 void denAddress::SetIPv4(uint8_t nvalues[4], uint16_t nport){
 	int i;
 	type = Type::ipv4;

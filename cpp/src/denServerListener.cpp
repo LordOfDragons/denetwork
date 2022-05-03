@@ -22,14 +22,17 @@
  * SOFTWARE.
  */
 
-#include "denRealMessage.h"
+#include "denServerListener.h"
 
-denRealMessage::denRealMessage() :
-message(denMessage::Pool().Get()),
-number(-1),
-state(State::pending),
-type(denProtocol::CommandCodes::reliableMessage),
-secondsSinceSend(0.0f){
+
+denServerListener::denServerListener(){
 }
 
-denPool<denRealMessage> denRealMessage::pPool;
+denServerListener::~denServerListener(){
+}
+
+void denServerListener::ClientConnected(const denConnection::Ref&){
+}
+
+void denServerListener::Log(LogSeverity, const std::string&){
+}

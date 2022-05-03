@@ -43,6 +43,8 @@
 #endif
 
 #include "denSocket.h"
+#include "../denConnection.h"
+#include "../denServer.h"
 
 denSocket::denSocket() :
 pSocket(-1)
@@ -76,7 +78,7 @@ void denSocket::Bind(){
 	pAddress.SetIPv4FromSocket(sa);
 }
 
-bool denSocket::ReceiveDatagram(denMessage &message, denAddress &address){
+denMessage::Ref denSocket::ReceiveDatagram(denAddress &address){
 	socklen_t slen = sizeof(sockaddr);
 	struct sockaddr_in sa;
 #ifdef OS_UNIX
@@ -84,7 +86,6 @@ bool denSocket::ReceiveDatagram(denMessage &message, denAddress &address){
 #elif defined OS_W32
 	fd_set fd;
 #endif
-	size_t dataLen = 0;
 	
 #ifdef OS_UNIX
 	ufd.fd = pSocket;
@@ -100,8 +101,9 @@ bool denSocket::ReceiveDatagram(denMessage &message, denAddress &address){
 	if(select(0, &fd, nullptr, nullptr, &tv) == 1)
 #endif
 	{
-		std::string &data = message.GetData();
-		dataLen = 8192;
+		const denMessage::Ref message(denMessage::Pool().Get());
+		std::string &data = message->Item().GetData();
+		size_t dataLen = 8192;
 		if(data.size() < dataLen){
 			data.assign(dataLen, 0);
 		}
@@ -110,10 +112,12 @@ bool denSocket::ReceiveDatagram(denMessage &message, denAddress &address){
 		
 		if(dataLen > 0){
 			address.SetIPv4FromSocket(sa);
+			message->Item().SetLength(dataLen);
+			return message;
 		} // connection closed returns 0 length
 	}
-	message.SetLength(dataLen);
-	return dataLen > 0;
+	
+	return nullptr;
 }
 
 void denSocket::SendDatagram(const denMessage &message, const denAddress &address){
