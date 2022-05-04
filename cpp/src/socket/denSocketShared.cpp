@@ -22,39 +22,41 @@
  * SOFTWARE.
  */
 
-#pragma once
+#include "denSocket.h"
+#include "denSocketUnix.h"
+#include "denSocketWindows.h"
 
-#include <memory>
-#include "denAddress.h"
-#include "../message/denMessage.h"
+namespace denSocketShared{
 
-/**
- * \brief Socket.
- */
-class denSocket{
-public:
-	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denSocket> Ref;
-	
-	denSocket();
-	
-	~denSocket();
-	
-	inline denAddress &GetAddress(){ return pAddress; }
-	inline const denAddress &GetAddress() const{ return pAddress; }
-	
-	/** \brief Bind socket to stored address. */
-	void Bind();
-	
-	/**
-	 * \brief Receive datagram from socket.
-	 */
-	denMessage::Ref ReceiveDatagram(denAddress &address);
-	
-	/** \brief Send datagram. */
-	void SendDatagram(const denMessage &message, const denAddress &address);
-	
-private:
-	denAddress pAddress;
-	int pSocket;
-};
+denSocket::Ref CreateSocket(){
+#ifdef OS_UNIX
+	return std::make_shared<denSocketUnix>();
+#elif defined OS_W32
+	return std::make_shared<denSocketWindows>();
+#else
+	throw std::invalid_argument("Unsupported platform");
+#endif
+}
+
+denSocketAddress ResolveAddress(const std::string &address){
+#ifdef OS_UNIX
+	return denSocketUnix::ResolveAddress(address);
+#elif defined OS_W32
+	return denSocketWindows::ResolveAddress(address);
+#else
+	throw std::invalid_argument("Unsupported platform");
+#endif
+}
+
+
+std::vector<std::string> FindPublicAddresses(){
+#ifdef OS_UNIX
+	return denSocketUnix::FindPublicAddresses();
+#elif defined OS_W32
+	return denSocketWindows::FindPublicAddresses();
+#else
+	throw std::invalid_argument("Unsupported platform");
+#endif
+}
+
+}

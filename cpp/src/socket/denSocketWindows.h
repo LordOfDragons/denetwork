@@ -22,62 +22,49 @@
  * SOFTWARE.
  */
 
-#pragma once
-
-#include <memory>
 #include "../config.h"
-#include "../denProtocolEnums.h"
 
-class denMessageReader;
-class denMessageWriter;
+#ifdef OS_W32
+
+#include "denSocket.h"
+
+#include "include_windows.h"
 
 /**
- * \brief Network state value.
+ * \brief Socket on windows platform.
  */
-class denValue{
+class denSocketWindows : public denSocket{
 public:
 	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denValue> Ref;
+	typedef std::shared_ptr<denSocketWindows> Ref;
 	
-	/** \brief Value type. */
-	enum class Type{
-		integer,
-		floating,
-		string,
-		data,
-		point2,
-		point3,
-		vector2,
-		vector3,
-		quaternion
-	};
+	/** \brief Create socket. */
+	denSocketWindows();
 	
-	/** \brief Create network value. */
-	denValue(Type type);
+	/** \brief Clean up socket. */
+	virtual ~denSocketWindows();
 	
-	/** \brief Clean up value. */
-	virtual ~denValue();
+	/** \brief Bind socket to stored address. */
+	virtual void Bind();
 	
-	/** \brief Type. */
-	inline Type GetType() const{ return pType; }
+	/** \brief Receive datagram from socket. */
+	virtual denMessage::Ref ReceiveDatagram(denSocketAddress &address);
 	
-	/** \brief Data type. */
-	inline denProtocol::ValueTypes GetDataType() const{ return pDataType; }
+	/** \brief Send datagram. */
+	virtual void SendDatagram(const denMessage &message, const denSocketAddress &address);
 	
-	/** \brief Read value from message. */
-	virtual void Read(denMessageReader &reader) = 0;
+	/** \brief Resolve IPv4 address */
+	static denSocketAddress ResolveAddress(const std::string &address);
 	
-	/** \brief Write value to message. */
-	virtual void Write(denMessageWriter &writer) = 0;
-	
-	/**
-	 * \brief Update value.
-	 * \returns true if value needs to by synchronized otherwise false if not changed enough.
-	 */
-	virtual bool UpdateValue(bool force) = 0;
-	
+	/** \brief Find public addresses. */
+	static std::vector<std::string> FindPublicAddresses();
 	
 protected:
-	const Type pType;
-	denProtocol::ValueTypes pDataType;
+	denSocketAddress AddressFromSocket(const struct sockaddr_in &address) const;
+	static void SocketFromAddress(const denSocketAddress &socketAddress, struct sockaddr_in &address);
+	
+private:
+	int pSocket;
 };
+
+#endif

@@ -24,9 +24,9 @@
 
 #include <algorithm>
 #include "denState.h"
+#include "../denProtocolEnums.h"
 #include "../message/denMessageReader.h"
 #include "../message/denMessageWriter.h"
-#include "../internal/denProtocolEnums.h"
 
 denState::denState(bool readOnly) :
 pUserData(nullptr),

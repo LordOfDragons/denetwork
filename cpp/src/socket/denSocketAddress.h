@@ -26,19 +26,9 @@
 
 #include <stdint.h>
 #include <string>
-#include "../config.h"
-
-#ifdef OS_UNIX
-	#include <arpa/inet.h>
-	#include <sys/types.h>
-	#include <sys/socket.h>
-	#include <netinet/in.h>
-#elif defined OS_W32
-	#include "include_windows.h"
-#endif
 
 /**
- * \brief Address class.
+ * \brief Socket address class.
  * 
  * Stores a computer address. The address can be currently only a IPv4
  * address but IPv6 might follow. Provides support to obtain an address
@@ -47,51 +37,50 @@
  * provides support to fill a socket address or to obtain an address
  * from a socket address..
  */
-class denAddress{
+class denSocketAddress{
 public:
 	enum class Type{
 		ipv4,
 		ipv6
 	};
 	
-	denAddress();
-	denAddress(const denAddress &address);
+	/** \brief Create empty address. */
+	denSocketAddress();
+	
+	/** \brief Create copy of address. */
+	denSocketAddress(const denSocketAddress &address);
 	
 	/**
-	 * \brief Set address to an IPv4 address.
+	 * \brief Create IPv4 address.
 	 * 
 	 * The values represent the address values with 0 being the left most value.
 	 */
-	void SetIPv4(uint8_t values[4], uint16_t port);
+	static denSocketAddress IPv4(uint8_t values[4], uint16_t port);
 	
-	/** \brief Set address to an IPv4 any address. */
-	void SetIPv4Any();
+	/** \brief Create IPv4 any address. */
+	static denSocketAddress IPv4Any();
 	
-	/** \brief Set address to an IPv4 loopback address. */
-	void SetIPv4Loopback();
+	/** \brief Create IPv4 loopback address. */
+	static denSocketAddress IPv4Loopback(uint16_t port = 3413);
 	
-	/**
-	 * \brief Set address to an IPv4 address using the provided string.
-	 * 
-	 * The string can contain a valid IPv4 address or a valid domain name with
-	 * an optional port. If specified the port follows the address separated
-	 * by a semicolon.
-	 */
-	void SetIPv4FromString(const std::string &address);
-	
-	/** \brief Set address to an IPv4 address from a socket address. */
-	void SetIPv4FromSocket(const struct sockaddr_in &address);
-	
-	/** \brief Set address in a socket address. */
-	void SetSocketIPv4(struct sockaddr_in &address) const;
-	
+	/** \brief String representation of address. */
 	std::string ToString() const;
 	
-	denAddress &operator=(const denAddress &address);
-	bool operator==(const denAddress &address) const;
+	/** \brief Assign address. */
+	denSocketAddress &operator=(const denSocketAddress &address);
 	
+	/** \brief Addresses are equal. */
+	bool operator==(const denSocketAddress &address) const;
+	
+	/** \brief Address type. */
 	Type type;
+	
+	/** \brief Address components. */
 	uint8_t values[4];
+	
+	/** \brief Count of components. */
 	int valueCount;
+	
+	/** \brief Port. */
 	uint16_t port;
 };

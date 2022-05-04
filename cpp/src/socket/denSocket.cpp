@@ -22,42 +22,14 @@
  * SOFTWARE.
  */
 
-#pragma once
+#include "denSocket.h"
 
-#include <memory>
-#include <vector>
-#include <ctime>
-#include <chrono>
-#include <sstream>
-#include "denProtocolEnums.h"
-#include "../config.h"
-#include "../message/denMessage.h"
+denSocket::denSocket(){
+}
 
-/**
- * \brief Real message send across the network.
- */
-class denRealMessage{
-public:
-	typedef denPoolItem<denRealMessage>::Ref Ref;
-	
-	enum class State{
-		pending, //<! Message is pending to be send.
-		send, //<! Message has been send awaiting ack.
-		done //<! Message is done.
-	};
-	
-	denRealMessage();
-	
-	denMessage::Ref message;
-	
-	int number;
-	State state;
-	denProtocol::CommandCodes type;
-	float secondsSinceSend;
-	
-	/** \brief Pool. */
-	inline static denPool<denRealMessage> &Pool(){ return pPool; }
-	
-private:
-	static denPool<denRealMessage> pPool;
-};
+denSocket::~denSocket(){
+}
+
+void denSocket::SetAddress(const denSocketAddress &address){
+	pAddress = address;
+}

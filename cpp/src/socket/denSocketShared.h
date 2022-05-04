@@ -24,60 +24,17 @@
 
 #pragma once
 
-#include <memory>
-#include "../config.h"
-#include "../denProtocolEnums.h"
+#include <string>
+#include <vector>
+#include "denSocket.h"
 
-class denMessageReader;
-class denMessageWriter;
-
-/**
- * \brief Network state value.
- */
-class denValue{
-public:
-	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denValue> Ref;
+namespace denSocketShared{
+	/** \brief Create platform specific socket implementation. */
+	denSocket::Ref CreateSocket();
 	
-	/** \brief Value type. */
-	enum class Type{
-		integer,
-		floating,
-		string,
-		data,
-		point2,
-		point3,
-		vector2,
-		vector3,
-		quaternion
-	};
+	/** \brief Resolve address. */
+	denSocketAddress ResolveAddress(const std::string &address);
 	
-	/** \brief Create network value. */
-	denValue(Type type);
-	
-	/** \brief Clean up value. */
-	virtual ~denValue();
-	
-	/** \brief Type. */
-	inline Type GetType() const{ return pType; }
-	
-	/** \brief Data type. */
-	inline denProtocol::ValueTypes GetDataType() const{ return pDataType; }
-	
-	/** \brief Read value from message. */
-	virtual void Read(denMessageReader &reader) = 0;
-	
-	/** \brief Write value to message. */
-	virtual void Write(denMessageWriter &writer) = 0;
-	
-	/**
-	 * \brief Update value.
-	 * \returns true if value needs to by synchronized otherwise false if not changed enough.
-	 */
-	virtual bool UpdateValue(bool force) = 0;
-	
-	
-protected:
-	const Type pType;
-	denProtocol::ValueTypes pDataType;
-};
+	/** \brief Find public addresses. */
+	std::vector<std::string> FindPublicAddresses();
+}

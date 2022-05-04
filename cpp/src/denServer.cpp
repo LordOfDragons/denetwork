@@ -27,28 +27,10 @@
 #include <algorithm>
 #include "denServer.h"
 #include "denConnection.h"
+#include "denProtocolEnums.h"
 #include "message/denMessageReader.h"
 #include "message/denMessageWriter.h"
-#include "internal/denProtocolEnums.h"
-
-#ifdef OS_UNIX
-#include <string.h>
-#include <sys/select.h>
-#include <sys/ioctl.h>
-#include <net/if.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#endif
-
-#ifdef OS_BEOS
-#include <sys/sockio.h>
-#endif
-
-#ifdef OS_W32
-#	include <dragengine/app/include_windows.h>
-#	include <iphlpapi.h>
-#endif
+#include "socket/denSocketShared.h"
 
 denServer::denServer() :
 pUserData(nullptr),
@@ -96,8 +78,8 @@ void denServer::ListenOn(const std::string &address){
 		pListener->Log(*this, denServerListener::LogSeverity::info, std::string("Listening on ") + useAddress);
 	}
 	
-	pSocket = std::make_shared<denSocket>();
-	pSocket->GetAddress().SetIPv4FromString(useAddress);
+	pSocket = CreateSocket();
+	pSocket->SetAddress(ResolveAddress(useAddress));
 	pSocket->Bind();
 	
 	pListening = true;
@@ -122,7 +104,7 @@ void denServer::Update(float elapsedTime){
 		denConnection *connection = nullptr;
 		
 		try{
-			denAddress addressReceive;
+			denSocketAddress addressReceive;
 			const denMessage::Ref message(pSocket->ReceiveDatagram(addressReceive));
 			if(!message){
 				break;
@@ -180,132 +162,23 @@ denConnection::Ref denServer::CreateConnection(){
 	return std::make_shared<denConnection>();
 }
 
+denSocket::Ref denServer::CreateSocket(){
+	return denSocketShared::CreateSocket();
+}
+
+denSocketAddress denServer::ResolveAddress(const std::string &address){
+	return denSocketShared::ResolveAddress(address);
+}
+
+std::vector<std::string> denServer::FindPublicAddresses(){
+	return denSocketShared::FindPublicAddresses();
+}
+
 void denServer::SetListener(const denServerListener::Ref &listener){
 	pListener = listener;
 }
 
-std::vector<std::string> denServer::FindPublicAddresses(){
-	std::vector<std::string> list;
-	
-	// unix version
-	#ifdef OS_UNIX
-	const int sock = socket(AF_INET, SOCK_DGRAM, 0);
-	if(sock == -1){
-		throw std::invalid_argument("Failed creating socket");
-	}
-	
-	try{
-		struct ifreq ifr;
-		int ifindex = 1;
-		memset(&ifr, 0, sizeof(ifr));
-		char bufferIP[17];
-		
-		while(true){
-			#ifdef OS_BEOS
-			ifr.ifr_index = ifindex++;
-			#else
-			ifr.ifr_ifindex = ifindex++;
-			#endif
-			if(ioctl(sock, SIOCGIFNAME, &ifr)){
-				break;
-			}
-			
-			if(ioctl(sock, SIOCGIFADDR, &ifr)){
-				continue; // something failed, ignore the interface
-			}
-			const struct in_addr saddr = ((struct sockaddr_in &)ifr.ifr_addr).sin_addr;
-			
-			if(!inet_ntop(AF_INET, &saddr, bufferIP, 16)){
-				continue;
-			}
-			
-			if(strcmp(bufferIP, "127.0.0.1") == 0){
-				continue; // ignore localhost
-			}
-			
-			list.push_back(bufferIP);
-			// ifr.ifr_name  => device name
-		}
-		close(sock);
-		
-	}catch(...){
-		close(sock);
-		throw;
-	}
-	#endif
-	
-	// beos version
-	#ifdef OS_BEOS
-	(void)list;
-	throw std::invalid_argument("TODO Implement this using BeOS means");
-	#endif
-	
-	// windows version
-	#ifdef OS_W32
-	// get size and allocate buffer
-	PIP_ADAPTER_INFO pAdapterInfo = (IP_ADAPTER_INFO*)HeapAlloc(GetProcessHeap(), 0, sizeof(IP_ADAPTER_INFO));
-	if(!pAdapterInfo){
-		throw std::invalid_argument("HeapAlloc returned nullptr");
-	}
-	
-	try{
-		ULONG ulOutBufLen = sizeof(IP_ADAPTER_INFO);
-		if(GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == ERROR_BUFFER_OVERFLOW){
-			HeapFree(GetProcessHeap(), 0, pAdapterInfo);
-			pAdapterInfo = (IP_ADAPTER_INFO*)HeapAlloc(GetProcessHeap(), 0, ulOutBufLen);
-			if(!pAdapterInfo){
-				throw std::invalid_argument("HeapAlloc returned nullptr");
-			}
-		}
-		
-		if(GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) != NO_ERROR){
-			throw std::invalid_argument("GetAdaptersInfo failed");
-		}
-		
-		// evaluate
-		PIP_ADAPTER_INFO pAdapter = pAdapterInfo;
-		while(pAdapter){
-			// NOTE: IP_ADDR_STRING is a linked list and can potentially contain more than one address
-			
-			const unsigned long ulAddr = inet_addr(pAdapter->IpAddressList.IpAddress.String);
-			if(ulAddr == INADDR_NONE || ulAddr == 0 /*0.0.0.0*/){
-				pAdapter = pAdapter->Next;
-				continue;
-			}
-			
-			const unsigned long ulNetMask = inet_addr(pAdapter->IpAddressList.IpMask.String);
-			if(ulNetMask == INADDR_NONE || ulNetMask == 0 /*0.0.0.0*/){
-				pAdapter = pAdapter->Next;
-				continue;
-			}
-			
-			if(strcmp(pAdapter->IpAddressList.IpAddress.String, "127.0.0.1") == 0){
-				pAdapter = pAdapter->Next;
-				continue; // ignore localhost
-			}
-			
-			list.push_back(pAdapter->IpAddressList.IpAddress.String);
-			// pAdapter->AdapterName  => device name
-			// (uint32_t)ulAddr   => address in in_addr format
-			// (uint32_t)ulNetMask   => netmask in in_addr format
-			
-			pAdapter = pAdapter->Next;
-		}
-		
-		HeapFree(GetProcessHeap(), 0, pAdapterInfo);
-		
-	}catch(...){
-		if(pAdapterInfo){
-			HeapFree(GetProcessHeap(), 0, pAdapterInfo);
-		}
-		throw;
-	}
-	#endif
-	
-	return list;
-}
-
-void denServer::ProcessConnectionRequest(const denAddress &address, denMessageReader &reader){
+void denServer::ProcessConnectionRequest(const denSocketAddress &address, denMessageReader &reader){
 	if(! pListening){
 		const denMessage::Ref message(denMessage::Pool().Get());
 		{

@@ -31,13 +31,13 @@
 #include <list>
 #include "config.h"
 #include "denConnectionListener.h"
+#include "denProtocolEnums.h"
+#include "denRealMessage.h"
 #include "message/denMessage.h"
 #include "state/denState.h"
 #include "state/denStateLink.h"
-#include "internal/denAddress.h"
-#include "internal/denSocket.h"
-#include "internal/denProtocolEnums.h"
-#include "internal/denRealMessage.h"
+#include "socket/denSocketAddress.h"
+#include "socket/denSocket.h"
 
 class denMessageReader;
 class denServer;
@@ -136,6 +136,18 @@ public:
 	 */
 	void Update(float elapsedTime);
 	
+	/**
+	 * \brief Create socket.
+	 * 
+	 * Default implementation creates platform specific socket implementation.
+	 */
+	virtual denSocket::Ref CreateSocket();
+	
+	/**
+	 * \brief Resolve address.
+	 */
+	virtual denSocketAddress ResolveAddress(const std::string &address);
+	
 	
 	
 	/** \warning Internal use. Do not call directly. */
@@ -146,9 +158,9 @@ public:
 	
 	void AddModifiedStateLink(denStateLink *link);
 	void InvalidateState(denState &state);
-	bool Matches(denSocket *bnSocket, const denAddress &address) const;
+	bool Matches(denSocket *bnSocket, const denSocketAddress &address) const;
 	void AcceptConnection(const denSocket::Ref &bnSocket,
-		const denAddress &address, denProtocol::Protocols protocol);
+		const denSocketAddress &address, denProtocol::Protocols protocol);
 	void ProcessDatagram(denMessageReader &reader);
 	void ProcessConnectionAck(denMessageReader &reader);
 	void ProcessConnectionClose(denMessageReader &reader);
@@ -166,7 +178,7 @@ private:
 	void *pUserData;
 	
 	denSocket::Ref pSocket;
-	denAddress pRealRemoteAddress;
+	denSocketAddress pRealRemoteAddress;
 	ConnectionState pConnectionState;
 	int pIdentifier;
 	

@@ -26,10 +26,11 @@
 #include <stdexcept>
 #include "denConnection.h"
 #include "denServer.h"
+#include "denRealMessage.h"
 #include "message/denMessage.h"
 #include "message/denMessageReader.h"
 #include "message/denMessageWriter.h"
-#include "internal/denRealMessage.h"
+#include "socket/denSocketShared.h"
 
 denConnection::denConnection() :
 pUserData(nullptr),
@@ -63,8 +64,8 @@ void denConnection::ConnectTo(const std::string &address){
 		throw std::invalid_argument("already connected");
 	}
 	
-	pSocket = std::make_shared<denSocket>();
-	pSocket->GetAddress().SetIPv4Any();
+	pSocket = CreateSocket();
+	pSocket->SetAddress(denSocketAddress::IPv4Any());
 	pSocket->Bind();
 	
 	pLocalAddress = pSocket->GetAddress().ToString();
@@ -76,7 +77,7 @@ void denConnection::ConnectTo(const std::string &address){
 	writer.WriteUShort( 1 ); // version
 	writer.WriteUShort((uint8_t)denProtocol::Protocols::DENetworkProtocol);
 	}
-	pRealRemoteAddress.SetIPv4FromString(address);
+	pRealRemoteAddress = ResolveAddress(address);
 	pRemoteAddress = address;
 	
 	pSocket->SendDatagram(connectRequest->Item(), pRealRemoteAddress);
@@ -243,7 +244,7 @@ void denConnection::Update(float elapsedTime){
 	if(!pParentServer){
 		while(true){
 			try{
-				denAddress addressReceive;
+				denSocketAddress addressReceive;
 				const denMessage::Ref message(pSocket->ReceiveDatagram(addressReceive));
 				if(!message){
 					break;
@@ -273,6 +274,14 @@ void denConnection::Update(float elapsedTime){
 	}
 }
 
+denSocket::Ref denConnection::CreateSocket(){
+	return denSocketShared::CreateSocket();
+}
+
+denSocketAddress denConnection::ResolveAddress(const std::string &address){
+	return denSocketShared::ResolveAddress(address);
+}
+
 void denConnection::SetIdentifier(int identifier){
 	pIdentifier = identifier;
 }
@@ -299,12 +308,12 @@ void denConnection::InvalidateState(denState &state){
 	}
 }
 
-bool denConnection::Matches(denSocket *bnSocket, const denAddress &address) const{
+bool denConnection::Matches(denSocket *bnSocket, const denSocketAddress &address) const{
 	return pSocket.get() == bnSocket && address == pRealRemoteAddress;
 }
 
 void denConnection::AcceptConnection(const denSocket::Ref &bnSocket,
-const denAddress &address, denProtocol::Protocols protocol){
+const denSocketAddress &address, denProtocol::Protocols protocol){
 	pSocket = bnSocket;
 	pRealRemoteAddress = address;
 	pRemoteAddress = address.ToString();

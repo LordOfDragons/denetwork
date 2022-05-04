@@ -23,6 +23,7 @@
  */
 
 #include "denPool.h"
+#include "denRealMessage.h"
 #include "value/denValueInteger.h"
 #include "value/denValueFloating.h"
 #include "value/denValueString.h"
@@ -31,7 +32,6 @@
 #include "message/denMessageWriter.h"
 #include "message/denMessageReader.h"
 #include "state/denState.h"
-#include "internal/denRealMessage.h"
 
 void dummy(){
 	denState::Ref state(std::make_shared<denState>(false));

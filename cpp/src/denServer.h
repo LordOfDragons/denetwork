@@ -30,7 +30,7 @@
 #include "config.h"
 #include "denConnection.h"
 #include "denServerListener.h"
-#include "internal/denSocket.h"
+#include "socket/denSocket.h"
 
 class denMessageReader;
 
@@ -86,18 +86,30 @@ public:
 	 */
 	virtual denConnection::Ref CreateConnection();
 	
-	/** \brief Set listener or nullptr to clear. */
-	void SetListener(const denServerListener::Ref &listener);
+	/**
+	 * \brief Create socket.
+	 * 
+	 * Default implementation creates platform specific socket implementation.
+	 */
+	virtual denSocket::Ref CreateSocket();
+	
+	/**
+	 * \brief Resolve address.
+	 */
+	virtual denSocketAddress ResolveAddress(const std::string &address);
 	
 	/** \brief Find public addresses. */
-	static std::vector<std::string> FindPublicAddresses();
+	virtual std::vector<std::string> FindPublicAddresses();
+	
+	/** \brief Set listener or nullptr to clear. */
+	void SetListener(const denServerListener::Ref &listener);
 	
 private:
 	friend denConnection;
 	
 	inline const denSocket::Ref &GetSocket() const{ return pSocket; }
 	
-	void ProcessConnectionRequest(const denAddress &address, denMessageReader &reader);
+	void ProcessConnectionRequest(const denSocketAddress &address, denMessageReader &reader);
 	
 	
 	std::string pAddress;

@@ -25,59 +25,40 @@
 #pragma once
 
 #include <memory>
-#include "../config.h"
-#include "../denProtocolEnums.h"
-
-class denMessageReader;
-class denMessageWriter;
+#include "denSocketAddress.h"
+#include "../message/denMessage.h"
 
 /**
- * \brief Network state value.
+ * \brief Socket.
  */
-class denValue{
+class denSocket{
 public:
 	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denValue> Ref;
-	
-	/** \brief Value type. */
-	enum class Type{
-		integer,
-		floating,
-		string,
-		data,
-		point2,
-		point3,
-		vector2,
-		vector3,
-		quaternion
-	};
-	
-	/** \brief Create network value. */
-	denValue(Type type);
-	
-	/** \brief Clean up value. */
-	virtual ~denValue();
-	
-	/** \brief Type. */
-	inline Type GetType() const{ return pType; }
-	
-	/** \brief Data type. */
-	inline denProtocol::ValueTypes GetDataType() const{ return pDataType; }
-	
-	/** \brief Read value from message. */
-	virtual void Read(denMessageReader &reader) = 0;
-	
-	/** \brief Write value to message. */
-	virtual void Write(denMessageWriter &writer) = 0;
-	
-	/**
-	 * \brief Update value.
-	 * \returns true if value needs to by synchronized otherwise false if not changed enough.
-	 */
-	virtual bool UpdateValue(bool force) = 0;
-	
+	typedef std::shared_ptr<denSocket> Ref;
 	
 protected:
-	const Type pType;
-	denProtocol::ValueTypes pDataType;
+	/** \brief Create socket. */
+	denSocket();
+	
+public:
+	/** \brief Clean up socket. */
+	virtual ~denSocket();
+	
+	/** \brief Get socket address. */
+	inline const denSocketAddress &GetAddress() const{ return pAddress; }
+	
+	/** \brief Set socket address. */
+	void SetAddress(const denSocketAddress &address);
+	
+	/** \brief Bind socket to stored address. */
+	virtual void Bind() = 0;
+	
+	/** \brief Receive datagram from socket. */
+	virtual denMessage::Ref ReceiveDatagram(denSocketAddress &address) = 0;
+	
+	/** \brief Send datagram. */
+	virtual void SendDatagram(const denMessage &message, const denSocketAddress &address) = 0;
+	
+protected:
+	denSocketAddress pAddress;
 };
