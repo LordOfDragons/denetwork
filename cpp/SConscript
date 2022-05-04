@@ -146,7 +146,6 @@ globFiles(envExample, 'example', '*.cpp', sources)
 
 objects = [envExample.StaticObject(s) for s in sources]
 
-print(objects + envExample['STATIC_LIBS'])
 program = envExample.Program(target='denetworkcpp_example', source=objects + envExample['STATIC_LIBS'])
 envExample.Depends(objects, targetLibrary.install)
 
