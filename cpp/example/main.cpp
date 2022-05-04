@@ -22,16 +22,16 @@
  * SOFTWARE.
  */
 
-#include "denPool.h"
-#include "denRealMessage.h"
-#include "value/denValueInteger.h"
-#include "value/denValueFloating.h"
-#include "value/denValueString.h"
-#include "value/denValueData.h"
-#include "message/denMessage.h"
-#include "message/denMessageWriter.h"
-#include "message/denMessageReader.h"
-#include "state/denState.h"
+#include <denetwork/denPool.h>
+#include <denetwork/denRealMessage.h>
+#include <denetwork/value/denValueInteger.h>
+#include <denetwork/value/denValueFloating.h>
+#include <denetwork/value/denValueString.h>
+#include <denetwork/value/denValueData.h>
+#include <denetwork/message/denMessage.h>
+#include <denetwork/message/denMessageWriter.h>
+#include <denetwork/message/denMessageReader.h>
+#include <denetwork/state/denState.h>
 
 void dummy(){
 	denState::Ref state(std::make_shared<denState>(false));

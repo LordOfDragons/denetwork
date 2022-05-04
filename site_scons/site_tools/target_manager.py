@@ -60,7 +60,7 @@ def generate(env):
 				self.build = [target]
 			self.install = []
 			self.archive = {}
-			self.params = {}
+			self.params = {'STATIC_LIBS': []}
 			self.addParameters(**args)
 		
 		## Install files with first n destination directories cut.
@@ -107,7 +107,7 @@ def generate(env):
 		#  \param libs Libraries including build ones other targets required to link against.
 		#  \param includeDir Directory containing headers required by other targets to build.
 		#  \param libDir Directory containing build library.
-		def addParametersBuildCPP(self, env, libs, includeDir, libDir='.'):
+		def addParametersBuildCPP(self, env, libs, includeDir, libDir='.', linkStatic=False):
 			if isinstance(includeDir, (list, tuple)):
 				self.addParameters(CPPPATH = [env.Dir(x) for x in includeDir])
 			else:
@@ -117,9 +117,15 @@ def generate(env):
 			else:
 				self.addParameters(LIBPATH = [env.Dir(libDir)])
 			if isinstance(libs, (list, tuple)):
-				self.addParameters(LIBS = libs)
+				if linkStatic:
+					self.addParameters(STATIC_LIBS = libs)
+				else:
+					self.addParameters(LIBS = libs)
 			else:
-				self.addParameters(LIBS = [libs])
+				if linkStatic:
+					self.addParameters(STATIC_LIBS = [libs])
+				else:
+					self.addParameters(LIBS = [libs])
 		
 		## Add parameters to allow building using this library in-source.
 		#  

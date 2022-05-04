@@ -104,30 +104,52 @@ writeConfigFile(env.File('src/config.h').srcnode().abspath, configFileDefines)
 env.Append(CPPFLAGS = env['SANITIZE_FLAGS'])
 env.Append(LINKFLAGS = env['SANITIZE_FLAGS'])
 
+# library
+envLibrary = env.Clone()
+
 targetLibrary = globalEnv.targetManager.TargetLibrary('DENetwork Library')
-globalEnv.targetManager.add('denetwork', targetLibrary)
+globalEnv.targetManager.add('denetworkcpp', targetLibrary)
 
 sources = []
 headers = []
-globFiles(env, 'src', '*.cpp', sources)
-globFiles(env, 'src', '*.h', headers)
+globFiles(envLibrary, 'src', '*.cpp', sources)
+globFiles(envLibrary, 'src', '*.h', headers)
 
-objects = [env.StaticObject(s) for s in sources]
+objects = [envLibrary.StaticObject(s) for s in sources]
 
 """
 for h in headers:
-	env.InstallAs('denetwork-{}/include/libdscript/{}'.format(versionString, h), h)
+	envLibrary.InstallAs('denetwork-{}/include/libdscript/{}'.format(versionString, h), h)
 """
 
-library = env.StaticLibrary(target='denetwork', source=objects)
+library = envLibrary.StaticLibrary(target='denetworkcpp', source=objects)
 
 targetLibrary.build.extend(library)
-targetLibrary.aliasBuild(env, 'denetworkcpp_build')
+targetLibrary.aliasBuild(envLibrary, 'denetworkcpp_build')
 
-targetLibrary.installCutDirs(env, 'denetwork-{}/include/denetwork'.format(versionString), headers, 1)
-targetLibrary.install.extend(env.Install('denetwork-{}/lib'.format(versionString), library))
-targetLibrary.aliasInstall(env, 'denetworkcpp')
+targetLibrary.installCutDirs(envLibrary, 'denetwork-{}/include/denetwork'.format(versionString), headers, 1)
+targetLibrary.install.extend(envLibrary.Install('denetwork-{}/lib'.format(versionString), library))
+targetLibrary.aliasInstall(envLibrary, 'denetworkcpp')
 
-targetLibrary.addParametersBuildCPP(env, ['denetworkcpp'], 'include')
+targetLibrary.addParametersBuildCPP(envLibrary, library,
+	'denetwork-{}/include'.format(versionString), linkStatic=True)
 
-Default(env.Program(target='denetwork_test', source=objects))
+# example
+envExample = env.Clone()
+
+targetExample = globalEnv.targetManager.TargetProgram('DENetwork Example')
+targetLibrary.applyBuild(envExample)
+globalEnv.targetManager.add('denetworkcpp_example', targetExample)
+
+sources = []
+globFiles(envExample, 'example', '*.cpp', sources)
+
+objects = [envExample.StaticObject(s) for s in sources]
+
+print(objects + envExample['STATIC_LIBS'])
+program = envExample.Program(target='denetworkcpp_example', source=objects + envExample['STATIC_LIBS'])
+envExample.Depends(objects, targetLibrary.install)
+
+targetExample.build.extend(program)
+targetExample.aliasBuild(envExample, 'denetworkcpp_example_build')
+targetLibrary.aliasInstall(envExample, 'denetworkcpp_example')
