@@ -159,7 +159,7 @@ public:
 	void AddModifiedStateLink(denStateLink *link);
 	void InvalidateState(denState &state);
 	bool Matches(denSocket *bnSocket, const denSocketAddress &address) const;
-	void AcceptConnection(const denSocket::Ref &bnSocket,
+	void AcceptConnection(denServer &server, const denSocket::Ref &bnSocket,
 		const denSocketAddress &address, denProtocol::Protocols protocol);
 	void ProcessDatagram(denMessageReader &reader);
 	void ProcessConnectionAck(denMessageReader &reader);

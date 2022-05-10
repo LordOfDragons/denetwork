@@ -207,7 +207,7 @@ void denConnection::LinkState(const denMessage::Ref &message, const denState::Re
 		const denStateLink::Ref link(std::make_shared<denStateLink>(*this, *state));
 		link->SetIdentifier(pNextLinkIdentifier);
 		pStateLinks.push_back(link);
-		iterLink = pStateLinks.cend();
+		iterLink = std::prev(pStateLinks.cend());
 		
 		state->GetLinks().push_back(link);
 	}
@@ -243,7 +243,7 @@ void denConnection::LinkState(const denMessage::Ref &message, const denState::Re
 }
 
 void denConnection::Update(float elapsedTime){
-	if(pConnectionState != ConnectionState::connected){
+	if(pConnectionState == ConnectionState::disconnected){
 		return;
 	}
 	
@@ -318,13 +318,14 @@ bool denConnection::Matches(denSocket *bnSocket, const denSocketAddress &address
 	return pSocket.get() == bnSocket && address == pRealRemoteAddress;
 }
 
-void denConnection::AcceptConnection(const denSocket::Ref &bnSocket,
+void denConnection::AcceptConnection(denServer &server, const denSocket::Ref &bnSocket,
 const denSocketAddress &address, denProtocol::Protocols protocol){
 	pSocket = bnSocket;
 	pRealRemoteAddress = address;
 	pRemoteAddress = address.ToString();
 	pConnectionState = ConnectionState::connected;
 	pProtocol = protocol;
+	pParentServer = &server;
 	
 	if(pListener){
 		pListener->ConnectionEstablished(*this);
@@ -384,6 +385,7 @@ void denConnection::ProcessConnectionAck(denMessageReader &reader){
 		pProtocol = (denProtocol::Protocols)reader.ReadUShort();
 		pConnectionState = ConnectionState::connected;
 		if(pListener){
+			pListener->Log(*this, denConnectionListener::LogSeverity::info, "Connection established");
 			pListener->ConnectionEstablished(*this);
 		}
 		break;
@@ -393,6 +395,7 @@ void denConnection::ProcessConnectionAck(denMessageReader &reader){
 	default:
 		pConnectionState = ConnectionState::disconnected;
 		if(pListener){
+			pListener->Log(*this, denConnectionListener::LogSeverity::info, "Connection rejected");
 			pListener->ConnectionClosed(*this);
 		}
 	}
@@ -480,7 +483,7 @@ void denConnection::ProcessReliableLinkState(denMessageReader &reader){
 	const denMessage::Ref ackMessage(denMessage::Pool().Get());
 	{
 	denMessageWriter ackWriter(ackMessage->Item());
-	ackWriter.WriteByte((uint8_t)denProtocol::CommandCodes::connectionAck);
+	ackWriter.WriteByte((uint8_t)denProtocol::CommandCodes::reliableAck);
 	ackWriter.WriteUShort((uint16_t)number);
 	ackWriter.WriteByte((uint8_t)denProtocol::ReliableAck::success);
 	}

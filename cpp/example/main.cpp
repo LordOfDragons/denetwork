@@ -156,9 +156,119 @@ void addLog(const std::string &message){
 	logbuffer.push_front(message);
 }
 
+class ExampleConnection : public denConnection{
+	class Listener : public denConnectionListener{
+		void ConnectionEstablished(denConnection &connection) override{
+		}
+		
+		void ConnectionClosed(denConnection &connection) override{
+		}
+		
+		void MessageProgress(denConnection &connection, size_t bytesReceived) override{
+		}
+		
+		void MessageReceived(denConnection &connection, const denMessage::Ref &message) override{
+		}
+		
+		denState::Ref LinkState(denConnection &connection, const denMessage::Ref &message, bool readOnly) override{
+			return ((ExampleConnection&)connection).linkServerState(message, readOnly);
+		}
+		
+		void Log(denConnection &connection, LogSeverity severity, const std::string &message) override{
+			const ExampleConnection &c = (ExampleConnection&)connection;
+			std::stringstream s;
+			s << "[" << severityText(severity) << "] Connection(" << c.id << "): " << message;
+			addLog(s.str());
+		}
+		
+		const char *severityText(LogSeverity severity){
+			switch(severity){
+				case LogSeverity::error: return "EE";
+				case LogSeverity::warning: return "WW";
+				case LogSeverity::info: return "II";
+				case LogSeverity::debug: return "DD";
+			}
+			return "";
+		}
+	};
+	
+	static int nextid;
+	
+public:
+	const bool remote;
+	int id;
+	denState::Ref state;
+	denValueInt::Ref valueBar;
+	
+	denState::Ref serverState;
+	denValueString::Ref serverValueTime;
+	denValueInt::Ref serverValueBar;
+	
+	ExampleConnection(bool remote) :
+	remote(remote),
+	id(nextid++)
+	{
+		SetListener(std::make_shared<Listener>());
+		
+		if(!remote){
+			state = std::make_shared<denState>(false);
+			valueBar = std::make_shared<denValueInt>(denValueIntegerFormat::sint16);
+			valueBar->SetValue(30);
+			state->GetValues().push_back(valueBar);
+		}
+	}
+	
+	inline int getBar(){
+		return valueBar->GetValue();
+	}
+	
+	void setBar(int value){
+		valueBar->SetValue((int16_t)std::max(std::min(value, 60), 0));
+	}
+	
+	void incrementBar(int value){
+		setBar(getBar() + value);
+	}
+	
+	inline bool ready() const{
+		return (bool)valueBar;
+	}
+	
+	denState::Ref linkServerState(const denMessage::Ref &message, bool readOnly){
+		denMessageReader reader(message->Item());
+		const int ident = reader.ReadUInt();
+		
+		std::stringstream s;
+		addLog(s.str());
+		
+		if(ident == 0x12345678){
+			serverState = std::make_shared<denState>(readOnly);
+			serverValueTime = std::make_shared<denValueString>();
+			serverValueBar = std::make_shared<denValueInt>(denValueIntegerFormat::sint16);
+			serverState->GetValues().push_back(serverValueTime);
+			serverState->GetValues().push_back(serverValueBar);
+		}
+		return serverState;
+	}
+	
+	inline bool hasServerState() const{
+		return (bool)serverState;
+	}
+	
+	inline const std::string &getServerTime(){
+		return serverValueTime->GetValue();
+	}
+	
+	inline int getServerBar(){
+		return serverValueBar->GetValue();
+	}
+};
+int ExampleConnection::nextid = 1;
+
 class ExampleServer : public denServer{
 	class Listener : public denServerListener{
 		void ClientConnected(denServer &server, const denConnection::Ref &connection) override{
+			((ExampleServer&)server).linkClient(*connection);
 		}
 		
 		void Log(denServer&, LogSeverity severity, const std::string &message) override{
@@ -193,6 +303,10 @@ public:
 		state->GetValues().push_back(valueBar);
 	}
 	
+	denConnection::Ref CreateConnection() override{
+		return std::make_shared<ExampleConnection>(true);
+	}
+	
 	inline const std::string &getTime(){
 		return valueTime->GetValue();
 	}
@@ -220,55 +334,16 @@ public:
 	void incrementBar(int value){
 		setBar(getBar() + value);
 	}
-};
-
-class ExampleConnection : public denConnection{
-	class Listener : public denConnectionListener{
-		void ConnectionEstablished(denConnection &connection) override{
-		}
-		
-		void ConnectionClosed(denConnection &connection) override{
-		}
-		
-		void MessageProgress(denConnection &connection, size_t bytesReceived) override{
-		}
-		
-		void MessageReceived(denConnection &connection, const denMessage::Ref &message) override{
-		}
-		
-		denState::Ref LinkState(denConnection &connection, const denMessage::Ref &message, bool readOnly) override{
-			return nullptr;
-		}
-		
-		void Log(denConnection &connection, LogSeverity severity, const std::string &message) override{
-			const ExampleConnection &c = (ExampleConnection&)connection;
-			std::stringstream s;
-			s << "[" << severityText(severity) << "] Connection(" << c.id << "): " << message;
-			addLog(s.str());
-		}
-		
-		const char *severityText(LogSeverity severity){
-			switch(severity){
-				case LogSeverity::error: return "EE";
-				case LogSeverity::warning: return "WW";
-				case LogSeverity::info: return "II";
-				case LogSeverity::debug: return "DD";
-			}
-			return "";
-		}
-	};
 	
-	static int nextid;
-	
-public:
-	int id;
-	
-	ExampleConnection(){
-		id = nextid++;
-		SetListener(std::make_shared<Listener>());
+	void linkClient(denConnection &connection){
+		const denMessage::Ref lm(denMessage::Pool().Get());
+		{
+		denMessageWriter writer(lm->Item());
+		writer.WriteUInt(0x12345678);
+		}
+		connection.LinkState(lm, state, true);
 	}
 };
-int ExampleConnection::nextid = 1;
 
 class App{
 	std::string paramListen, paramConnect;
@@ -348,18 +423,37 @@ public:
 	}
 	
 	void clientConnect(){
-		connection = std::make_shared<ExampleConnection>();
+		connection = std::make_shared<ExampleConnection>(false);
 		connection->ConnectTo(paramConnect);
 	}
 	
 	void drawScreen(){
 		std::stringstream s;
 		screenTopLeft(s);
+		
 		if(server){
-			printString(s, "Server Time", ((ExampleServer&)*server).getTime(), Color::green);
-			printBar(s, "Server Bar", ((ExampleServer&)*server).getBar(), Color::green);
+			printString(s, "Server Time", ((ExampleServer&)*server).getTime(), Color::red);
+			printBar(s, "Server Bar", ((ExampleServer&)*server).getBar(), Color::red);
+			
+			denServer::Connections::const_iterator iterCon;
+			for(iterCon = server->GetConnections().cbegin(); iterCon != server->GetConnections().cend(); iterCon++){
+				ExampleConnection &con = (ExampleConnection&)**iterCon;
+				if(con.ready()){
+					std::stringstream s2;
+					s2 << "Client#" << con.id << " Bar";
+					printBar(s, s2.str(), con.getBar(), Color::green);
+				}
+			}
 		}
-		printBar(s, "Value 3", 10, Color::blue);
+		
+		if(connection){
+			printBar(s, "Client Bar", ((ExampleConnection&)*connection).getBar(), Color::red);
+			
+			if(((ExampleConnection&)*connection).hasServerState()){
+				printString(s, "Server Time", ((ExampleConnection&)*connection).getServerTime(), Color::green);
+				printBar(s, "Server Bar", ((ExampleConnection&)*connection).getServerBar(), Color::green);
+			}
+		}
 		
 		resetColors(s);
 		foregroundColor(s, Color::white, Style::bold);
@@ -399,10 +493,12 @@ public:
 				
 			case 'C': // right arrow
 				if(server) ((ExampleServer&)*server).incrementBar(1);
+				if(connection) ((ExampleConnection&)*connection).incrementBar(1);
 				break;
 				
 			case 'D': // left arrow
 				if(server) ((ExampleServer&)*server).incrementBar(-1);
+				if(connection) ((ExampleConnection&)*connection).incrementBar(-1);
 				break;
 			}
 		}

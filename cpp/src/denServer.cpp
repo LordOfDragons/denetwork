@@ -132,7 +132,7 @@ void denServer::Update(float elapsedTime){
 				}else{
 					// ignore invalid package
 	// 				if(pListener){
-	// 					pListener->Log(denServerListener::LogSeverity::warning, "Invalid datagram: Sender does not match any connection!\n" );
+	// 					pListener->Log(denServerListener::LogSeverity::warning, "Invalid datagram: Sender does not match any connection!" );
 	// 				}
 				}
 			}
@@ -217,7 +217,7 @@ void denServer::ProcessConnectionRequest(const denSocketAddress &address, denMes
 	
 	// create connection 
 	const denConnection::Ref connection(CreateConnection());
-	connection->AcceptConnection(pSocket, address, protocol);
+	connection->AcceptConnection(*this, pSocket, address, protocol);
 	pConnections.push_back(connection);
 	
 	// send back result
@@ -231,6 +231,10 @@ void denServer::ProcessConnectionRequest(const denSocketAddress &address, denMes
 	pSocket->SendDatagram(message->Item(), address);
 	
 	if(pListener){
+		std::stringstream s;
+		s << "Client connected from " << address.ToString();
+		pListener->Log(*this, denServerListener::LogSeverity::info, s.str());
+		
 		pListener->ClientConnected(*this, connection);
 	}
 }

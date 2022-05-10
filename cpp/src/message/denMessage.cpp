@@ -39,6 +39,9 @@ void denMessage::SetData(const std::string &data){
 
 void denMessage::SetLength(size_t length){
 	pLength = length;
+	if(pData.size() < length){
+		pData.assign(length, 0);
+	}
 }
 
 denPool<denMessage> denMessage::pPool;
