@@ -25,6 +25,7 @@
 #include <stdexcept>
 #include <vector>
 #include <algorithm>
+#include <sstream>
 #include "denServer.h"
 #include "denConnection.h"
 #include "denProtocolEnums.h"
@@ -74,13 +75,15 @@ void denServer::ListenOn(const std::string &address){
 		}
 	}
 	
-	if(pListener){
-		pListener->Log(*this, denServerListener::LogSeverity::info, std::string("Listening on ") + useAddress);
-	}
-	
 	pSocket = CreateSocket();
 	pSocket->SetAddress(ResolveAddress(useAddress));
 	pSocket->Bind();
+	
+	if(pListener){
+		std::stringstream s;
+		s << "Listening on " << pSocket->GetAddress().ToString();
+		pListener->Log(*this, denServerListener::LogSeverity::info, s.str());
+	}
 	
 	pListening = true;
 }

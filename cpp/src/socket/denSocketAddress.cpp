@@ -82,7 +82,7 @@ denSocketAddress denSocketAddress::IPv4Loopback(uint16_t port){
 std::string denSocketAddress::ToString() const{
 	if(type == Type::ipv4){
 		std::stringstream s;
-		s << values[0] << "." << values[1] << "." << values[2] << "." << values[3] << ":" << port;
+		s << (int)values[0] << "." << (int)values[1] << "." << (int)values[2] << "." << (int)values[3] << ":" << (int)port;
 		return s.str();
 		
 	}else{

@@ -22,6 +22,8 @@
  * SOFTWARE.
  */
 
+#include <chrono>
+#include <iomanip>
 #include <iostream>
 #include <memory.h>
 #include <unistd.h>
@@ -29,9 +31,14 @@
 #include <sys/select.h>
 #include <termios.h>
 #include <sstream>
+#include <list>
 
 #include <denetwork/denPool.h>
 #include <denetwork/denRealMessage.h>
+#include <denetwork/denConnection.h>
+#include <denetwork/denConnectionListener.h>
+#include <denetwork/denServer.h>
+#include <denetwork/denServerListener.h>
 #include <denetwork/value/denValueInteger.h>
 #include <denetwork/value/denValueFloating.h>
 #include <denetwork/value/denValueString.h>
@@ -49,28 +56,8 @@ void screenTopLeft(std::ostream &s){
 	s << "\x1B[H";
 }
 
-enum class Color{
-	black = 0,
-	red,
-	green,
-	yellow,
-	blue,
-	magenta,
-	cyan,
-	white
-};
-
-enum class Style{
-	regular,
-	bold,
-	low,
-	italic,
-	underline,
-	blinking,
-	reverse,
-	background,
-	invisible
-};
+enum class Color{black, red, green, yellow, blue, magenta, cyan, white};
+enum class Style{regular, bold, low, italic, underline, blinking, reverse, background, invisible};
 
 void resetColors(std::ostream &s){
 	s << "\033[0m";
@@ -112,6 +99,26 @@ void printBar(std::ostream &s, const std::string &title, int length, Color color
 	s << "]" << std::endl;
 }
 
+void printString(std::ostream &s, const std::string &title, const std::string &value, Color color){
+	const int tlen = title.length();
+	int i;
+	
+	resetColors(s);
+	foregroundColor(s, Color::white, Style::bold);
+	for(i=0; i<14-tlen; i++){
+		s << ' ';
+	}
+	s << title << " '";
+	
+	resetColors(s);
+	foregroundColor(s, color, Style::bold);
+	s << value;
+	
+	resetColors(s);
+	foregroundColor(s, Color::white, Style::bold);
+	s << "'" << std::endl;
+}
+
 void nonblock(bool enable){
 	struct termios ttystate;
 	tcgetattr(STDIN_FILENO, &ttystate);
@@ -142,121 +149,360 @@ bool kbhit(int timeoutms = 0){
 	return FD_ISSET(STDIN_FILENO, &fds);
 }
 
-void dummy(){
-	int bar1 = 12;
-	int bar2 = 56;
-	
-	clearScreen();
-	
-	nonblock(true);
-	
-	bool quit = false;
-	while(!quit){
-		if(kbhit()){
-			const int c = fgetc(stdin);
-			switch(c){
-			case 'q':
-				quit = true;
-				break;
-				
-			case 'w':
-				if(bar1 > 0) bar1--;
-				break;
-				
-			case 'e':
-				if(bar1 < 60) bar1++;
-				break;
-				
-			case '\033':
-				fgetc(stdin); // '['
-				switch(fgetc(stdin)){
-				case 'A': //up arrow
-					if(bar2 < 60) bar2++;
-					break;
-					
-				case 'B': // down arrow
-					if(bar2 > 0) bar2--;
-					break;
-					
-				case 'C': // right arrow
-					break;
-					
-				case 'D': // left arrow
-					break;
-				}
-			}
-		}
-		
-		std::stringstream s;
-		screenTopLeft(s);
-		printBar(s, "Value 1", bar1, Color::red);
-		printBar(s, "Value 2", bar2, Color::green);
-		printBar(s, "Value 3", 10, Color::blue);
-		resetColors(s);
-		std::cout << s.str();
-	}
-	nonblock(false);
-	
-	denState::Ref state(std::make_shared<denState>(false));
-	
-	denValueInt::Ref test(std::make_shared<denValueInt>(denValueIntegerFormat::uint32));
-	test->SetValue(8);
-	state->GetValues().push_back(test);
-	
-	denValueFloat::Ref test2(std::make_shared<denValueFloat>(denValueFloatingFormat::float32));
-	test2->SetPrecision(0.01);
-	test2->SetValue(8);
-	state->GetValues().push_back(test2);
-	
-	denValueVector3::Ref test3(std::make_shared<denValueVector3>(denValueFloatingFormat::float32));
-	test3->SetPrecision(denVector3(0.01));
-	test3->SetValue(denVector3(1, 2, 3));
-	state->GetValues().push_back(test3);
-	
-	denValuePoint2::Ref test4(std::make_shared<denValuePoint2>(denValueIntegerFormat::sint32));
-	test4->SetValue(denPoint2(1, 2));
-	state->GetValues().push_back(test4);
-	
-	denValueString::Ref test5(std::make_shared<denValueString>());
-	test5->SetValue("this is a test");
-	state->GetValues().push_back(test5);
-	
-	denValueData::Ref test6(std::make_shared<denValueData>());
-	test6->SetValue(denValueData::Data{5, 2, 80, 45, 60, 30});
-	state->GetValues().push_back(test6);
-	
-	{
-	denMessage::Ref message(denMessage::Pool().Get());
-	
-	{
-	denMessageWriter writer(message->Item());
-	writer.WriteUShort(80).WriteInt(210).WriteUInt(99443).WriteFloat(1.34f);
-	}
-	
-	{
-	denMessageReader reader(message->Item());
-	const uint16_t mv1 = reader.ReadUShort();
-	const int32_t mv2 = reader.ReadInt();
-	const uint32_t mv3 = reader.ReadUInt();
-	const float mv4 = reader.ReadFloat();
-	printf("message: %d %d %d %g\n", mv1, mv2, mv3, mv4);
-	}
-	
-	{
-	denRealMessage::Ref realMessage(denRealMessage::Pool().Get());
-	realMessage->Item().message = message;
-	}
-	}
-	
-	// just if somebody uses leak detection. pools are static class members and as such
-	// they are cleaned up during application destruction. leak detection can notice
-	// them as "still reachable" which is only true because the leak detection has to
-	// run before such memory is cleaned up. doing an explicit clear helps to locate
-	// real memory leaks
-	denMessage::Pool().Clear();
-	denRealMessage::Pool().Clear();
+static std::list<std::string> logbuffer;
+
+void addLog(const std::string &message){
+	while(logbuffer.size() > 10) logbuffer.pop_back();
+	logbuffer.push_front(message);
 }
 
-int main(int, char*[]){
-	dummy();
+class ExampleServer : public denServer{
+	class Listener : public denServerListener{
+		void ClientConnected(denServer &server, const denConnection::Ref &connection) override{
+		}
+		
+		void Log(denServer&, LogSeverity severity, const std::string &message) override{
+			std::stringstream s;
+			s << "[" << severityText(severity) << "] Server: " << message;
+			addLog(s.str());
+		}
+		
+		const char *severityText(LogSeverity severity){
+			switch(severity){
+				case LogSeverity::error: return "EE";
+				case LogSeverity::warning: return "WW";
+				case LogSeverity::info: return "II";
+				case LogSeverity::debug: return "DD";
+			}
+			return "";
+		}
+	};
+	
+public:
+	denState::Ref state;
+	denValueString::Ref valueTime;
+	denValueInt::Ref valueBar;
+	
+	ExampleServer(){
+		SetListener(std::make_shared<Listener>());
+		state = std::make_shared<denState>(false);
+		valueTime = std::make_shared<denValueString>();
+		valueBar = std::make_shared<denValueInt>(denValueIntegerFormat::sint16);
+		valueBar->SetValue(30);
+		state->GetValues().push_back(valueTime);
+		state->GetValues().push_back(valueBar);
+	}
+	
+	inline const std::string &getTime(){
+		return valueTime->GetValue();
+	}
+	
+	void setTime(const std::string &time){
+		valueTime->SetValue(time);
+	}
+	
+	void updateTime(){
+		std::stringstream s;
+		std::time_t t = std::time(nullptr);
+		std::tm tm = *std::localtime(&t);
+		s << std::put_time(&tm, "%c");
+		setTime(s.str());
+	}
+	
+	inline int getBar(){
+		return valueBar->GetValue();
+	}
+	
+	void setBar(int value){
+		valueBar->SetValue((int16_t)std::max(std::min(value, 60), 0));
+	}
+	
+	void incrementBar(int value){
+		setBar(getBar() + value);
+	}
+};
+
+class ExampleConnection : public denConnection{
+	class Listener : public denConnectionListener{
+		void ConnectionEstablished(denConnection &connection) override{
+		}
+		
+		void ConnectionClosed(denConnection &connection) override{
+		}
+		
+		void MessageProgress(denConnection &connection, size_t bytesReceived) override{
+		}
+		
+		void MessageReceived(denConnection &connection, const denMessage::Ref &message) override{
+		}
+		
+		denState::Ref LinkState(denConnection &connection, const denMessage::Ref &message, bool readOnly) override{
+			return nullptr;
+		}
+		
+		void Log(denConnection &connection, LogSeverity severity, const std::string &message) override{
+			const ExampleConnection &c = (ExampleConnection&)connection;
+			std::stringstream s;
+			s << "[" << severityText(severity) << "] Connection(" << c.id << "): " << message;
+			addLog(s.str());
+		}
+		
+		const char *severityText(LogSeverity severity){
+			switch(severity){
+				case LogSeverity::error: return "EE";
+				case LogSeverity::warning: return "WW";
+				case LogSeverity::info: return "II";
+				case LogSeverity::debug: return "DD";
+			}
+			return "";
+		}
+	};
+	
+	static int nextid;
+	
+public:
+	int id;
+	
+	ExampleConnection(){
+		id = nextid++;
+		SetListener(std::make_shared<Listener>());
+	}
+};
+int ExampleConnection::nextid = 1;
+
+class App{
+	std::string paramListen, paramConnect;
+	bool quit = false;
+	denServer::Ref server;
+	denConnection::Ref connection;
+	
+public:
+	bool init(int argc, char *argv[]){
+		int i;
+		for(i=1; i<argc; i++){
+			const std::string arg(argv[i]);
+			
+			if(arg.rfind("--listen=", 0) == 0){
+				paramListen = arg.substr(9);
+				
+			}else if(arg.rfind("--connect=", 0) == 0){
+				paramConnect = arg.substr(10);
+				
+			}else if(arg == "--help"){
+				std::cout << "denetworkcpp_example [parameters]" << std::endl;
+				std::cout << std::endl;
+				std::cout << "parameters:" << std::endl;
+				std::cout << std::endl;
+				std::cout << "--listen=address:port" << std::endl;
+				std::cout << "    listen for clients on address:port" << std::endl;
+				std::cout << std::endl;
+				std::cout << "--connect=address:port" << std::endl;
+				std::cout << "    connect to host on address:port" << std::endl;
+				std::cout << std::endl;
+				std::cout << "--help" << std::endl;
+				std::cout << "    show help screen" << std::endl;
+				return false;
+				
+			}else{
+				std::cerr << "Invalid argument '" << arg << "'" << std::endl;
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	void run(){
+		initScreen();
+		
+		if(!paramListen.empty()){
+			serverListen();
+			appLoop();
+			
+		}else if(!paramConnect.empty()){
+			clientConnect();
+			appLoop();
+			
+		}else{
+		}
+		
+		connection = nullptr;
+		server = nullptr;
+		
+		exitScreen();
+		
+// 		specialTest();
+	}
+	
+	void initScreen(){
+		clearScreen();
+		nonblock(true);
+	}
+	
+	void exitScreen(){
+		nonblock(false);
+	}
+	
+	void serverListen(){
+		server = std::make_shared<ExampleServer>();
+		server->ListenOn(paramListen);
+	}
+	
+	void clientConnect(){
+		connection = std::make_shared<ExampleConnection>();
+		connection->ConnectTo(paramConnect);
+	}
+	
+	void drawScreen(){
+		std::stringstream s;
+		screenTopLeft(s);
+		if(server){
+			printString(s, "Server Time", ((ExampleServer&)*server).getTime(), Color::green);
+			printBar(s, "Server Bar", ((ExampleServer&)*server).getBar(), Color::green);
+		}
+		printBar(s, "Value 3", 10, Color::blue);
+		
+		resetColors(s);
+		foregroundColor(s, Color::white, Style::bold);
+		s << "Logs:" << std::endl;
+		resetColors(s);
+		std::list<std::string>::const_iterator iterLog;
+		for(iterLog = logbuffer.begin(); iterLog != logbuffer.end(); iterLog++){
+			s << *iterLog << std::endl;
+		}
+		
+		std::cout << s.str();
+	}
+	
+	void handleInput(){
+		if(!kbhit()) return;
+		
+		const int c = fgetc(stdin);
+		switch(c){
+		case 'q':
+			quit = true;
+			break;
+			
+		case 'w':
+			break;
+			
+		case 'e':
+			break;
+			
+		case '\033':
+			fgetc(stdin); // '['
+			switch(fgetc(stdin)){
+			case 'A': //up arrow
+				break;
+				
+			case 'B': // down arrow
+				break;
+				
+			case 'C': // right arrow
+				if(server) ((ExampleServer&)*server).incrementBar(1);
+				break;
+				
+			case 'D': // left arrow
+				if(server) ((ExampleServer&)*server).incrementBar(-1);
+				break;
+			}
+		}
+	}
+	
+	void updateServer(float elapsed){
+		if(!server) return;
+		((ExampleServer&)*server).updateTime();
+		server->Update(elapsed);
+	}
+	
+	void updateClient(float elapsed){
+		if(!connection) return;
+		connection->Update(elapsed);
+	}
+	
+	void appLoop(){
+		auto start = std::chrono::steady_clock::now();
+		
+		while(!quit){
+			const auto end = std::chrono::steady_clock::now();
+			start = end;
+			const float elapsed = 0.001f * std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+			
+			handleInput();
+			updateServer(elapsed);
+			updateClient(elapsed);
+			drawScreen();
+		}
+	}
+	
+	void specialTest(){
+		denState::Ref state(std::make_shared<denState>(false));
+		
+		denValueInt::Ref test(std::make_shared<denValueInt>(denValueIntegerFormat::uint32));
+		test->SetValue(8);
+		state->GetValues().push_back(test);
+		
+		denValueFloat::Ref test2(std::make_shared<denValueFloat>(denValueFloatingFormat::float32));
+		test2->SetPrecision(0.01);
+		test2->SetValue(8);
+		state->GetValues().push_back(test2);
+		
+		denValueVector3::Ref test3(std::make_shared<denValueVector3>(denValueFloatingFormat::float32));
+		test3->SetPrecision(denVector3(0.01));
+		test3->SetValue(denVector3(1, 2, 3));
+		state->GetValues().push_back(test3);
+		
+		denValuePoint2::Ref test4(std::make_shared<denValuePoint2>(denValueIntegerFormat::sint32));
+		test4->SetValue(denPoint2(1, 2));
+		state->GetValues().push_back(test4);
+		
+		denValueString::Ref test5(std::make_shared<denValueString>());
+		test5->SetValue("this is a test");
+		state->GetValues().push_back(test5);
+		
+		denValueData::Ref test6(std::make_shared<denValueData>());
+		test6->SetValue(denValueData::Data{5, 2, 80, 45, 60, 30});
+		state->GetValues().push_back(test6);
+		
+		{
+		denMessage::Ref message(denMessage::Pool().Get());
+		
+		{
+		denMessageWriter writer(message->Item());
+		writer.WriteUShort(80).WriteInt(210).WriteUInt(99443).WriteFloat(1.34f);
+		}
+		
+		{
+		denMessageReader reader(message->Item());
+		const uint16_t mv1 = reader.ReadUShort();
+		const int32_t mv2 = reader.ReadInt();
+		const uint32_t mv3 = reader.ReadUInt();
+		const float mv4 = reader.ReadFloat();
+		printf("message: %d %d %d %g\n", mv1, mv2, mv3, mv4);
+		}
+		
+		{
+		denRealMessage::Ref realMessage(denRealMessage::Pool().Get());
+		realMessage->Item().message = message;
+		}
+		}
+		
+		// just if somebody uses leak detection. pools are static class members and as such
+		// they are cleaned up during application destruction. leak detection can notice
+		// them as "still reachable" which is only true because the leak detection has to
+		// run before such memory is cleaned up. doing an explicit clear helps to locate
+		// real memory leaks
+		denMessage::Pool().Clear();
+		denRealMessage::Pool().Clear();
+	}
+};
+
+void run(){
+}
+
+int main(int argc, char *argv[]){
+	App app;
+	if(app.init(argc, argv)){
+		app.run();
+	}
+	return 0;
 }

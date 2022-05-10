@@ -80,6 +80,12 @@ void denConnection::ConnectTo(const std::string &address){
 	pRealRemoteAddress = ResolveAddress(address);
 	pRemoteAddress = address;
 	
+	if(pListener){
+		std::stringstream s;
+		s << "Connecting to " << pRealRemoteAddress.ToString();
+		pListener->Log(*this, denConnectionListener::LogSeverity::info, s.str());
+	}
+	
 	pSocket->SendDatagram(connectRequest->Item(), pRealRemoteAddress);
 	
 	pConnectionState = ConnectionState::connecting;
