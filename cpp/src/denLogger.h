@@ -24,15 +24,13 @@
 
 #pragma once
 
-#include "denConnection.h"
-#include "state/denState.h"
-
-class denServer;
+#include <memory>
+#include <string>
 
 /**
- * \brief Server listener.
+ * \brief Logger.
  */
-class denServerListener{
+class denLogger{
 public:
 	/** \brief Log severity. */
 	enum class LogSeverity{
@@ -43,21 +41,14 @@ public:
 	};
 	
 	/** \brief Shared pointer. */
-	typedef std::shared_ptr<denServerListener> Ref;
+	typedef std::shared_ptr<denLogger> Ref;
 	
-	/**
-	 * \brief Create server listener.
-	 */
-	denServerListener();
+	/** \brief Create logger. */
+	denLogger();
 	
-	/**
-	 * \brief Clean up server listener.
-	 */
-	virtual ~denServerListener();
-	
-	/** \brief Client connected. */
-	virtual void ClientConnected(denServer &server, const denConnection::Ref &connection);
+	/** \brief Clean up logger. */
+	virtual ~denLogger();
 	
 	/** \brief Logging. */
-	virtual void Log(denServer &server, LogSeverity severity, const std::string &message);
+	virtual void Log(LogSeverity severity, const std::string &message);
 };

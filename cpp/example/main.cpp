@@ -28,6 +28,7 @@
 #include <memory.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <sys/ioctl.h>
 #include <sys/select.h>
 #include <termios.h>
 #include <sstream>
@@ -36,9 +37,8 @@
 #include <denetwork/denPool.h>
 #include <denetwork/denRealMessage.h>
 #include <denetwork/denConnection.h>
-#include <denetwork/denConnectionListener.h>
+#include <denetwork/denLogger.h>
 #include <denetwork/denServer.h>
-#include <denetwork/denServerListener.h>
 #include <denetwork/value/denValueInteger.h>
 #include <denetwork/value/denValueFloating.h>
 #include <denetwork/value/denValueString.h>
@@ -71,7 +71,7 @@ void backgroundColor(std::ostream &s, Color color, Style style){
 	s << "\033[" << (int)style << ";" << 40 + (int)color << "m";
 }
 
-void printBar(std::ostream &s, const std::string &title, int length, Color color){
+void printBar(std::ostream &s, int lineWidth, const std::string &title, int length, Color color){
 	const int tlen = title.length();
 	int i;
 	
@@ -96,10 +96,10 @@ void printBar(std::ostream &s, const std::string &title, int length, Color color
 	
 	resetColors(s);
 	foregroundColor(s, Color::white, Style::bold);
-	s << "]" << std::endl;
+	s << "]" << std::string(lineWidth - 77, ' ') << std::endl;
 }
 
-void printString(std::ostream &s, const std::string &title, const std::string &value, Color color){
+void printString(std::ostream &s, int lineWidth, const std::string &title, const std::string &value, Color color){
 	const int tlen = title.length();
 	int i;
 	
@@ -116,7 +116,7 @@ void printString(std::ostream &s, const std::string &title, const std::string &v
 	
 	resetColors(s);
 	foregroundColor(s, Color::white, Style::bold);
-	s << "'" << std::endl;
+	s << "'" << std::string(lineWidth - 17 - value.length(), ' ') << std::endl;
 }
 
 void nonblock(bool enable){
@@ -138,6 +138,12 @@ void nonblock(bool enable){
 	tcsetattr(STDIN_FILENO, TCSANOW, &ttystate);
 }
 
+denPoint2 terminalSize(){
+	struct winsize w;
+	ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+	return denPoint2(w.ws_col, w.ws_row);
+}
+
 bool kbhit(int timeoutms = 0){
 	struct timeval tv;
 	fd_set fds;
@@ -156,42 +162,26 @@ void addLog(const std::string &message){
 	logbuffer.push_front(message);
 }
 
-class ExampleConnection : public denConnection{
-	class Listener : public denConnectionListener{
-		void ConnectionEstablished(denConnection &connection) override{
-		}
-		
-		void ConnectionClosed(denConnection &connection) override{
-		}
-		
-		void MessageProgress(denConnection &connection, size_t bytesReceived) override{
-		}
-		
-		void MessageReceived(denConnection &connection, const denMessage::Ref &message) override{
-		}
-		
-		denState::Ref LinkState(denConnection &connection, const denMessage::Ref &message, bool readOnly) override{
-			return ((ExampleConnection&)connection).linkServerState(message, readOnly);
-		}
-		
-		void Log(denConnection &connection, LogSeverity severity, const std::string &message) override{
-			const ExampleConnection &c = (ExampleConnection&)connection;
-			std::stringstream s;
-			s << "[" << severityText(severity) << "] Connection(" << c.id << "): " << message;
-			addLog(s.str());
-		}
-		
-		const char *severityText(LogSeverity severity){
-			switch(severity){
-				case LogSeverity::error: return "EE";
-				case LogSeverity::warning: return "WW";
-				case LogSeverity::info: return "II";
-				case LogSeverity::debug: return "DD";
-			}
-			return "";
-		}
-	};
+class ExampleLogger : public denLogger{
+public:
+	void Log(LogSeverity severity, const std::string &message) override{
+		std::stringstream s;
+		s << "[" << severityText(severity) << "] " << message;
+		addLog(s.str());
+	}
 	
+	const char *severityText(LogSeverity severity){
+		switch(severity){
+			case LogSeverity::error: return "EE";
+			case LogSeverity::warning: return "WW";
+			case LogSeverity::info: return "II";
+			case LogSeverity::debug: return "DD";
+		}
+		return "";
+	}
+};
+
+class ExampleConnection : public denConnection{
 	static int nextid;
 	
 public:
@@ -208,14 +198,16 @@ public:
 	remote(remote),
 	id(nextid++)
 	{
-		SetListener(std::make_shared<Listener>());
-		
+		SetLogger(std::make_shared<ExampleLogger>());
 		if(!remote){
 			state = std::make_shared<denState>(false);
 			valueBar = std::make_shared<denValueInt>(denValueIntegerFormat::sint16);
 			valueBar->SetValue(30);
 			state->GetValues().push_back(valueBar);
 		}
+	}
+	
+	~ExampleConnection() override{
 	}
 	
 	inline int getBar(){
@@ -234,7 +226,19 @@ public:
 		return (bool)valueBar;
 	}
 	
-	denState::Ref linkServerState(const denMessage::Ref &message, bool readOnly){
+	void ConnectionEstablished() override{
+	}
+	
+	void ConnectionClosed() override{
+	}
+	
+	void MessageProgress(size_t bytesReceived) override{
+	}
+	
+	void MessageReceived(const denMessage::Ref &message) override{
+	}
+	
+	denState::Ref LinkState(const denMessage::Ref &message, bool readOnly) override{
 		denMessageReader reader(message->Item());
 		const int ident = reader.ReadUInt();
 		
@@ -266,35 +270,13 @@ public:
 int ExampleConnection::nextid = 1;
 
 class ExampleServer : public denServer{
-	class Listener : public denServerListener{
-		void ClientConnected(denServer &server, const denConnection::Ref &connection) override{
-			((ExampleServer&)server).linkClient(*connection);
-		}
-		
-		void Log(denServer&, LogSeverity severity, const std::string &message) override{
-			std::stringstream s;
-			s << "[" << severityText(severity) << "] Server: " << message;
-			addLog(s.str());
-		}
-		
-		const char *severityText(LogSeverity severity){
-			switch(severity){
-				case LogSeverity::error: return "EE";
-				case LogSeverity::warning: return "WW";
-				case LogSeverity::info: return "II";
-				case LogSeverity::debug: return "DD";
-			}
-			return "";
-		}
-	};
-	
 public:
 	denState::Ref state;
 	denValueString::Ref valueTime;
 	denValueInt::Ref valueBar;
 	
 	ExampleServer(){
-		SetListener(std::make_shared<Listener>());
+		SetLogger(std::make_shared<ExampleLogger>());
 		state = std::make_shared<denState>(false);
 		valueTime = std::make_shared<denValueString>();
 		valueBar = std::make_shared<denValueInt>(denValueIntegerFormat::sint16);
@@ -333,6 +315,10 @@ public:
 	
 	void incrementBar(int value){
 		setBar(getBar() + value);
+	}
+	
+	void ClientConnected(const denConnection::Ref &connection) override{
+		linkClient(*connection);
 	}
 	
 	void linkClient(denConnection &connection){
@@ -400,8 +386,8 @@ public:
 		}else{
 		}
 		
-		connection = nullptr;
-		server = nullptr;
+		connection.reset();
+		server.reset();
 		
 		exitScreen();
 		
@@ -428,12 +414,13 @@ public:
 	}
 	
 	void drawScreen(){
+		const denPoint2 size(terminalSize());
 		std::stringstream s;
 		screenTopLeft(s);
 		
 		if(server){
-			printString(s, "Server Time", ((ExampleServer&)*server).getTime(), Color::red);
-			printBar(s, "Server Bar", ((ExampleServer&)*server).getBar(), Color::red);
+			printString(s, size.x, "Server Time", ((ExampleServer&)*server).getTime(), Color::red);
+			printBar(s, size.x, "Server Bar", ((ExampleServer&)*server).getBar(), Color::red);
 			
 			denServer::Connections::const_iterator iterCon;
 			for(iterCon = server->GetConnections().cbegin(); iterCon != server->GetConnections().cend(); iterCon++){
@@ -441,27 +428,26 @@ public:
 				if(con.ready()){
 					std::stringstream s2;
 					s2 << "Client#" << con.id << " Bar";
-					printBar(s, s2.str(), con.getBar(), Color::green);
+					printBar(s, size.x, s2.str(), con.getBar(), Color::green);
 				}
 			}
 		}
 		
 		if(connection){
-			printBar(s, "Client Bar", ((ExampleConnection&)*connection).getBar(), Color::red);
+			printBar(s, size.x, "Client Bar", ((ExampleConnection&)*connection).getBar(), Color::red);
 			
 			if(((ExampleConnection&)*connection).hasServerState()){
-				printString(s, "Server Time", ((ExampleConnection&)*connection).getServerTime(), Color::green);
-				printBar(s, "Server Bar", ((ExampleConnection&)*connection).getServerBar(), Color::green);
+				printString(s, size.x, "Server Time", ((ExampleConnection&)*connection).getServerTime(), Color::green);
+				printBar(s, size.x, "Server Bar", ((ExampleConnection&)*connection).getServerBar(), Color::green);
 			}
 		}
 		
-		resetColors(s);
 		foregroundColor(s, Color::white, Style::bold);
-		s << "Logs:" << std::endl;
+		s << "Logs:" << std::string(size.x - 5, ' ') << std::endl;
 		resetColors(s);
 		std::list<std::string>::const_iterator iterLog;
 		for(iterLog = logbuffer.begin(); iterLog != logbuffer.end(); iterLog++){
-			s << *iterLog << std::endl;
+			s << *iterLog << std::string(size.x - iterLog->length(), ' ') << std::endl;
 		}
 		
 		std::cout << s.str();

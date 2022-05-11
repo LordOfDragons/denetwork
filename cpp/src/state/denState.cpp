@@ -34,6 +34,10 @@ pReadOnly(readOnly){
 }
 
 denState::~denState(){
+	StateLinks::const_iterator iter;
+	for(iter = pLinks.cbegin(); iter != pLinks.cend(); iter++){
+		(*iter)->pState = nullptr;
+	}
 }
 
 void denState::SetUserData(void *userData){

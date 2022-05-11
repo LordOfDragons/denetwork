@@ -50,10 +50,10 @@ public:
 	};
 	
 	/** \brief Create state link. */
-	denStateLink(denConnection &connection, denState &state);
+	denStateLink(denConnection &connection, denState *state);
 	
-	/** \brief State. */
-	inline denState &GetState() const{ return pState; }
+	/** \brief State or null if dropped. */
+	inline denState *GetState() const{ return pState; }
 	
 	/** \brief Unique identifier. */
 	inline int GetIdentifier() const{ return pIdentifier; }
@@ -89,8 +89,10 @@ public:
 	void ResetChanged();
 	
 private:
+	friend denState;
+	
 	denConnection &pConnection;
-	denState &pState;
+	denState *pState;
 	
 	int pIdentifier;
 	State pLinkState;

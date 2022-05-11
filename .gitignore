@@ -5,3 +5,4 @@ __pycache__
 *.pyc
 config.log
 lastConfig.py
+custom.py

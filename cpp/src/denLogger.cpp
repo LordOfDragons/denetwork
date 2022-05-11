@@ -22,30 +22,14 @@
  * SOFTWARE.
  */
 
-#include "denConnectionListener.h"
+#include "denLogger.h"
 
 
-denConnectionListener::denConnectionListener(){
+denLogger::denLogger(){
 }
 
-denConnectionListener::~denConnectionListener(){
+denLogger::~denLogger(){
 }
 
-void denConnectionListener::ConnectionEstablished(denConnection&){
-}
-
-void denConnectionListener::ConnectionClosed(denConnection&){
-}
-
-void denConnectionListener::MessageProgress(denConnection&, size_t){
-}
-
-void denConnectionListener::MessageReceived(denConnection&, const denMessage::Ref&){
-}
-
-denState::Ref denConnectionListener::LinkState(denConnection&, const denMessage::Ref&, bool){
-	return nullptr;
-}
-
-void denConnectionListener::Log(denConnection&, LogSeverity, const std::string&){
+void denLogger::Log(LogSeverity, const std::string&){
 }

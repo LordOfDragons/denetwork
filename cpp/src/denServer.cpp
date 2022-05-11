@@ -57,19 +57,19 @@ void denServer::ListenOn(const std::string &address){
 		const std::vector<std::string> publicAddresses(FindPublicAddresses());
 		
 		if(!useAddress.empty()){
-			if(pListener){
+			if(pLogger){
 				std::vector<std::string>::const_iterator iter;
-				const std::string text("Found public address: ");
+				const std::string text("Server: Found public address: ");
 				for(iter = publicAddresses.cbegin(); iter != publicAddresses.cend(); iter++){
-					pListener->Log(*this, denServerListener::LogSeverity::info, text + *iter);
+					pLogger->Log(denLogger::LogSeverity::info, text + *iter);
 				}
 			}
 			
 			useAddress = publicAddresses.front();
 			
 		}else{
-			if(pListener){
-				pListener->Log(*this, denServerListener::LogSeverity::info, "No public address found. Using localhost");
+			if(pLogger){
+				pLogger->Log(denLogger::LogSeverity::info, "Server: No public address found. Using localhost");
 			}
 			useAddress = "127.0.0.1";
 		}
@@ -79,10 +79,10 @@ void denServer::ListenOn(const std::string &address){
 	pSocket->SetAddress(ResolveAddress(useAddress));
 	pSocket->Bind();
 	
-	if(pListener){
+	if(pLogger){
 		std::stringstream s;
-		s << "Listening on " << pSocket->GetAddress().ToString();
-		pListener->Log(*this, denServerListener::LogSeverity::info, s.str());
+		s << "Server: Listening on " << pSocket->GetAddress().ToString();
+		pLogger->Log(denLogger::LogSeverity::info, s.str());
 	}
 	
 	pListening = true;
@@ -131,16 +131,15 @@ void denServer::Update(float elapsedTime){
 					
 				}else{
 					// ignore invalid package
-	// 				if(pListener){
-	// 					pListener->Log(denServerListener::LogSeverity::warning, "Invalid datagram: Sender does not match any connection!" );
+	// 				if(denLogger){
+	// 					denLogger->Log(denLogger::LogSeverity::warning, "Server: Invalid datagram: Sender does not match any connection!" );
 	// 				}
 				}
 			}
 			
 		}catch(const std::exception &e){
-			if(pListener){
-				pListener->Log(*this, denServerListener::LogSeverity::error,
-					std::string("denServer::Update[1]: ") + e.what());
+			if(pLogger){
+				pLogger->Log(denLogger::LogSeverity::error, std::string("Server: Update[1]: ") + e.what());
 			}
 		}
 	}
@@ -153,9 +152,8 @@ void denServer::Update(float elapsedTime){
 			connection.Update(elapsedTime);
 			
 		}catch(const std::exception &e){
-			if(pListener){
-				pListener->Log(*this, denServerListener::LogSeverity::error,
-					std::string("denServer::Update[2]: ") + e.what());
+			if(pLogger){
+				pLogger->Log(denLogger::LogSeverity::error, std::string("Server: Update[2]: ") + e.what());
 			}
 		}
 	}
@@ -177,8 +175,11 @@ std::vector<std::string> denServer::FindPublicAddresses(){
 	return denSocketShared::FindPublicAddresses();
 }
 
-void denServer::SetListener(const denServerListener::Ref &listener){
-	pListener = listener;
+void denServer::SetLogger(const denLogger::Ref &logger){
+	pLogger = logger;
+}
+
+void denServer::ClientConnected(const denConnection::Ref &){
 }
 
 void denServer::ProcessConnectionRequest(const denSocketAddress &address, denMessageReader &reader){
@@ -230,11 +231,10 @@ void denServer::ProcessConnectionRequest(const denSocketAddress &address, denMes
 	}
 	pSocket->SendDatagram(message->Item(), address);
 	
-	if(pListener){
+	if(pLogger){
 		std::stringstream s;
-		s << "Client connected from " << address.ToString();
-		pListener->Log(*this, denServerListener::LogSeverity::info, s.str());
-		
-		pListener->ClientConnected(*this, connection);
+		s << "Server: Client connected from " << address.ToString();
+		pLogger->Log(denLogger::LogSeverity::info, s.str());
 	}
+	ClientConnected(connection);
 }

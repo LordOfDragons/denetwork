@@ -45,6 +45,7 @@ pParentServer(nullptr){
 }
 
 denConnection::~denConnection(){
+	pDisconnect(false);
 }
 
 void denConnection::SetUserData(void *userData){
@@ -55,8 +56,8 @@ bool denConnection::GetConnected() const{
 	return pConnectionState == ConnectionState::connected;
 }
 
-void denConnection::SetListener(const denConnectionListener::Ref &listener){
-	pListener = listener;
+void denConnection::SetLogger(const denLogger::Ref &logger){
+	pLogger = logger;
 }
 
 void denConnection::ConnectTo(const std::string &address){
@@ -80,10 +81,10 @@ void denConnection::ConnectTo(const std::string &address){
 	pRealRemoteAddress = ResolveAddress(address);
 	pRemoteAddress = address;
 	
-	if(pListener){
+	if(pLogger){
 		std::stringstream s;
-		s << "Connecting to " << pRealRemoteAddress.ToString();
-		pListener->Log(*this, denConnectionListener::LogSeverity::info, s.str());
+		s << "Connection: Connecting to " << pRealRemoteAddress.ToString();
+		pLogger->Log(denLogger::LogSeverity::info, s.str());
 	}
 	
 	pSocket->SendDatagram(connectRequest->Item(), pRealRemoteAddress);
@@ -92,20 +93,7 @@ void denConnection::ConnectTo(const std::string &address){
 }
 
 void denConnection::Disconnect(){
-	if(!pSocket){
-		return;
-	}
-	
-	if(pConnectionState == ConnectionState::connected){
-		const denMessage::Ref connectionClose(denMessage::Pool().Get());
-		{
-		denMessageWriter writer(connectionClose->Item());
-		writer.WriteByte((uint8_t)denProtocol::CommandCodes::connectionClose);
-		}
-		pSocket->SendDatagram(connectionClose->Item(), pRealRemoteAddress);
-	}
-	
-	pDisconnect();
+	pDisconnect(true);
 }
 
 void denConnection::SendMessage(const denMessage::Ref &message, int maxDelay){
@@ -184,7 +172,7 @@ void denConnection::LinkState(const denMessage::Ref &message, const denState::Re
 	// check if a link exists with this state already that is not broken
 	StateLinks::const_iterator iterLink(std::find_if(pStateLinks.cbegin(),
 	pStateLinks.cend(), [&](const denStateLink::Ref &each){
-		return &each->GetState() == state.get();
+		return each->GetState() == state.get();
 	}));
 	
 	if(iterLink != pStateLinks.cend() && (*iterLink)->GetLinkState() != denStateLink::State::down){
@@ -204,7 +192,7 @@ void denConnection::LinkState(const denMessage::Ref &message, const denState::Re
 			}
 		}
 		
-		const denStateLink::Ref link(std::make_shared<denStateLink>(*this, *state));
+		const denStateLink::Ref link(std::make_shared<denStateLink>(*this, state.get()));
 		link->SetIdentifier(pNextLinkIdentifier);
 		pStateLinks.push_back(link);
 		iterLink = std::prev(pStateLinks.cend());
@@ -260,9 +248,9 @@ void denConnection::Update(float elapsedTime){
 				ProcessDatagram(reader);
 				
 			}catch(const std::exception &e){
-				if(pListener){
-					pListener->Log(*this, denConnectionListener::LogSeverity::error,
-						std::string("denConnection::Update[1]: ") + e.what());
+				if(pLogger){
+					pLogger->Log(denLogger::LogSeverity::error,
+						std::string("Connection: :Update[1]: ") + e.what());
 				}
 			}
 		}
@@ -273,9 +261,9 @@ void denConnection::Update(float elapsedTime){
 		pUpdateStates();
 		
 	}catch(const std::exception &e){
-		if(pListener){
-			pListener->Log(*this, denConnectionListener::LogSeverity::error,
-				std::string("denConnection::Update[2]: ") + e.what());
+		if(pLogger){
+			pLogger->Log(denLogger::LogSeverity::error,
+				std::string("Connection: Update[2]: ") + e.what());
 		}
 	}
 }
@@ -286,6 +274,22 @@ denSocket::Ref denConnection::CreateSocket(){
 
 denSocketAddress denConnection::ResolveAddress(const std::string &address){
 	return denSocketShared::ResolveAddress(address);
+}
+
+void denConnection::ConnectionEstablished(){
+}
+
+void denConnection::ConnectionClosed(){
+}
+
+void denConnection::MessageProgress(size_t){
+}
+
+void denConnection::MessageReceived(const denMessage::Ref &){
+}
+
+denState::Ref denConnection::LinkState(const denMessage::Ref &, bool){
+	return nullptr;
 }
 
 void denConnection::SetIdentifier(int identifier){
@@ -300,7 +304,7 @@ void denConnection::InvalidateState(denState &state){
 	StateLinks::iterator iter;
 	for(iter = pStateLinks.begin(); iter != pStateLinks.end(); ){
 		denStateLink * const link = iter->get();
-		if(&link->GetState() == &state){
+		if(link->GetState() == &state){
 			denState::StateLinks::iterator iter2(state.FindLink(link));
 			if(iter2 != state.GetLinks().end()){
 				state.GetLinks().erase(iter2);
@@ -327,9 +331,7 @@ const denSocketAddress &address, denProtocol::Protocols protocol){
 	pProtocol = protocol;
 	pParentServer = &server;
 	
-	if(pListener){
-		pListener->ConnectionEstablished(*this);
-	}
+	ConnectionEstablished();
 }
 
 void denConnection::ProcessDatagram(denMessageReader& reader){
@@ -384,33 +386,25 @@ void denConnection::ProcessConnectionAck(denMessageReader &reader){
 	case denProtocol::ConnectionAck::accepted:
 		pProtocol = (denProtocol::Protocols)reader.ReadUShort();
 		pConnectionState = ConnectionState::connected;
-		if(pListener){
-			pListener->Log(*this, denConnectionListener::LogSeverity::info, "Connection established");
-			pListener->ConnectionEstablished(*this);
+		if(pLogger){
+			pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection established");
 		}
+		ConnectionEstablished();
 		break;
 		
 	case denProtocol::ConnectionAck::rejected:
 	case denProtocol::ConnectionAck::noCommonProtocol:
 	default:
 		pConnectionState = ConnectionState::disconnected;
-		if(pListener){
-			pListener->Log(*this, denConnectionListener::LogSeverity::info, "Connection rejected");
-			pListener->ConnectionClosed(*this);
+		if(pLogger){
+			pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection rejected");
 		}
+		ConnectionClosed();
 	}
 }
 
 void denConnection::ProcessConnectionClose(denMessageReader&){
-	if(pConnectionState != ConnectionState::connected){
-		return;
-	}
-	
-	pDisconnect();
-	
-	if(pListener){
-		pListener->ConnectionClosed(*this);
-	}
+	pDisconnect(true);
 }
 
 void denConnection::ProcessMessage(denMessageReader &reader){
@@ -420,9 +414,7 @@ void denConnection::ProcessMessage(denMessageReader &reader){
 	message->Item().SetLength(reader.GetLength() - reader.GetPosition());
 	reader.Read(message->Item());
 	
-	if(pListener){
-		pListener->MessageReceived(*this, message);
-	}
+	MessageReceived(message);
 }
 
 void denConnection::ProcessReliableMessage(denMessageReader &reader){
@@ -587,38 +579,87 @@ void denConnection::ProcessLinkUpdate(denMessageReader &reader){
 			throw std::invalid_argument("invalid link identifier");
 		}
 		
-		(*iterLink)->GetState().LinkReadValues(reader, *iterLink->get());
+		denState * const state = (*iterLink)->GetState();
+		if(!state){
+			throw std::invalid_argument("state link droppped");
+		}
+		
+		state->LinkReadValues(reader, *iterLink->get());
 	}
 }
 
 
 
-void denConnection::pDisconnect(){
+void denConnection::pDisconnect(bool notify){
+	if(!pSocket || pConnectionState == ConnectionState::disconnected){
+		return;
+	}
+	
+	if(pConnectionState == ConnectionState::connected){
+		if(pLogger){
+			pLogger->Log(denLogger::LogSeverity::info, "Connection: Disconnecting");
+		}
+		
+		const denMessage::Ref connectionClose(denMessage::Pool().Get());
+		{
+		denMessageWriter writer(connectionClose->Item());
+		writer.WriteByte((uint8_t)denProtocol::CommandCodes::connectionClose);
+		}
+		pSocket->SendDatagram(connectionClose->Item(), pRealRemoteAddress);
+	}
+	
+	pClearStates();
+	pCloseSocket();
+	
+	if(pLogger){
+		pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection closed");
+	}
+	
+	if(notify){
+		ConnectionClosed();
+	}
+	
+	pRemoveConnectionFromParentServer();
+}
+
+void denConnection::pClearStates(){
 	pModifiedStateLinks.clear();
 	
 	StateLinks::const_iterator iterLink;
 	for(iterLink = pStateLinks.cbegin(); iterLink != pStateLinks.cend(); iterLink++){
-		(*iterLink)->GetState().GetLinks().remove_if([&](const denStateLink::Ref &each){
-			return each == *iterLink;
-		});
+		denState * const state = (*iterLink)->GetState();
+		if(state){
+			state->GetLinks().remove_if([&](const denStateLink::Ref &each){
+				return each == *iterLink;
+			});
+		}
 	}
 	pStateLinks.clear();
 	
 	pReliableMessagesRecv.clear();
 	pReliableMessagesSend.clear();
-	
+}
+
+void denConnection::pCloseSocket(){
 	pConnectionState = ConnectionState::disconnected;
 	pSocket.reset();
+}
+
+void denConnection::pRemoveConnectionFromParentServer(){
+	if(!pParentServer){
+		return;
+	}
 	
-	if(pParentServer){
-		denServer::Connections::iterator iter(std::find_if(pParentServer->pConnections.begin(),
-			pParentServer->pConnections.end(), [&](const denConnection::Ref &each){
-				return each.get() == this;
-			}));
-		if(iter != pParentServer->pConnections.end()){
-			pParentServer->pConnections.erase(iter);
-		}
-		pParentServer = nullptr;
+	denServer::Connections &connections = pParentServer->pConnections;
+	pParentServer = nullptr;
+	// below this point has to be save against this-pointer being potentially deleted
+	
+	denServer::Connections::iterator iter(std::find_if(connections.begin(),
+		connections.end(), [&](const denConnection::Ref &each){
+			return each.get() == this;
+		}));
+	if(iter != connections.end()){
+		connections.erase(iter);
 	}
 }
 
@@ -653,7 +694,12 @@ void denConnection::pUpdateStates(){
 		}
 		
 		writer.WriteUShort((uint16_t)((*iter)->GetIdentifier()));
-		(*iter)->GetState().LinkWriteValues(writer, **iter);
+		denState * const state = (*iter)->GetState();
+		if(!state){
+			throw std::invalid_argument("state link droppped");
+		}
+		
+		state->LinkWriteValues(writer, **iter);
 		
 		pModifiedStateLinks.erase(ModifiedStateLinks::iterator(iter++));
 		linkCount--;
@@ -721,14 +767,11 @@ void denConnection::pProcessQueuedMessages(){
 }
 
 void denConnection::pProcessReliableMessage(denMessageReader &reader){
-	if(!pListener){
-		return;
-	}
-	
 	denMessage::Ref message(denMessage::Pool().Get());
 	message->Item().SetLength(reader.GetLength() - reader.GetPosition());
 	reader.Read(message->Item());
-	pListener->MessageReceived(*this, message);
+	
+	MessageReceived(message);
 }
 
 void denConnection::pProcessLinkState(denMessageReader &reader){
@@ -749,10 +792,7 @@ void denConnection::pProcessLinkState(denMessageReader &reader){
 	message->Item().SetLength(reader.ReadUShort());
 	reader.Read(message->Item());
 	
-	denState::Ref state;
-	if(pListener){
-		state = pListener->LinkState(*this, message, readOnly);
-	}
+	denState::Ref state(LinkState(message, readOnly));
 	
 	denProtocol::CommandCodes code = denProtocol::CommandCodes::linkDown;
 	if(state){
@@ -764,7 +804,7 @@ void denConnection::pProcessLinkState(denMessageReader &reader){
 			throw std::invalid_argument("Link state does not match the state provided.");
 		}
 		
-		denStateLink::Ref link(std::make_shared<denStateLink>(*this, *state));
+		const denStateLink::Ref link(std::make_shared<denStateLink>(*this, state.get()));
 		link->SetIdentifier(identifier);
 		pStateLinks.push_back(link);
 		state->GetLinks().push_back(link);

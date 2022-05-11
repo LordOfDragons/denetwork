@@ -30,7 +30,7 @@
 #include <string>
 #include <list>
 #include "config.h"
-#include "denConnectionListener.h"
+#include "denLogger.h"
 #include "denProtocolEnums.h"
 #include "denRealMessage.h"
 #include "message/denMessage.h"
@@ -88,8 +88,8 @@ public:
 	/** \brief Connection to a remote host is established. */
 	bool GetConnected() const;
 	
-	/** \brief Set connection listener or nullptr to clear. */
-	void SetListener(const denConnectionListener::Ref &listener);
+	/** \brief Set logger or nullptr to clear. */
+	void SetLogger(const denLogger::Ref &logger);
 	
 	/** \brief Connect to connection object on host at address. */
 	void ConnectTo(const std::string &address);
@@ -148,6 +148,27 @@ public:
 	 */
 	virtual denSocketAddress ResolveAddress(const std::string &address);
 	
+	/** \brief Connection established. */
+	virtual void ConnectionEstablished();
+	
+	/** \brief Connection closed. */
+	virtual void ConnectionClosed();
+	
+	/** \brief Long message is in progress of receiving. */
+	virtual void MessageProgress(size_t bytesReceived);
+	
+	/**
+	 * \brief Message received.
+	 * \param[in] message Received message. Reference can be stored for later use.
+	 */
+	virtual void MessageReceived(const denMessage::Ref &message);
+	
+	/**
+	 * \brief Host send state to link.
+	 * \returns State link or nullptr to reject.
+	 */
+	virtual denState::Ref LinkState(const denMessage::Ref &message, bool readOnly);
+	
 	
 	
 	/** \warning Internal use. Do not call directly. */
@@ -193,9 +214,12 @@ private:
 	int pReliableNumberRecv;
 	int pReliableWindowSize;
 	
-	denConnectionListener::Ref pListener;
+	denLogger::Ref pLogger;
 	
-	void pDisconnect();
+	void pDisconnect(bool notify);
+	void pClearStates();
+	void pCloseSocket();
+	void pRemoveConnectionFromParentServer();
 	void pUpdateStates();
 	void pUpdateTimeouts(float elapsedTime);
 	void pProcessQueuedMessages();

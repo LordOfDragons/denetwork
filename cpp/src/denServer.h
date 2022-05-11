@@ -29,7 +29,7 @@
 #include <string>
 #include "config.h"
 #include "denConnection.h"
-#include "denServerListener.h"
+#include "denLogger.h"
 #include "socket/denSocket.h"
 
 class denMessageReader;
@@ -69,6 +69,9 @@ public:
 	/** \brief Stop listening. */
 	void StopListening();
 	
+	/** \brier Connections. */
+	inline const Connections &GetConnections() const{ return pConnections; }
+	
 	/**
 	 * \brief Update server.
 	 * 
@@ -101,8 +104,11 @@ public:
 	/** \brief Find public addresses. */
 	virtual std::vector<std::string> FindPublicAddresses();
 	
-	/** \brief Set listener or nullptr to clear. */
-	void SetListener(const denServerListener::Ref &listener);
+	/** \brief Set logger or nullptr to clear. */
+	void SetLogger(const denLogger::Ref &logger);
+	
+	/** \brief Client connected. */
+	virtual void ClientConnected(const denConnection::Ref &connection);
 	
 private:
 	friend denConnection;
@@ -120,5 +126,5 @@ private:
 	
 	Connections pConnections;
 	
-	denServerListener::Ref pListener;
+	denLogger::Ref pLogger;
 };
