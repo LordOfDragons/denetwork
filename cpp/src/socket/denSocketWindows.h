@@ -42,7 +42,7 @@ public:
 	denSocketWindows();
 	
 	/** \brief Clean up socket. */
-	virtual ~denSocketWindows();
+	virtual ~denSocketWindows() noexcept;
 	
 	/** \brief Bind socket to stored address. */
 	virtual void Bind();

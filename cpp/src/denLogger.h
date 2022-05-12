@@ -44,10 +44,10 @@ public:
 	typedef std::shared_ptr<denLogger> Ref;
 	
 	/** \brief Create logger. */
-	denLogger();
+	denLogger() = default;
 	
 	/** \brief Clean up logger. */
-	virtual ~denLogger();
+	virtual ~denLogger() noexcept = default;
 	
 	/** \brief Logging. */
 	virtual void Log(LogSeverity severity, const std::string &message);

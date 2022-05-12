@@ -22,24 +22,10 @@
  * SOFTWARE.
  */
 
-#include "denMessage.h"
+#include "message/denMessage.h"
+#include "denRealMessage.h"
 
-denMessage::denMessage() :
-pLength(0),
-pTimestamp(std::chrono::system_clock::now()){
-}
+// force explicit destruction order
 
-void denMessage::SetTimestamp(const Timestamp &timestamp){
-	pTimestamp = timestamp;
-}
-
-void denMessage::SetData(const std::string &data){
-	pData = data;
-}
-
-void denMessage::SetLength(size_t length){
-	pLength = length;
-	if(pData.size() < length){
-		pData.assign(length, 0);
-	}
-}
+denPool<denMessage> denMessage::pPool;
+denPool<denRealMessage> denRealMessage::pPool;

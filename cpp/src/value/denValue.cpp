@@ -32,9 +32,6 @@ pState(nullptr),
 pIndex(0){
 }
 
-denValue::~denValue(){
-}
-
 void denValue::pValueChanged(){
 	if(pState){
 		pState->ValueChanged(*this);

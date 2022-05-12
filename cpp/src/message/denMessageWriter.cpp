@@ -32,7 +32,7 @@ pMessage(message),
 pStream(message.GetData()){
 }
 
-denMessageWriter::~denMessageWriter(){
+denMessageWriter::~denMessageWriter() noexcept{
 	pMessage.SetData(pStream.str());
 	pMessage.SetLength(pStream.tellp());
 }

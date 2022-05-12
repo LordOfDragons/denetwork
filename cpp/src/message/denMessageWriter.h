@@ -38,7 +38,7 @@
 class denMessageWriter{
 public:
 	denMessageWriter(denMessage &message);
-	~denMessageWriter();
+	~denMessageWriter() noexcept;
 	
 	denMessageWriter &WriteChar(int8_t value);
 	denMessageWriter &WriteByte(uint8_t value);

@@ -42,7 +42,7 @@ protected:
 	
 public:
 	/** \brief Clean up socket. */
-	virtual ~denSocket();
+	virtual ~denSocket() noexcept;
 	
 	/** \brief Get socket address. */
 	inline const denSocketAddress &GetAddress() const{ return pAddress; }

@@ -31,5 +31,3 @@ state(State::pending),
 type(denProtocol::CommandCodes::reliableMessage),
 secondsSinceSend(0.0f){
 }
-
-denPool<denRealMessage> denRealMessage::pPool;

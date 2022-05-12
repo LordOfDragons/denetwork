@@ -28,13 +28,13 @@
 #include "../denConnection.h"
 
 
-denStateLink::denStateLink(denConnection &connection, const std::shared_ptr<denState> &state) :
+denStateLink::denStateLink(denConnection &connection, denState &state) :
 pConnection(connection),
-pState(state),
+pState(&state),
 pIdentifier(-1),
 pLinkState(State::down),
 pChanged(false),
-pValueChanged(state->GetValues().size(), false){
+pValueChanged(state.GetValues().size(), false){
 }
 
 void denStateLink::SetIdentifier(int identifier){

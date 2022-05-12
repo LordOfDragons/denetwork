@@ -27,7 +27,7 @@
 denSocket::denSocket(){
 }
 
-denSocket::~denSocket(){
+denSocket::~denSocket() noexcept{
 }
 
 void denSocket::SetAddress(const denSocketAddress &address){

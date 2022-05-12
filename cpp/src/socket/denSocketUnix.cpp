@@ -54,7 +54,7 @@ pSocket(-1)
 	}
 }
 
-denSocketUnix::~denSocketUnix(){
+denSocketUnix::~denSocketUnix() noexcept{
 	if(pSocket != -1){
 		close(pSocket);
 	}

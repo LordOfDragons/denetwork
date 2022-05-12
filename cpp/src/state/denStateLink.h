@@ -50,10 +50,10 @@ public:
 	};
 	
 	/** \brief Create state link. */
-	denStateLink(denConnection &connection, const std::shared_ptr<denState> &state);
+	denStateLink(denConnection &connection, denState &state);
 	
 	/** \brief State or null if dropped. */
-	inline const std::weak_ptr<denState> &GetState() const{ return pState; }
+	inline denState *GetState() const{ return pState; }
 	
 	/** \brief Unique identifier. */
 	inline int GetIdentifier() const{ return pIdentifier; }
@@ -89,8 +89,11 @@ public:
 	void ResetChanged();
 	
 private:
+	friend class denState;
+	friend class denConnection;
+	
 	denConnection &pConnection;
-	const std::weak_ptr<denState> pState;
+	denState *pState;
 	
 	int pIdentifier;
 	State pLinkState;

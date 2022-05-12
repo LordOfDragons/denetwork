@@ -40,7 +40,7 @@ public:
 	denPoolItem(denPool<T> &pool, const std::shared_ptr<T> &item) : pPool(pool), pRealItem(item){
 	}
 	
-	~denPoolItem(){
+	~denPoolItem() noexcept{
 		pPool.Return(pRealItem);
 	}
 	

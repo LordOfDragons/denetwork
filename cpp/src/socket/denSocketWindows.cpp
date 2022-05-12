@@ -51,7 +51,7 @@ pSocket(-1)
 	}
 }
 
-denSocketWindows::~denSocketWindows(){
+denSocketWindows::~denSocketWindows() noexcept{
 	if(pSocket != -1){
 		close(pSocket);
 	}

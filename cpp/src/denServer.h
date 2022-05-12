@@ -49,7 +49,7 @@ public:
 	denServer();
 	
 	/** \brief Clean up server. */
-	virtual ~denServer();
+	virtual ~denServer() noexcept;
 	
 	/** \brief Address. */
 	inline const std::string &GetAddress() const{ return pAddress; }

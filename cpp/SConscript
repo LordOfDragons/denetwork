@@ -80,6 +80,7 @@ configGroup = 'DENetworkCPP'
 env.configReport.add('Treat warnings as errors (dev-builds)', 'with_warnerrors', configGroup)
 env.configReport.add('Build with debug symbols for GDB usage', 'with_debug', configGroup)
 env.configReport.add('Enable run-time optimizations', 'with_optimizations', configGroup)
+env.configReport.add('Enable sanitizer', 'with_sanitize', configGroup)
 
 # build scripts
 from config_file_writer import writeConfigFile

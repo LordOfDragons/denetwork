@@ -37,7 +37,7 @@ denServer::denServer() :
 pListening(false){
 }
 
-denServer::~denServer(){
+denServer::~denServer() noexcept{
 	StopListening();
 }
 

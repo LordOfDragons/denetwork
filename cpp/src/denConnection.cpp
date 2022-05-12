@@ -43,7 +43,7 @@ pReliableWindowSize(10),
 pParentServer(nullptr){
 }
 
-denConnection::~denConnection(){
+denConnection::~denConnection() noexcept{
 	pParentServer = nullptr; // required to avoid potential segfault in denServer
 	pDisconnect(false);
 }
@@ -168,7 +168,7 @@ void denConnection::LinkState(const denMessage::Ref &message, const denState::Re
 	// check if a link exists with this state already that is not broken
 	StateLinks::const_iterator iterLink(std::find_if(pStateLinks.cbegin(),
 	pStateLinks.cend(), [&](const denStateLink::Ref &each){
-		return state == each->GetState();
+		return state.get() == each->GetState();
 	}));
 	
 	if(iterLink != pStateLinks.cend() && (*iterLink)->GetLinkState() != denStateLink::State::down){
@@ -188,7 +188,7 @@ void denConnection::LinkState(const denMessage::Ref &message, const denState::Re
 			}
 		}
 		
-		const denStateLink::Ref link(std::make_shared<denStateLink>(*this, state));
+		const denStateLink::Ref link(std::make_shared<denStateLink>(*this, *state));
 		link->SetIdentifier(pNextLinkIdentifier);
 		pStateLinks.push_back(link);
 		iterLink = std::prev(pStateLinks.cend());
@@ -300,9 +300,10 @@ void denConnection::InvalidateState(const denState::Ref &state){
 	StateLinks::iterator iter;
 	for(iter = pStateLinks.begin(); iter != pStateLinks.end(); ){
 		denStateLink * const link = iter->get();
-		if(state == link->GetState()){
+		if(state.get() == link->GetState()){
 			denState::StateLinks::iterator iter2(state->FindLink(link));
 			if(iter2 != state->pLinks.end()){
+				(*iter2)->pState = nullptr;
 				state->pLinks.erase(iter2);
 			}
 			
@@ -575,7 +576,7 @@ void denConnection::ProcessLinkUpdate(denMessageReader &reader){
 			throw std::invalid_argument("invalid link identifier");
 		}
 		
-		const denState::Ref state((*iterLink)->GetState().lock());
+		denState * const state = (*iterLink)->GetState();
 		if(!state){
 			throw std::invalid_argument("state link droppped");
 		}
@@ -627,10 +628,14 @@ void denConnection::pClearStates(){
 	
 	StateLinks::const_iterator iterLink;
 	for(iterLink = pStateLinks.cbegin(); iterLink != pStateLinks.cend(); iterLink++){
-		const denState::Ref state((*iterLink)->GetState().lock());
+		denState * const state = (*iterLink)->GetState();
 		if(state){
 			state->pLinks.remove_if([&](const denStateLink::Ref &each){
-				return each == *iterLink;
+				if(each == *iterLink){
+					each->pState = nullptr;
+					return true;
+				}
+				return false;
 			});
 		}
 	}
@@ -691,7 +696,7 @@ void denConnection::pUpdateStates(){
 		}
 		
 		writer.WriteUShort((uint16_t)((*iter)->GetIdentifier()));
-		const denState::Ref state((*iter)->GetState().lock());
+		denState * const state = (*iter)->GetState();
 		if(!state){
 			throw std::invalid_argument("state link droppped");
 		}
@@ -801,7 +806,7 @@ void denConnection::pProcessLinkState(denMessageReader &reader){
 			throw std::invalid_argument("Link state does not match the state provided.");
 		}
 		
-		const denStateLink::Ref link(std::make_shared<denStateLink>(*this, state));
+		const denStateLink::Ref link(std::make_shared<denStateLink>(*this, *state));
 		link->SetIdentifier(identifier);
 		pStateLinks.push_back(link);
 		state->pLinks.push_back(link);

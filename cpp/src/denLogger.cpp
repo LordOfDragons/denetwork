@@ -25,11 +25,5 @@
 #include "denLogger.h"
 
 
-denLogger::denLogger(){
-}
-
-denLogger::~denLogger(){
-}
-
 void denLogger::Log(LogSeverity, const std::string&){
 }

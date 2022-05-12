@@ -43,9 +43,6 @@ public:
 	/** \brief Shared pointer. */
 	typedef std::shared_ptr<denState> Ref;
 	
-	/** \brief Shared pointer. */
-	typedef std::weak_ptr<denState> Weak;
-	
 	/** \brief Value list. */
 	typedef std::vector<denValue::Ref> Values;
 	
@@ -56,7 +53,7 @@ public:
 	denState(bool readOnly);
 	
 	/** \brief Free state. */
-	virtual ~denState() = default;
+	virtual ~denState() noexcept;
 	
 	/** \brief Values. */
 	inline const Values &GetValues() const{ return pValues; }
@@ -137,12 +134,3 @@ private:
 	
 	void ValueChanged(denValue &value);
 };
-
-/** \brief Equality of shared and weak reference. */
-inline bool operator==(const denState::Ref &shared, const denState::Weak &weak){
-	return !shared.owner_before(weak) && !weak.owner_before(shared);
-}
-
-inline bool operator==(const denState::Weak &weak, const denState::Ref &shared){
-	return !weak.owner_before(shared) && !shared.owner_before(weak);
-}

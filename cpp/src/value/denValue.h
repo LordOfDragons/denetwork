@@ -57,7 +57,7 @@ public:
 	denValue(Type type);
 	
 	/** \brief Clean up value. */
-	virtual ~denValue();
+	virtual ~denValue() noexcept = default;
 	
 	/** \brief Type. */
 	inline Type GetType() const{ return pType; }

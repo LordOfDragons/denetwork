@@ -47,7 +47,7 @@ public:
 	denSocketUnix();
 	
 	/** \brief Clean up socket. */
-	virtual ~denSocketUnix();
+	virtual ~denSocketUnix() noexcept;
 	
 	/** \brief Bind socket to stored address. */
 	virtual void Bind();

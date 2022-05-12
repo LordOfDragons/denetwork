@@ -32,6 +32,13 @@ denState::denState(bool readOnly) :
 pReadOnly(readOnly){
 }
 
+denState::~denState() noexcept{
+	StateLinks::const_iterator iter;
+	for(iter = pLinks.cbegin(); iter != pLinks.cend(); iter++){
+		(*iter)->pState = nullptr;
+	}
+}
+
 denState::StateLinks::iterator denState::FindLink(denStateLink *link){
 	return std::find_if(pLinks.begin(), pLinks.end(), [&](const denStateLink::Ref &each){
 		return each.get() == link;

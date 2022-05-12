@@ -158,7 +158,7 @@ bool kbhit(int timeoutms = 0){
 static std::list<std::string> logbuffer;
 
 void addLog(const std::string &message){
-	while(logbuffer.size() > 10) logbuffer.pop_back();
+	while(logbuffer.size() > 9) logbuffer.pop_back();
 	logbuffer.push_front(message);
 }
 
@@ -543,7 +543,7 @@ public:
 		s << "Logs:" << std::string(size.x - 5, ' ') << std::endl;
 		resetColors(s);
 		std::list<std::string>::const_iterator iterLog;
-		for(iterLog = logbuffer.begin(); iterLog != logbuffer.end(); iterLog++){
+		for(iterLog = logbuffer.cbegin(); iterLog != logbuffer.cend(); iterLog++){
 			s << *iterLog << std::string(size.x - iterLog->length(), ' ') << std::endl;
 		}
 		
