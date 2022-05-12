@@ -360,7 +360,7 @@ public:
 	}
 	
 	void linkClient(denConnection &connection){
-		ExampleConnection &excon = dynamic_cast<ExampleConnection&>(connection);
+		ExampleConnection &excon = static_cast<ExampleConnection&>(connection);
 		
 		// link server state. read-only on client side
 		denMessage::Ref lm(denMessage::Pool().Get());
@@ -377,7 +377,7 @@ public:
 				connection.LinkState(lm, excon.state, false);
 				
 			}else{
-				ExampleConnection &othercon = dynamic_cast<ExampleConnection&>(**iter);
+				ExampleConnection &othercon = static_cast<ExampleConnection&>(**iter);
 				
 				// all other client states are read-only to the connecting client
 				lm = denMessage::Pool().Get();
@@ -485,13 +485,13 @@ public:
 		screenTopLeft(s);
 		
 		if(server){
-			const ExampleServer &exsrv = dynamic_cast<ExampleServer&>(*server);
+			const ExampleServer &exsrv = static_cast<ExampleServer&>(*server);
 			printString(s, size.x, "Server Time", exsrv.getTime(), Color::red);
 			printBar(s, size.x, "Server Bar", exsrv.getBar(), Color::red);
 			
 			denServer::Connections::const_iterator iterCon;
 			for(iterCon = server->GetConnections().cbegin(); iterCon != server->GetConnections().cend(); iterCon++){
-				ExampleConnection &excon = dynamic_cast<ExampleConnection&>(**iterCon);
+				ExampleConnection &excon = static_cast<ExampleConnection&>(**iterCon);
 				if(excon.ready()){
 					std::stringstream s2;
 					s2 << "Client#" << excon.id << " Bar";
@@ -501,7 +501,7 @@ public:
 		}
 		
 		if(connection){
-			ExampleConnection &excon = dynamic_cast<ExampleConnection&>(*connection);
+			ExampleConnection &excon = static_cast<ExampleConnection&>(*connection);
 			printBar(s, size.x, "Client Bar", excon.getBar(), Color::red);
 			
 			if(excon.hasServerState()){
@@ -511,7 +511,7 @@ public:
 			
 			std::list<denState::Ref>::const_iterator iter;
 			for(iter = excon.otherClientStates.cbegin(); iter != excon.otherClientStates.cend(); iter++){
-				ExampleConnection::OtherClientState &otsta = dynamic_cast<ExampleConnection::OtherClientState&>(**iter);
+				ExampleConnection::OtherClientState &otsta = static_cast<ExampleConnection::OtherClientState&>(**iter);
 				std::stringstream s2;
 				s2 << "Client#" << otsta.id << " Bar";
 				printBar(s, size.x, s2.str(), otsta.valueBar->GetValue(), Color::cyan);
@@ -554,13 +554,13 @@ public:
 				break;
 				
 			case 'C': // right arrow
-				if(server) dynamic_cast<ExampleServer&>(*server).incrementBar(1);
-				if(connection) dynamic_cast<ExampleConnection&>(*connection).incrementBar(1);
+				if(server) static_cast<ExampleServer&>(*server).incrementBar(1);
+				if(connection) static_cast<ExampleConnection&>(*connection).incrementBar(1);
 				break;
 				
 			case 'D': // left arrow
-				if(server) dynamic_cast<ExampleServer&>(*server).incrementBar(-1);
-				if(connection) dynamic_cast<ExampleConnection&>(*connection).incrementBar(-1);
+				if(server) static_cast<ExampleServer&>(*server).incrementBar(-1);
+				if(connection) static_cast<ExampleConnection&>(*connection).incrementBar(-1);
 				break;
 			}
 		}
@@ -568,7 +568,7 @@ public:
 	
 	void updateServer(float elapsed){
 		if(!server) return;
-		dynamic_cast<ExampleServer&>(*server).updateTime();
+		static_cast<ExampleServer&>(*server).updateTime();
 		server->Update(elapsed);
 	}
 	
