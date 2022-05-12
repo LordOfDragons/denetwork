@@ -33,6 +33,11 @@ denValue(Type::string)
 	pDataType = denProtocol::ValueTypes::string;
 }
 
+void denValueString::SetValue(const std::string &value){
+	pValue = value;
+	pValueChanged();
+}
+
 void denValueString::Read(denMessageReader &reader){
 	pValue = pLastValue = reader.ReadString16();
 }

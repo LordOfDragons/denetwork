@@ -28,7 +28,7 @@
 #include "../denConnection.h"
 
 
-denStateLink::denStateLink(denConnection &connection, denState *state) :
+denStateLink::denStateLink(denConnection &connection, const std::shared_ptr<denState> &state) :
 pConnection(connection),
 pState(state),
 pIdentifier(-1),
@@ -57,11 +57,11 @@ void denStateLink::SetChanged(bool changed){
 	}
 }
 
-bool denStateLink::GetValueChangedAt(int index) const{
+bool denStateLink::GetValueChangedAt(size_t index) const{
 	return pValueChanged[index];
 }
 
-void denStateLink::SetValueChangedAt(int index, bool changed){
+void denStateLink::SetValueChangedAt(size_t index, bool changed){
 	if(changed != pValueChanged[index]){
 		pValueChanged[index] = changed;
 		if(changed){

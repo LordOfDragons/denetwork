@@ -63,6 +63,7 @@ public:
 	/** \brief Set value. */
 	void SetValue(T value){
 		pValue = value;
+		pValueChanged();
 	}
 	
 	/** \brief Precision. */
@@ -73,6 +74,7 @@ public:
 	/** \brief Set precision. */
 	void SetPrecision(T precision){
 		pPrecision = std::max(precision, pMinPrecision);
+		pValueChanged();
 	}
 	
 	/**

@@ -44,14 +44,12 @@ public:
 	
 public:
 	/** \brief Value. */
-	const Data &GetValue() const{
+	inline const Data &GetValue() const{
 		return pValue;
 	}
 	
 	/** \brief Set value. */
-	void SetValue(const Data &value){
-		pValue = value;
-	}
+	void SetValue(const Data &value);
 	
 	/** \brief Read value from message. */
 	void Read(denMessageReader &reader) override;

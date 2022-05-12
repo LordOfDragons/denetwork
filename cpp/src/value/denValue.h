@@ -30,6 +30,7 @@
 
 class denMessageReader;
 class denMessageWriter;
+class denState;
 
 /**
  * \brief Network state value.
@@ -80,4 +81,10 @@ public:
 protected:
 	const Type pType;
 	denProtocol::ValueTypes pDataType;
+	
+	void pValueChanged();
+	
+	friend denState;
+	denState *pState;
+	size_t pIndex;
 };

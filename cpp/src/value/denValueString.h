@@ -40,14 +40,12 @@ public:
 	
 public:
 	/** \brief Value. */
-	const std::string &GetValue() const{
+	inline const std::string &GetValue() const{
 		return pValue;
 	}
 	
 	/** \brief Set value. */
-	void SetValue(const std::string &value){
-		pValue = value;
-	}
+	void SetValue(const std::string &value);
 	
 	/** \brief Read value from message. */
 	void Read(denMessageReader &reader) override;

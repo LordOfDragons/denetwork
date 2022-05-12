@@ -29,19 +29,7 @@
 #include "../message/denMessageWriter.h"
 
 denState::denState(bool readOnly) :
-pUserData(nullptr),
 pReadOnly(readOnly){
-}
-
-denState::~denState(){
-	StateLinks::const_iterator iter;
-	for(iter = pLinks.cbegin(); iter != pLinks.cend(); iter++){
-		(*iter)->pState = nullptr;
-	}
-}
-
-void denState::SetUserData(void *userData){
-	pUserData = userData;
 }
 
 denState::StateLinks::iterator denState::FindLink(denStateLink *link){
@@ -56,16 +44,42 @@ denState::StateLinks::const_iterator denState::FindLink(denStateLink *link) cons
 	});
 }
 
-void denState::SetListener(const denStateListener::Ref &listener){
-	pListener = listener;
+void denState::AddValue(const denValue::Ref &value){
+	if(!value){
+		throw std::invalid_argument("value is nullptr");
+	}
+	
+	pValues.push_back(value);
+	
+	value->pState = this;
+	value->pIndex = pValues.size() - 1;
+}
+
+void denState::RemoveValue(const denValue::Ref &value){
+	Values::iterator iter(std::find(pValues.begin(), pValues.end(), value));
+	if(iter == pValues.end()){
+		throw std::invalid_argument("value absent");
+	}
+	
+	(*iter)->pState = nullptr;
+	pValues.erase(iter);
+	
+	size_t index = 0;
+	for(iter = pValues.begin(); iter != pValues.end(); iter++){
+		(*iter)->pIndex = index++;
+	}
+}
+
+void denState::SetLogger(const denLogger::Ref &logger){
+	pLogger = logger;
 }
 
 void denState::Update(){
 }
 
 void denState::LinkReadValues(denMessageReader &reader, denStateLink &link){
-	const int count = reader.ReadByte();
-	int i;
+	const size_t count = (size_t)reader.ReadByte();
+	size_t i;
 	
 	for(i=0; i<count; i++){
 		const int index = reader.ReadUShort();
@@ -74,27 +88,23 @@ void denState::LinkReadValues(denMessageReader &reader, denStateLink &link){
 		}
 		
 		pValues[index]->Read(reader);
-		InvalidateValueExcept(index, link);
+		InvalidateValueAtExcept(index, link);
 		
-		if(pListener){
-			pListener->ValueChanged(*this, index);
-		}
+		ValueChanged(*pValues[index]);
 	}
 	
 	link.SetChanged(link.HasChangedValues());
 }
 
 void denState::LinkReadAllValues(denMessageReader &reader, denStateLink &link){
-	const int count = (int)pValues.size();
-	int i;
+	const size_t count = (size_t)pValues.size();
+	size_t i;
 	
 	for(i=0; i<count; i++){
 		pValues[ i ]->Read(reader);
-		InvalidateValue(i);
+		InvalidateValueAt(i);
 		
-		if(pListener){
-			pListener->ValueChanged(*this, i);
-		}
+		ValueChanged(*pValues[ i ]);
 	}
 	
 	if(!link.HasChangedValues()){
@@ -103,12 +113,12 @@ void denState::LinkReadAllValues(denMessageReader &reader, denStateLink &link){
 }
 
 bool denState::LinkReadAndVerifyAllValues(denMessageReader &reader){
-	const int count = (int)pValues.size();
-	if(count != reader.ReadUShort()){
+	const size_t count = (size_t)pValues.size();
+	if(count != (size_t)reader.ReadUShort()){
 		throw std::invalid_argument("count out of range");
 	}
 	
-	int i;
+	size_t i;
 	for(i=0; i<count; i++){
 		const denProtocol::ValueTypes type = (denProtocol::ValueTypes)reader.ReadByte();
 		if(type != pValues[i]->GetDataType()){
@@ -116,11 +126,9 @@ bool denState::LinkReadAndVerifyAllValues(denMessageReader &reader){
 		}
 		
 		pValues[i]->Read(reader);
-		InvalidateValue(i);
+		InvalidateValueAt(i);
 		
-		if(pListener){
-			pListener->ValueChanged(*this, i);
-		}
+		ValueChanged(*pValues[i]);
 	}
 	
 	return i == count;
@@ -173,16 +181,22 @@ void denState::LinkWriteValues(denMessageWriter &writer, denStateLink &link){
 	link.SetChanged(link.HasChangedValues());
 }
 
-void denState::InvalidateValue(int index){
+void denState::InvalidateValueAt(size_t index){
 	StateLinks::const_iterator iter;
 	for(iter = pLinks.cbegin(); iter != pLinks.cend(); iter++){
 		(*iter)->SetValueChangedAt(index, true);
 	}
 }
 
-void denState::InvalidateValueExcept(int index, denStateLink &link){
+void denState::InvalidateValueAtExcept(size_t index, denStateLink &link){
 	StateLinks::const_iterator iter;
 	for(iter = pLinks.cbegin(); iter != pLinks.cend(); iter++){
 		(*iter)->SetValueChangedAt(index, iter->get() != &link);
+	}
+}
+
+void denState::ValueChanged(denValue &value){
+	if(value.UpdateValue(false)){
+		InvalidateValueAt(value.pIndex);
 	}
 }

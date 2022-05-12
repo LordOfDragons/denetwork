@@ -179,12 +179,30 @@ public:
 		}
 		return "";
 	}
+	
+	static const std::shared_ptr<ExampleLogger> logger;
 };
+const std::shared_ptr<ExampleLogger> ExampleLogger::logger = std::make_shared<ExampleLogger>();
 
 class ExampleConnection : public denConnection{
 	static int nextid;
 	
 public:
+	class OtherClientState : public denState{
+	public:
+		const int id;
+		const denValueInt::Ref valueBar;
+		
+		OtherClientState(int id) :
+		denState(true),
+		id(id),
+		valueBar(std::make_shared<denValueInt>(denValueIntegerFormat::sint16))
+		{
+			SetLogger(ExampleLogger::logger);
+			AddValue(valueBar);
+		}
+	};
+	
 	const bool remote;
 	int id;
 	denState::Ref state;
@@ -194,17 +212,18 @@ public:
 	denValueString::Ref serverValueTime;
 	denValueInt::Ref serverValueBar;
 	
+	std::list<denState::Ref> otherClientStates;
+	
 	ExampleConnection(bool remote) :
 	remote(remote),
 	id(nextid++)
 	{
-		SetLogger(std::make_shared<ExampleLogger>());
-		if(!remote){
-			state = std::make_shared<denState>(false);
-			valueBar = std::make_shared<denValueInt>(denValueIntegerFormat::sint16);
-			valueBar->SetValue(30);
-			state->GetValues().push_back(valueBar);
-		}
+		SetLogger(ExampleLogger::logger);
+		state = std::make_shared<denState>(remote);
+		state->SetLogger(ExampleLogger::logger);
+		valueBar = std::make_shared<denValueInt>(denValueIntegerFormat::sint16);
+		valueBar->SetValue(30);
+		state->AddValue(valueBar);
 	}
 	
 	~ExampleConnection() override{
@@ -238,21 +257,39 @@ public:
 	void MessageReceived(const denMessage::Ref &message) override{
 	}
 	
-	denState::Ref LinkState(const denMessage::Ref &message, bool readOnly) override{
+	denState::Ref CreateState(const denMessage::Ref &message, bool readOnly) override{
 		denMessageReader reader(message->Item());
 		const int ident = reader.ReadUInt();
 		
 		std::stringstream s;
 		addLog(s.str());
 		
-		if(ident == 0x12345678){
+		switch(ident){
+		case 0x12340001:
+			// create local state for server state. read-only to us
 			serverState = std::make_shared<denState>(readOnly);
+			serverState->SetLogger(ExampleLogger::logger);
 			serverValueTime = std::make_shared<denValueString>();
 			serverValueBar = std::make_shared<denValueInt>(denValueIntegerFormat::sint16);
-			serverState->GetValues().push_back(serverValueTime);
-			serverState->GetValues().push_back(serverValueBar);
+			serverState->AddValue(serverValueTime);
+			serverState->AddValue(serverValueBar);
+			return serverState;
+			
+		case 0x12340002:
+			// use local state as client state. read-write to us
+			return state;
+			
+		case 0x12340003:{
+			// create other client state. read-only to us
+			const int id = reader.ReadUShort();
+			const denState::Ref otherState = std::make_shared<OtherClientState>(id);
+			otherClientStates.push_back(otherState);
+			return otherState;
+			}
+			
+		default:
+			return nullptr;
 		}
-		return serverState;
 	}
 	
 	inline bool hasServerState() const{
@@ -276,20 +313,21 @@ public:
 	denValueInt::Ref valueBar;
 	
 	ExampleServer(){
-		SetLogger(std::make_shared<ExampleLogger>());
+		SetLogger(ExampleLogger::logger);
 		state = std::make_shared<denState>(false);
+		state->SetLogger(ExampleLogger::logger);
 		valueTime = std::make_shared<denValueString>();
 		valueBar = std::make_shared<denValueInt>(denValueIntegerFormat::sint16);
 		valueBar->SetValue(30);
-		state->GetValues().push_back(valueTime);
-		state->GetValues().push_back(valueBar);
+		state->AddValue(valueTime);
+		state->AddValue(valueBar);
 	}
 	
 	denConnection::Ref CreateConnection() override{
 		return std::make_shared<ExampleConnection>(true);
 	}
 	
-	inline const std::string &getTime(){
+	inline const std::string &getTime() const{
 		return valueTime->GetValue();
 	}
 	
@@ -305,7 +343,7 @@ public:
 		setTime(s.str());
 	}
 	
-	inline int getBar(){
+	inline int getBar() const{
 		return valueBar->GetValue();
 	}
 	
@@ -322,12 +360,40 @@ public:
 	}
 	
 	void linkClient(denConnection &connection){
-		const denMessage::Ref lm(denMessage::Pool().Get());
-		{
-		denMessageWriter writer(lm->Item());
-		writer.WriteUInt(0x12345678);
-		}
+		ExampleConnection &excon = dynamic_cast<ExampleConnection&>(connection);
+		
+		// link server state. read-only on client side
+		denMessage::Ref lm(denMessage::Pool().Get());
+		denMessageWriter(lm->Item()).WriteUInt(0x12340001);
 		connection.LinkState(lm, state, true);
+		
+		// link all client states. this includes connecting client itself
+		Connections::const_iterator iter;
+		for(iter = GetConnections().cbegin(); iter != GetConnections().cend(); iter++){
+			if(iter->get() == &connection){
+				// connecting client gets read-write state of its own state
+				lm = denMessage::Pool().Get();
+				denMessageWriter(lm->Item()).WriteUInt(0x12340002);
+				connection.LinkState(lm, excon.state, false);
+				
+			}else{
+				ExampleConnection &othercon = dynamic_cast<ExampleConnection&>(**iter);
+				
+				// all other client states are read-only to the connecting client
+				lm = denMessage::Pool().Get();
+				denMessageWriter(lm->Item())
+					.WriteUInt(0x12340003)
+					.WriteUShort((uint16_t)othercon.id);
+				connection.LinkState(lm, othercon.state, true);
+				
+				// and the connecting client state is also read-only to the others
+				lm = denMessage::Pool().Get();
+				denMessageWriter(lm->Item())
+					.WriteUInt(0x12340003)
+					.WriteUShort((uint16_t)excon.id);
+				othercon.LinkState(lm, excon.state, true);
+			}
+		}
 	}
 };
 
@@ -419,26 +485,36 @@ public:
 		screenTopLeft(s);
 		
 		if(server){
-			printString(s, size.x, "Server Time", ((ExampleServer&)*server).getTime(), Color::red);
-			printBar(s, size.x, "Server Bar", ((ExampleServer&)*server).getBar(), Color::red);
+			const ExampleServer &exsrv = dynamic_cast<ExampleServer&>(*server);
+			printString(s, size.x, "Server Time", exsrv.getTime(), Color::red);
+			printBar(s, size.x, "Server Bar", exsrv.getBar(), Color::red);
 			
 			denServer::Connections::const_iterator iterCon;
 			for(iterCon = server->GetConnections().cbegin(); iterCon != server->GetConnections().cend(); iterCon++){
-				ExampleConnection &con = (ExampleConnection&)**iterCon;
-				if(con.ready()){
+				ExampleConnection &excon = dynamic_cast<ExampleConnection&>(**iterCon);
+				if(excon.ready()){
 					std::stringstream s2;
-					s2 << "Client#" << con.id << " Bar";
-					printBar(s, size.x, s2.str(), con.getBar(), Color::green);
+					s2 << "Client#" << excon.id << " Bar";
+					printBar(s, size.x, s2.str(), excon.getBar(), Color::green);
 				}
 			}
 		}
 		
 		if(connection){
-			printBar(s, size.x, "Client Bar", ((ExampleConnection&)*connection).getBar(), Color::red);
+			ExampleConnection &excon = dynamic_cast<ExampleConnection&>(*connection);
+			printBar(s, size.x, "Client Bar", excon.getBar(), Color::red);
 			
-			if(((ExampleConnection&)*connection).hasServerState()){
-				printString(s, size.x, "Server Time", ((ExampleConnection&)*connection).getServerTime(), Color::green);
-				printBar(s, size.x, "Server Bar", ((ExampleConnection&)*connection).getServerBar(), Color::green);
+			if(excon.hasServerState()){
+				printString(s, size.x, "Server Time", excon.getServerTime(), Color::green);
+				printBar(s, size.x, "Server Bar", excon.getServerBar(), Color::green);
+			}
+			
+			std::list<denState::Ref>::const_iterator iter;
+			for(iter = excon.otherClientStates.cbegin(); iter != excon.otherClientStates.cend(); iter++){
+				ExampleConnection::OtherClientState &otsta = dynamic_cast<ExampleConnection::OtherClientState&>(**iter);
+				std::stringstream s2;
+				s2 << "Client#" << otsta.id << " Bar";
+				printBar(s, size.x, s2.str(), otsta.valueBar->GetValue(), Color::cyan);
 			}
 		}
 		
@@ -478,13 +554,13 @@ public:
 				break;
 				
 			case 'C': // right arrow
-				if(server) ((ExampleServer&)*server).incrementBar(1);
-				if(connection) ((ExampleConnection&)*connection).incrementBar(1);
+				if(server) dynamic_cast<ExampleServer&>(*server).incrementBar(1);
+				if(connection) dynamic_cast<ExampleConnection&>(*connection).incrementBar(1);
 				break;
 				
 			case 'D': // left arrow
-				if(server) ((ExampleServer&)*server).incrementBar(-1);
-				if(connection) ((ExampleConnection&)*connection).incrementBar(-1);
+				if(server) dynamic_cast<ExampleServer&>(*server).incrementBar(-1);
+				if(connection) dynamic_cast<ExampleConnection&>(*connection).incrementBar(-1);
 				break;
 			}
 		}
@@ -492,7 +568,7 @@ public:
 	
 	void updateServer(float elapsed){
 		if(!server) return;
-		((ExampleServer&)*server).updateTime();
+		dynamic_cast<ExampleServer&>(*server).updateTime();
 		server->Update(elapsed);
 	}
 	
@@ -521,29 +597,29 @@ public:
 		
 		denValueInt::Ref test(std::make_shared<denValueInt>(denValueIntegerFormat::uint32));
 		test->SetValue(8);
-		state->GetValues().push_back(test);
+		state->AddValue(test);
 		
 		denValueFloat::Ref test2(std::make_shared<denValueFloat>(denValueFloatingFormat::float32));
 		test2->SetPrecision(0.01);
 		test2->SetValue(8);
-		state->GetValues().push_back(test2);
+		state->AddValue(test2);
 		
 		denValueVector3::Ref test3(std::make_shared<denValueVector3>(denValueFloatingFormat::float32));
 		test3->SetPrecision(denVector3(0.01));
 		test3->SetValue(denVector3(1, 2, 3));
-		state->GetValues().push_back(test3);
+		state->AddValue(test3);
 		
 		denValuePoint2::Ref test4(std::make_shared<denValuePoint2>(denValueIntegerFormat::sint32));
 		test4->SetValue(denPoint2(1, 2));
-		state->GetValues().push_back(test4);
+		state->AddValue(test4);
 		
 		denValueString::Ref test5(std::make_shared<denValueString>());
 		test5->SetValue("this is a test");
-		state->GetValues().push_back(test5);
+		state->AddValue(test5);
 		
 		denValueData::Ref test6(std::make_shared<denValueData>());
 		test6->SetValue(denValueData::Data{5, 2, 80, 45, 60, 30});
-		state->GetValues().push_back(test6);
+		state->AddValue(test6);
 		
 		{
 		denMessage::Ref message(denMessage::Pool().Get());

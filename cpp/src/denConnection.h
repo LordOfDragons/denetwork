@@ -79,14 +79,11 @@ public:
 	/** \brief Remote address. */
 	inline const std::string &GetRemoteAddress() const{ return pRemoteAddress; }
 	
-	/** \brief User data. */
-	inline void *GetUserData() const{ return pUserData; }
-	
-	/** \brief Set user data. */
-	void SetUserData(void *userData);
-	
 	/** \brief Connection to a remote host is established. */
 	bool GetConnected() const;
+	
+	/** \brief Logger or null. */
+	inline const denLogger::Ref &GetLogger() const{ return pLogger; }
 	
 	/** \brief Set logger or nullptr to clear. */
 	void SetLogger(const denLogger::Ref &logger);
@@ -165,9 +162,9 @@ public:
 	
 	/**
 	 * \brief Host send state to link.
-	 * \returns State link or nullptr to reject.
+	 * \returns State or nullptr to reject.
 	 */
-	virtual denState::Ref LinkState(const denMessage::Ref &message, bool readOnly);
+	virtual denState::Ref CreateState(const denMessage::Ref &message, bool readOnly);
 	
 	
 	
@@ -178,7 +175,7 @@ public:
 	inline denProtocol::Protocols GetProtocol() const{ return pProtocol; }
 	
 	void AddModifiedStateLink(denStateLink *link);
-	void InvalidateState(denState &state);
+	void InvalidateState(const denState::Ref &state);
 	bool Matches(denSocket *bnSocket, const denSocketAddress &address) const;
 	void AcceptConnection(denServer &server, const denSocket::Ref &bnSocket,
 		const denSocketAddress &address, denProtocol::Protocols protocol);
@@ -196,7 +193,6 @@ public:
 private:
 	std::string pLocalAddress;
 	std::string pRemoteAddress;
-	void *pUserData;
 	
 	denSocket::Ref pSocket;
 	denSocketAddress pRealRemoteAddress;

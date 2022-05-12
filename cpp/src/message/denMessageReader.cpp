@@ -115,7 +115,7 @@ double denMessageReader::ReadDouble(){
 std::string denMessageReader::ReadString8(){
 	std::string string;
 	const size_t len = ReadByte();
-	string.assign(' ', len);
+	string.assign(len, 0);
 	Read((char*)string.c_str(), len);
 	return string;
 }
@@ -123,7 +123,7 @@ std::string denMessageReader::ReadString8(){
 std::string denMessageReader::ReadString16(){
 	std::string string;
 	const size_t len = ReadUShort();
-	string.assign(' ', len);
+	string.assign(len, 0);
 	Read((char*)string.c_str(), len);
 	return string;
 }

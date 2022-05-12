@@ -23,11 +23,20 @@
  */
 
 #include "denValue.h"
+#include "../state/denState.h"
 
 denValue::denValue(Type type) :
 pType(type),
-pDataType(denProtocol::ValueTypes::data){
+pDataType(denProtocol::ValueTypes::data),
+pState(nullptr),
+pIndex(0){
 }
 
 denValue::~denValue(){
+}
+
+void denValue::pValueChanged(){
+	if(pState){
+		pState->ValueChanged(*this);
+	}
 }

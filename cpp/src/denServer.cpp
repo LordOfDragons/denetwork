@@ -34,16 +34,11 @@
 #include "socket/denSocketShared.h"
 
 denServer::denServer() :
-pUserData(nullptr),
 pListening(false){
 }
 
 denServer::~denServer(){
 	StopListening();
-}
-
-void denServer::SetUserData(void *userData){
-	pUserData = userData;
 }
 
 void denServer::ListenOn(const std::string &address){

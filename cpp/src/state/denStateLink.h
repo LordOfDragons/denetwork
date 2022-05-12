@@ -50,10 +50,10 @@ public:
 	};
 	
 	/** \brief Create state link. */
-	denStateLink(denConnection &connection, denState *state);
+	denStateLink(denConnection &connection, const std::shared_ptr<denState> &state);
 	
 	/** \brief State or null if dropped. */
-	inline denState *GetState() const{ return pState; }
+	inline const std::weak_ptr<denState> &GetState() const{ return pState; }
 	
 	/** \brief Unique identifier. */
 	inline int GetIdentifier() const{ return pIdentifier; }
@@ -77,10 +77,10 @@ public:
 	void SetChanged(bool changed);
 	
 	/** \brief Value changed. */
-	bool GetValueChangedAt(int index) const;
+	bool GetValueChangedAt(size_t index) const;
 	
 	/** \brief Set if value changed. */
-	void SetValueChangedAt(int index, bool changed);
+	void SetValueChangedAt(size_t index, bool changed);
 	
 	/** \brief One or more values are marked changed. */
 	bool HasChangedValues() const;
@@ -89,10 +89,8 @@ public:
 	void ResetChanged();
 	
 private:
-	friend denState;
-	
 	denConnection &pConnection;
-	denState *pState;
+	const std::weak_ptr<denState> pState;
 	
 	int pIdentifier;
 	State pLinkState;

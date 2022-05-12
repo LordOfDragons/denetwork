@@ -28,8 +28,8 @@
 #include <vector>
 #include <list>
 #include "denStateLink.h"
-#include "denStateListener.h"
 #include "../config.h"
+#include "../denLogger.h"
 #include "../value/denValue.h"
 
 class denMessageReader;
@@ -43,6 +43,9 @@ public:
 	/** \brief Shared pointer. */
 	typedef std::shared_ptr<denState> Ref;
 	
+	/** \brief Shared pointer. */
+	typedef std::weak_ptr<denState> Weak;
+	
 	/** \brief Value list. */
 	typedef std::vector<denValue::Ref> Values;
 	
@@ -52,32 +55,41 @@ public:
 	/** \brief Create state. */
 	denState(bool readOnly);
 	
-	/** \brief Clean up state. */
-	virtual ~denState();
-	
-	/** \brief User data. */
-	inline void *GetUserData() const{ return pUserData; }
-	
-	/** \brief Set user data. */
-	void SetUserData(void *userData);
+	/** \brief Free state. */
+	virtual ~denState() = default;
 	
 	/** \brief Values. */
-	inline Values &GetValues(){ return pValues; }
 	inline const Values &GetValues() const{ return pValues; }
 	
+	/** \brief Add value. */
+	void AddValue(const denValue::Ref &value);
+	
+	/** \brief Remove value. */
+	void RemoveValue(const denValue::Ref &value);
+	
 	/** \brief State links. */
-	inline StateLinks GetLinks(){ return pLinks; }
 	inline const StateLinks GetLinks() const{ return pLinks; }
 	
 	/** \brief Find link. */
-	StateLinks::iterator FindLink(denStateLink *link);
 	StateLinks::const_iterator FindLink(denStateLink *link) const;
 	
-	/** \brief Set listener or null to clear. */
-	void SetListener(const denStateListener::Ref &listener);
+	/** \brief Logger or null. */
+	inline const denLogger::Ref &GetLogger() const{ return pLogger; }
+	
+	/** \brief Set logger or null to clear. */
+	void SetLogger(const denLogger::Ref &listener);
 	
 	/** \brief Read only state. */
 	inline bool GetReadOnly() const{ return pReadOnly; }
+	
+private:
+	Values pValues;
+	StateLinks pLinks;
+	bool pReadOnly;
+	denLogger::Ref pLogger;
+	
+	friend denConnection;
+	StateLinks::iterator FindLink(denStateLink *link);
 	
 	/** \brief Update state. */
 	void Update();
@@ -115,17 +127,22 @@ public:
 	 */
 	void LinkWriteValues(denMessageWriter &writer, denStateLink &link);
 	
-	/** \brief Invalid value in all state links. */
-	void InvalidateValue(int index);
+	friend denValue;
 	
 	/** \brief Invalid value in all state links. */
-	void InvalidateValueExcept(int index, denStateLink &link);
+	void InvalidateValueAt(size_t index);
 	
+	/** \brief Invalid value in all state links. */
+	void InvalidateValueAtExcept(size_t index, denStateLink &link);
 	
-private:
-	void *pUserData;
-	Values pValues;
-	StateLinks pLinks;
-	bool pReadOnly;
-	denStateListener::Ref pListener;
+	void ValueChanged(denValue &value);
 };
+
+/** \brief Equality of shared and weak reference. */
+inline bool operator==(const denState::Ref &shared, const denState::Weak &weak){
+	return !shared.owner_before(weak) && !weak.owner_before(shared);
+}
+
+inline bool operator==(const denState::Weak &weak, const denState::Ref &shared){
+	return !weak.owner_before(shared) && !shared.owner_before(weak);
+}

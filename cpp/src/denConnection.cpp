@@ -33,7 +33,6 @@
 #include "socket/denSocketShared.h"
 
 denConnection::denConnection() :
-pUserData(nullptr),
 pConnectionState(ConnectionState::disconnected),
 pIdentifier(-1),
 pProtocol(denProtocol::Protocols::DENetworkProtocol),
@@ -45,11 +44,8 @@ pParentServer(nullptr){
 }
 
 denConnection::~denConnection(){
+	pParentServer = nullptr; // required to avoid potential segfault in denServer
 	pDisconnect(false);
-}
-
-void denConnection::SetUserData(void *userData){
-	pUserData = userData;
 }
 
 bool denConnection::GetConnected() const{
@@ -172,7 +168,7 @@ void denConnection::LinkState(const denMessage::Ref &message, const denState::Re
 	// check if a link exists with this state already that is not broken
 	StateLinks::const_iterator iterLink(std::find_if(pStateLinks.cbegin(),
 	pStateLinks.cend(), [&](const denStateLink::Ref &each){
-		return each->GetState() == state.get();
+		return state == each->GetState();
 	}));
 	
 	if(iterLink != pStateLinks.cend() && (*iterLink)->GetLinkState() != denStateLink::State::down){
@@ -192,12 +188,12 @@ void denConnection::LinkState(const denMessage::Ref &message, const denState::Re
 			}
 		}
 		
-		const denStateLink::Ref link(std::make_shared<denStateLink>(*this, state.get()));
+		const denStateLink::Ref link(std::make_shared<denStateLink>(*this, state));
 		link->SetIdentifier(pNextLinkIdentifier);
 		pStateLinks.push_back(link);
 		iterLink = std::prev(pStateLinks.cend());
 		
-		state->GetLinks().push_back(link);
+		state->pLinks.push_back(link);
 	}
 	
 	// add message
@@ -250,7 +246,7 @@ void denConnection::Update(float elapsedTime){
 			}catch(const std::exception &e){
 				if(pLogger){
 					pLogger->Log(denLogger::LogSeverity::error,
-						std::string("Connection: :Update[1]: ") + e.what());
+						std::string("Connection: Update[1]: ") + e.what());
 				}
 			}
 		}
@@ -288,7 +284,7 @@ void denConnection::MessageProgress(size_t){
 void denConnection::MessageReceived(const denMessage::Ref &){
 }
 
-denState::Ref denConnection::LinkState(const denMessage::Ref &, bool){
+denState::Ref denConnection::CreateState(const denMessage::Ref &, bool){
 	return nullptr;
 }
 
@@ -300,14 +296,14 @@ void denConnection::AddModifiedStateLink(denStateLink *link){
 	pModifiedStateLinks.push_back(link);
 }
 
-void denConnection::InvalidateState(denState &state){
+void denConnection::InvalidateState(const denState::Ref &state){
 	StateLinks::iterator iter;
 	for(iter = pStateLinks.begin(); iter != pStateLinks.end(); ){
 		denStateLink * const link = iter->get();
-		if(link->GetState() == &state){
-			denState::StateLinks::iterator iter2(state.FindLink(link));
-			if(iter2 != state.GetLinks().end()){
-				state.GetLinks().erase(iter2);
+		if(state == link->GetState()){
+			denState::StateLinks::iterator iter2(state->FindLink(link));
+			if(iter2 != state->pLinks.end()){
+				state->pLinks.erase(iter2);
 			}
 			
 			pStateLinks.erase(StateLinks::iterator(iter++));
@@ -579,7 +575,7 @@ void denConnection::ProcessLinkUpdate(denMessageReader &reader){
 			throw std::invalid_argument("invalid link identifier");
 		}
 		
-		denState * const state = (*iterLink)->GetState();
+		const denState::Ref state((*iterLink)->GetState().lock());
 		if(!state){
 			throw std::invalid_argument("state link droppped");
 		}
@@ -609,6 +605,10 @@ void denConnection::pDisconnect(bool notify){
 	}
 	
 	pClearStates();
+	
+	pReliableMessagesRecv.clear();
+	pReliableMessagesSend.clear();
+	
 	pCloseSocket();
 	
 	if(pLogger){
@@ -627,17 +627,14 @@ void denConnection::pClearStates(){
 	
 	StateLinks::const_iterator iterLink;
 	for(iterLink = pStateLinks.cbegin(); iterLink != pStateLinks.cend(); iterLink++){
-		denState * const state = (*iterLink)->GetState();
+		const denState::Ref state((*iterLink)->GetState().lock());
 		if(state){
-			state->GetLinks().remove_if([&](const denStateLink::Ref &each){
+			state->pLinks.remove_if([&](const denStateLink::Ref &each){
 				return each == *iterLink;
 			});
 		}
 	}
 	pStateLinks.clear();
-	
-	pReliableMessagesRecv.clear();
-	pReliableMessagesSend.clear();
 }
 
 void denConnection::pCloseSocket(){
@@ -694,7 +691,7 @@ void denConnection::pUpdateStates(){
 		}
 		
 		writer.WriteUShort((uint16_t)((*iter)->GetIdentifier()));
-		denState * const state = (*iter)->GetState();
+		const denState::Ref state((*iter)->GetState().lock());
 		if(!state){
 			throw std::invalid_argument("state link droppped");
 		}
@@ -792,7 +789,7 @@ void denConnection::pProcessLinkState(denMessageReader &reader){
 	message->Item().SetLength(reader.ReadUShort());
 	reader.Read(message->Item());
 	
-	denState::Ref state(LinkState(message, readOnly));
+	const denState::Ref state(CreateState(message, readOnly));
 	
 	denProtocol::CommandCodes code = denProtocol::CommandCodes::linkDown;
 	if(state){
@@ -804,10 +801,10 @@ void denConnection::pProcessLinkState(denMessageReader &reader){
 			throw std::invalid_argument("Link state does not match the state provided.");
 		}
 		
-		const denStateLink::Ref link(std::make_shared<denStateLink>(*this, state.get()));
+		const denStateLink::Ref link(std::make_shared<denStateLink>(*this, state));
 		link->SetIdentifier(identifier);
 		pStateLinks.push_back(link);
-		state->GetLinks().push_back(link);
+		state->pLinks.push_back(link);
 		
 		link->SetLinkState(denStateLink::State::up);
 		code = denProtocol::CommandCodes::linkUp;

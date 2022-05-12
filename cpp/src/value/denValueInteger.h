@@ -69,6 +69,7 @@ public:
 	/** \brief Set value. */
 	void SetValue(T value){
 		pValue = value;
+		pValueChanged();
 	}
 	
 	/**
