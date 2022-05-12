@@ -166,6 +166,11 @@ public:
 	 */
 	virtual denState::Ref CreateState(const denMessage::Ref &message, bool readOnly);
 	
+	/**
+	 * \brief Server owning this connection or nullptr if this is a client side connection.
+	 */
+	inline denServer *GetParentServer() const{ return pParentServer; }
+	
 	
 	
 	/** \warning Internal use. Do not call directly. */

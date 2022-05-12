@@ -203,7 +203,6 @@ public:
 		}
 	};
 	
-	const bool remote;
 	int id;
 	denState::Ref state;
 	denValueInt::Ref valueBar;
@@ -214,12 +213,10 @@ public:
 	
 	std::list<denState::Ref> otherClientStates;
 	
-	ExampleConnection(bool remote) :
-	remote(remote),
-	id(nextid++)
+	ExampleConnection(bool readonly) : id(nextid++)
 	{
 		SetLogger(ExampleLogger::logger);
-		state = std::make_shared<denState>(remote);
+		state = std::make_shared<denState>(readonly);
 		state->SetLogger(ExampleLogger::logger);
 		valueBar = std::make_shared<denValueInt>(denValueIntegerFormat::sint16);
 		valueBar->SetValue(30);
@@ -249,12 +246,36 @@ public:
 	}
 	
 	void ConnectionClosed() override{
+		if(GetParentServer()){
+			const denServer::Connections &connections = GetParentServer()->GetConnections();
+			denServer::Connections::const_iterator iter;
+			for(iter = connections.cbegin(); iter != connections.cend(); iter++){
+				if(iter->get() != this){
+					denMessage::Ref lm(denMessage::Pool().Get());
+					denMessageWriter(lm->Item())
+						.WriteUInt(0x12340004)
+						.WriteUShort((uint16_t)id);
+					(*iter)->SendReliableMessage(lm);
+				}
+			}
+		}
 	}
 	
 	void MessageProgress(size_t bytesReceived) override{
 	}
 	
 	void MessageReceived(const denMessage::Ref &message) override{
+		denMessageReader reader(message->Item());
+		const int ident = reader.ReadUInt();
+		
+		switch(ident){
+		case 0x12340004:{
+			const int id = reader.ReadUShort();
+			otherClientStates.remove_if([&](const denState::Ref &each){
+				return static_cast<OtherClientState&>(*each).id == id;
+			});
+			}break;
+		}
 	}
 	
 	denState::Ref CreateState(const denMessage::Ref &message, bool readOnly) override{
