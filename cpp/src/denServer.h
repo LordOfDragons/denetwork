@@ -107,14 +107,8 @@ public:
 	/** \brief Client connected. */
 	virtual void ClientConnected(const denConnection::Ref &connection);
 	
+	
 private:
-	friend denConnection;
-	
-	inline const denSocket::Ref &GetSocket() const{ return pSocket; }
-	
-	void ProcessConnectionRequest(const denSocketAddress &address, denMessageReader &reader);
-	
-	
 	std::string pAddress;
 	
 	denSocket::Ref pSocket;
@@ -123,4 +117,7 @@ private:
 	Connections pConnections;
 	
 	denLogger::Ref pLogger;
+	
+	friend denConnection;
+	void ProcessConnectionRequest(const denSocketAddress &address, denMessageReader &reader);
 };

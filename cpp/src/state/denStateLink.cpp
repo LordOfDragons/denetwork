@@ -52,7 +52,7 @@ void denStateLink::SetChanged(bool changed){
 	if(changed != pChanged){
 		pChanged = changed;
 		if( changed ){
-			pConnection.AddModifiedStateLink(this);
+			pConnection.pAddModifiedStateLink(this);
 		}
 	}
 }

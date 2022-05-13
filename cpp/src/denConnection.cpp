@@ -34,7 +34,6 @@
 
 denConnection::denConnection() :
 pConnectionState(ConnectionState::disconnected),
-pIdentifier(-1),
 pProtocol(denProtocol::Protocols::DENetworkProtocol),
 pNextLinkIdentifier(0),
 pReliableNumberSend(0),
@@ -292,36 +291,54 @@ denState::Ref denConnection::CreateState(const denMessage::Ref &, bool){
 	return nullptr;
 }
 
-void denConnection::SetIdentifier(int identifier){
-	pIdentifier = identifier;
-}
-
-void denConnection::AddModifiedStateLink(denStateLink *link){
-	pModifiedStateLinks.push_back(link);
-}
-
-void denConnection::InvalidateState(const denState::Ref &state){
-	StateLinks::iterator iter;
-	for(iter = pStateLinks.begin(); iter != pStateLinks.end(); ){
-		denStateLink * const link = iter->get();
-		if(state.get() == link->GetState()){
-			denState::StateLinks::iterator iter2(state->FindLink(link));
-			if(iter2 != state->pLinks.end()){
-				(*iter2)->pState = nullptr;
-				state->pLinks.erase(iter2);
-			}
-			
-			pStateLinks.erase(StateLinks::iterator(iter++));
-			
-		}else{
-			iter++;
-		}
-	}
-}
-
 bool denConnection::Matches(denSocket *bnSocket, const denSocketAddress &address) const{
 	return pSocket.get() == bnSocket && address == pRealRemoteAddress;
 }
+
+void denConnection::ProcessDatagram(denMessageReader& reader){
+	switch((denProtocol::CommandCodes)reader.ReadByte()){
+	case denProtocol::CommandCodes::connectionAck:
+		pProcessConnectionAck(reader);
+		break;
+		
+	case denProtocol::CommandCodes::connectionClose:
+		pProcessConnectionClose(reader);
+		break;
+		
+	case denProtocol::CommandCodes::message:
+		pProcessMessage(reader);
+		break;
+		
+	case denProtocol::CommandCodes::reliableMessage:
+		pProcessReliableMessage(reader);
+		break;
+		
+	case denProtocol::CommandCodes::reliableLinkState:
+		pProcessReliableLinkState(reader);
+		break;
+		
+	case denProtocol::CommandCodes::reliableAck:
+		pProcessReliableAck(reader);
+		break;
+		
+	case denProtocol::CommandCodes::linkUp:
+		pProcessLinkUp(reader);
+		break;
+		
+	case denProtocol::CommandCodes::linkDown:
+		pProcessLinkDown(reader);
+		break;
+		
+	case denProtocol::CommandCodes::linkUpdate:
+		pProcessLinkUpdate(reader);
+		break;
+		
+	default:
+		throw std::invalid_argument("Invalid command code");
+	}
+}
+
+
 
 void denConnection::AcceptConnection(denServer &server, const denSocket::Ref &bnSocket,
 const denSocketAddress &address, denProtocol::Protocols protocol){
@@ -334,262 +351,6 @@ const denSocketAddress &address, denProtocol::Protocols protocol){
 	
 	ConnectionEstablished();
 }
-
-void denConnection::ProcessDatagram(denMessageReader& reader){
-	switch((denProtocol::CommandCodes)reader.ReadByte()){
-	case denProtocol::CommandCodes::connectionAck:
-		ProcessConnectionAck(reader);
-		break;
-		
-	case denProtocol::CommandCodes::connectionClose:
-		ProcessConnectionClose(reader);
-		break;
-		
-	case denProtocol::CommandCodes::message:
-		ProcessMessage(reader);
-		break;
-		
-	case denProtocol::CommandCodes::reliableMessage:
-		ProcessReliableMessage(reader);
-		break;
-		
-	case denProtocol::CommandCodes::reliableLinkState:
-		ProcessReliableLinkState(reader);
-		break;
-		
-	case denProtocol::CommandCodes::reliableAck:
-		ProcessReliableAck(reader);
-		break;
-		
-	case denProtocol::CommandCodes::linkUp:
-		ProcessLinkUp(reader);
-		break;
-		
-	case denProtocol::CommandCodes::linkDown:
-		ProcessLinkDown(reader);
-		break;
-		
-	case denProtocol::CommandCodes::linkUpdate:
-		ProcessLinkUpdate(reader);
-		break;
-		
-	default:
-		throw std::invalid_argument("Invalid command code");
-	}
-}
-
-void denConnection::ProcessConnectionAck(denMessageReader &reader){
-	if(pConnectionState != ConnectionState::connecting){
-		throw std::invalid_argument("Not connecting");
-	}
-	
-	switch((denProtocol::ConnectionAck)reader.ReadByte()){
-	case denProtocol::ConnectionAck::accepted:
-		pProtocol = (denProtocol::Protocols)reader.ReadUShort();
-		pConnectionState = ConnectionState::connected;
-		if(pLogger){
-			pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection established");
-		}
-		ConnectionEstablished();
-		break;
-		
-	case denProtocol::ConnectionAck::rejected:
-	case denProtocol::ConnectionAck::noCommonProtocol:
-	default:
-		pConnectionState = ConnectionState::disconnected;
-		if(pLogger){
-			pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection rejected");
-		}
-		ConnectionClosed();
-	}
-}
-
-void denConnection::ProcessConnectionClose(denMessageReader&){
-	pDisconnect(true);
-}
-
-void denConnection::ProcessMessage(denMessageReader &reader){
-	/*const int flags = */ reader.ReadByte();
-	
-	const denMessage::Ref message(denMessage::Pool().Get());
-	message->Item().SetLength(reader.GetLength() - reader.GetPosition());
-	reader.Read(message->Item());
-	
-	MessageReceived(message);
-}
-
-void denConnection::ProcessReliableMessage(denMessageReader &reader){
-	if(pConnectionState != ConnectionState::connected){
-		throw std::invalid_argument("Reliable message received although not connected.");
-	}
-	
-	const int number = reader.ReadUShort();
-	bool validNumber;
-	
-	if(number < pReliableNumberRecv){
-		validNumber = number < (pReliableNumberRecv + pReliableWindowSize) % 65535;
-		
-	}else{
-		validNumber = number < pReliableNumberRecv + pReliableWindowSize;
-	}
-	if(!validNumber){
-		throw std::invalid_argument("Reliable message: invalid sequence number.");
-	}
-	
-	const denMessage::Ref ackMessage(denMessage::Pool().Get());
-	{
-	denMessageWriter ackWriter(ackMessage->Item());
-	ackWriter.WriteByte((uint8_t)denProtocol::CommandCodes::reliableAck);
-	ackWriter.WriteUShort((uint16_t)number);
-	ackWriter.WriteByte((uint8_t)denProtocol::ReliableAck::success);
-	}
-	pSocket->SendDatagram(ackMessage->Item(), pRealRemoteAddress);
-	
-	if(number == pReliableNumberRecv){
-		pProcessReliableMessage(reader);
-		pReliableNumberRecv = (pReliableNumberRecv + 1) % 65535;
-		pProcessQueuedMessages();
-		
-	}else{
-		pAddReliableReceive(denProtocol::CommandCodes::reliableMessage, number, reader);
-	}
-}
-
-void denConnection::ProcessReliableLinkState(denMessageReader &reader){
-	if(pConnectionState != ConnectionState::connected){
-		throw std::invalid_argument("Link state: not connected.");
-	}
-	
-	const int number = reader.ReadUShort();
-	bool validNumber;
-	
-	if( number < pReliableNumberRecv ){
-		validNumber = number < (pReliableNumberRecv + pReliableWindowSize) % 65535;
-		
-	}else{
-		validNumber = number < pReliableNumberRecv + pReliableWindowSize;
-	}
-	if( ! validNumber ){
-		throw std::invalid_argument("Link state: invalid sequence number.");
-	}
-	
-	const denMessage::Ref ackMessage(denMessage::Pool().Get());
-	{
-	denMessageWriter ackWriter(ackMessage->Item());
-	ackWriter.WriteByte((uint8_t)denProtocol::CommandCodes::reliableAck);
-	ackWriter.WriteUShort((uint16_t)number);
-	ackWriter.WriteByte((uint8_t)denProtocol::ReliableAck::success);
-	}
-	pSocket->SendDatagram(ackMessage->Item(), pRealRemoteAddress);
-	
-	if(number == pReliableNumberRecv){
-		pProcessLinkState(reader);
-		pReliableNumberRecv = (pReliableNumberRecv + 1) % 65535;
-		pProcessQueuedMessages();
-		
-	}else{
-		pAddReliableReceive(denProtocol::CommandCodes::reliableLinkState, number, reader);
-	}
-}
-
-void denConnection::ProcessReliableAck(denMessageReader &reader){
-	if(pConnectionState != ConnectionState::connected){
-		throw std::invalid_argument("Reliable ack: not connected.");
-	}
-	
-	const int number = reader.ReadUShort();
-	const denProtocol::ReliableAck code = (denProtocol::ReliableAck)reader.ReadByte();
-	
-	Messages::const_iterator iter(std::find_if(pReliableMessagesSend.begin(),
-		pReliableMessagesSend.end(), [&](const denRealMessage::Ref &each){
-			return (*each).Item().number == number;
-		}));
-	if(iter == pReliableMessagesSend.cend()){
-		throw std::invalid_argument("Reliable ack: no reliable transmission with this number waiting for an ack!");
-	}
-	
-	const denRealMessage::Ref message(*iter);
-	
-	switch(code){
-	case denProtocol::ReliableAck::success:
-		message->Item().state = denRealMessage::State::done;
-		pRemoveSendReliablesDone();
-		break;
-		
-	case denProtocol::ReliableAck::failed:
-		message->Item().secondsSinceSend = 0.0f;
-		pSocket->SendDatagram(message->Item().message->Item(), pRealRemoteAddress);
-		break;
-	}
-}
-
-void denConnection::ProcessLinkUp(denMessageReader &reader){
-	if(pConnectionState != ConnectionState::connected){
-		throw std::invalid_argument("Reliable ack: not connected.");
-	}
-	
-	const int identifier = reader.ReadUShort();
-	
-	StateLinks::const_iterator iterLink(std::find_if(pStateLinks.cbegin(),
-	pStateLinks.cend(), [&](const denStateLink::Ref &each){
-		return each->GetIdentifier() == identifier;
-	}));
-	
-	if(iterLink == pStateLinks.cend() || (*iterLink)->GetLinkState() != denStateLink::State::listening){
-		throw std::invalid_argument("up link with identifier absent or not listening");
-	}
-	
-	(*iterLink)->SetLinkState(denStateLink::State::up);
-}
-
-void denConnection::ProcessLinkDown(denMessageReader &reader){
-	if(pConnectionState != ConnectionState::connected){
-		throw std::invalid_argument("Reliable ack: not connected.");
-	}
-	
-	const int identifier = reader.ReadUShort();
-	
-	StateLinks::const_iterator iterLink(std::find_if(pStateLinks.cbegin(),
-	pStateLinks.cend(), [&](const denStateLink::Ref &each){
-		return each->GetIdentifier() == identifier;
-	}));
-	
-	if(iterLink == pStateLinks.cend() || (*iterLink)->GetLinkState() != denStateLink::State::listening){
-		throw std::invalid_argument("down link with identifier absent or not listening");
-	}
-	
-	(*iterLink)->SetLinkState(denStateLink::State::down);
-}
-
-void denConnection::ProcessLinkUpdate(denMessageReader &reader){
-	if(pConnectionState != ConnectionState::connected){
-		throw std::invalid_argument("Reliable ack: not connected.");
-	}
-	
-	const int count = reader.ReadByte();
-	int i;
-	for(i=0; i<count; i++){
-		const int identifier = reader.ReadUShort();
-		
-		StateLinks::const_iterator iterLink(std::find_if(pStateLinks.cbegin(),
-		pStateLinks.cend(), [&](const denStateLink::Ref &each){
-			return each->GetIdentifier() == identifier;
-		}));
-		
-		if(iterLink == pStateLinks.cend() || (*iterLink)->GetLinkState() != denStateLink::State::up){
-			throw std::invalid_argument("invalid link identifier");
-		}
-		
-		denState * const state = (*iterLink)->GetState();
-		if(!state){
-			throw std::invalid_argument("state link droppped");
-		}
-		
-		state->LinkReadValues(reader, *iterLink->get());
-	}
-}
-
-
 
 void denConnection::pDisconnect(bool notify){
 	if(!pSocket || pConnectionState == ConnectionState::disconnected){
@@ -740,6 +501,30 @@ void denConnection::pUpdateTimeouts(float elapsedTime){
 	}
 }
 
+
+void denConnection::pInvalidateState(const denState::Ref &state){
+	StateLinks::iterator iter;
+	for(iter = pStateLinks.begin(); iter != pStateLinks.end(); ){
+		denStateLink * const link = iter->get();
+		if(state.get() == link->GetState()){
+			denState::StateLinks::iterator iter2(state->FindLink(link));
+			if(iter2 != state->pLinks.end()){
+				(*iter2)->pState = nullptr;
+				state->pLinks.erase(iter2);
+			}
+			
+			pStateLinks.erase(StateLinks::iterator(iter++));
+			
+		}else{
+			iter++;
+		}
+	}
+}
+
+void denConnection::pAddModifiedStateLink(denStateLink *link){
+	pModifiedStateLinks.push_back(link);
+}
+
 void denConnection::pProcessQueuedMessages(){
 	Messages::iterator iter(std::find_if(pReliableMessagesRecv.begin(),
 	pReliableMessagesRecv.end(), [&](const denRealMessage::Ref &each){
@@ -750,7 +535,7 @@ void denConnection::pProcessQueuedMessages(){
 		switch((*iter)->Item().type){
 		case denProtocol::CommandCodes::reliableMessage:{
 			denMessageReader reader((*iter)->Item().message->Item());
-			pProcessReliableMessage(reader);
+			pProcessReliableMessageMessage(reader);
 			}break;
 			
 		case denProtocol::CommandCodes::reliableLinkState:{
@@ -772,12 +557,195 @@ void denConnection::pProcessQueuedMessages(){
 	}
 }
 
+void denConnection::pProcessConnectionAck(denMessageReader &reader){
+	if(pConnectionState != ConnectionState::connecting){
+		throw std::invalid_argument("Not connecting");
+	}
+	
+	switch((denProtocol::ConnectionAck)reader.ReadByte()){
+	case denProtocol::ConnectionAck::accepted:
+		pProtocol = (denProtocol::Protocols)reader.ReadUShort();
+		pConnectionState = ConnectionState::connected;
+		if(pLogger){
+			pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection established");
+		}
+		ConnectionEstablished();
+		break;
+		
+	case denProtocol::ConnectionAck::rejected:
+	case denProtocol::ConnectionAck::noCommonProtocol:
+	default:
+		pConnectionState = ConnectionState::disconnected;
+		if(pLogger){
+			pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection rejected");
+		}
+		ConnectionClosed();
+	}
+}
+
+void denConnection::pProcessConnectionClose(denMessageReader&){
+	pDisconnect(true);
+}
+
+void denConnection::pProcessMessage(denMessageReader &reader){
+	/*const int flags = */ reader.ReadByte();
+	
+	const denMessage::Ref message(denMessage::Pool().Get());
+	message->Item().SetLength(reader.GetLength() - reader.GetPosition());
+	reader.Read(message->Item());
+	
+	MessageReceived(message);
+}
+
 void denConnection::pProcessReliableMessage(denMessageReader &reader){
+	if(pConnectionState != ConnectionState::connected){
+		throw std::invalid_argument("Reliable message received although not connected.");
+	}
+	
+	const int number = reader.ReadUShort();
+	bool validNumber;
+	
+	if(number < pReliableNumberRecv){
+		validNumber = number < (pReliableNumberRecv + pReliableWindowSize) % 65535;
+		
+	}else{
+		validNumber = number < pReliableNumberRecv + pReliableWindowSize;
+	}
+	if(!validNumber){
+		throw std::invalid_argument("Reliable message: invalid sequence number.");
+	}
+	
+	const denMessage::Ref ackMessage(denMessage::Pool().Get());
+	{
+	denMessageWriter ackWriter(ackMessage->Item());
+	ackWriter.WriteByte((uint8_t)denProtocol::CommandCodes::reliableAck);
+	ackWriter.WriteUShort((uint16_t)number);
+	ackWriter.WriteByte((uint8_t)denProtocol::ReliableAck::success);
+	}
+	pSocket->SendDatagram(ackMessage->Item(), pRealRemoteAddress);
+	
+	if(number == pReliableNumberRecv){
+		pProcessReliableMessageMessage(reader);
+		pReliableNumberRecv = (pReliableNumberRecv + 1) % 65535;
+		pProcessQueuedMessages();
+		
+	}else{
+		pAddReliableReceive(denProtocol::CommandCodes::reliableMessage, number, reader);
+	}
+}
+
+void denConnection::pProcessReliableMessageMessage(denMessageReader &reader){
 	denMessage::Ref message(denMessage::Pool().Get());
 	message->Item().SetLength(reader.GetLength() - reader.GetPosition());
 	reader.Read(message->Item());
 	
 	MessageReceived(message);
+}
+
+void denConnection::pProcessReliableAck(denMessageReader &reader){
+	if(pConnectionState != ConnectionState::connected){
+		throw std::invalid_argument("Reliable ack: not connected.");
+	}
+	
+	const int number = reader.ReadUShort();
+	const denProtocol::ReliableAck code = (denProtocol::ReliableAck)reader.ReadByte();
+	
+	Messages::const_iterator iter(std::find_if(pReliableMessagesSend.begin(),
+		pReliableMessagesSend.end(), [&](const denRealMessage::Ref &each){
+			return (*each).Item().number == number;
+		}));
+	if(iter == pReliableMessagesSend.cend()){
+		throw std::invalid_argument("Reliable ack: no reliable transmission with this number waiting for an ack!");
+	}
+	
+	const denRealMessage::Ref message(*iter);
+	
+	switch(code){
+	case denProtocol::ReliableAck::success:
+		message->Item().state = denRealMessage::State::done;
+		pRemoveSendReliablesDone();
+		break;
+		
+	case denProtocol::ReliableAck::failed:
+		message->Item().secondsSinceSend = 0.0f;
+		pSocket->SendDatagram(message->Item().message->Item(), pRealRemoteAddress);
+		break;
+	}
+}
+
+void denConnection::pProcessReliableLinkState(denMessageReader &reader){
+	if(pConnectionState != ConnectionState::connected){
+		throw std::invalid_argument("Link state: not connected.");
+	}
+	
+	const int number = reader.ReadUShort();
+	bool validNumber;
+	
+	if( number < pReliableNumberRecv ){
+		validNumber = number < (pReliableNumberRecv + pReliableWindowSize) % 65535;
+		
+	}else{
+		validNumber = number < pReliableNumberRecv + pReliableWindowSize;
+	}
+	if( ! validNumber ){
+		throw std::invalid_argument("Link state: invalid sequence number.");
+	}
+	
+	const denMessage::Ref ackMessage(denMessage::Pool().Get());
+	{
+	denMessageWriter ackWriter(ackMessage->Item());
+	ackWriter.WriteByte((uint8_t)denProtocol::CommandCodes::reliableAck);
+	ackWriter.WriteUShort((uint16_t)number);
+	ackWriter.WriteByte((uint8_t)denProtocol::ReliableAck::success);
+	}
+	pSocket->SendDatagram(ackMessage->Item(), pRealRemoteAddress);
+	
+	if(number == pReliableNumberRecv){
+		pProcessLinkState(reader);
+		pReliableNumberRecv = (pReliableNumberRecv + 1) % 65535;
+		pProcessQueuedMessages();
+		
+	}else{
+		pAddReliableReceive(denProtocol::CommandCodes::reliableLinkState, number, reader);
+	}
+}
+
+void denConnection::pProcessLinkUp(denMessageReader &reader){
+	if(pConnectionState != ConnectionState::connected){
+		throw std::invalid_argument("Reliable ack: not connected.");
+	}
+	
+	const int identifier = reader.ReadUShort();
+	
+	StateLinks::const_iterator iterLink(std::find_if(pStateLinks.cbegin(),
+	pStateLinks.cend(), [&](const denStateLink::Ref &each){
+		return each->GetIdentifier() == identifier;
+	}));
+	
+	if(iterLink == pStateLinks.cend() || (*iterLink)->GetLinkState() != denStateLink::State::listening){
+		throw std::invalid_argument("up link with identifier absent or not listening");
+	}
+	
+	(*iterLink)->SetLinkState(denStateLink::State::up);
+}
+
+void denConnection::pProcessLinkDown(denMessageReader &reader){
+	if(pConnectionState != ConnectionState::connected){
+		throw std::invalid_argument("Reliable ack: not connected.");
+	}
+	
+	const int identifier = reader.ReadUShort();
+	
+	StateLinks::const_iterator iterLink(std::find_if(pStateLinks.cbegin(),
+	pStateLinks.cend(), [&](const denStateLink::Ref &each){
+		return each->GetIdentifier() == identifier;
+	}));
+	
+	if(iterLink == pStateLinks.cend() || (*iterLink)->GetLinkState() != denStateLink::State::listening){
+		throw std::invalid_argument("down link with identifier absent or not listening");
+	}
+	
+	(*iterLink)->SetLinkState(denStateLink::State::down);
 }
 
 void denConnection::pProcessLinkState(denMessageReader &reader){
@@ -826,6 +794,34 @@ void denConnection::pProcessLinkState(denMessageReader &reader){
 	writer.WriteUShort((uint16_t)identifier);
 	}
 	pSocket->SendDatagram(message->Item(), pRealRemoteAddress);
+}
+
+void denConnection::pProcessLinkUpdate(denMessageReader &reader){
+	if(pConnectionState != ConnectionState::connected){
+		throw std::invalid_argument("Reliable ack: not connected.");
+	}
+	
+	const int count = reader.ReadByte();
+	int i;
+	for(i=0; i<count; i++){
+		const int identifier = reader.ReadUShort();
+		
+		StateLinks::const_iterator iterLink(std::find_if(pStateLinks.cbegin(),
+		pStateLinks.cend(), [&](const denStateLink::Ref &each){
+			return each->GetIdentifier() == identifier;
+		}));
+		
+		if(iterLink == pStateLinks.cend() || (*iterLink)->GetLinkState() != denStateLink::State::up){
+			throw std::invalid_argument("invalid link identifier");
+		}
+		
+		denState * const state = (*iterLink)->GetState();
+		if(!state){
+			throw std::invalid_argument("state link droppped");
+		}
+		
+		state->LinkReadValues(reader, *iterLink->get());
+	}
 }
 
 void denConnection::pAddReliableReceive(denProtocol::CommandCodes type, int number, denMessageReader &reader){
