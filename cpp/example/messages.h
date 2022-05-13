@@ -22,12 +22,11 @@
  * SOFTWARE.
  */
 
-#include "app.h"
+#pragma once
 
-int main(int argc, char *argv[]){
-	App app;
-	if(app.init(argc, argv)){
-		app.run();
-	}
-	return 0;
-}
+enum class MessageCode{
+	linkServerState = 1,
+	linkClientState = 2,
+	linkOtherClientState = 3,
+	dropClient = 4
+};

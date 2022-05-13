@@ -22,12 +22,38 @@
  * SOFTWARE.
  */
 
-#include "app.h"
+#pragma once
 
-int main(int argc, char *argv[]){
-	App app;
-	if(app.init(argc, argv)){
-		app.run();
-	}
-	return 0;
-}
+#include <string>
+
+#include <denetwork/denConnection.h>
+#include <denetwork/denServer.h>
+
+#include "screen.h"
+#include "input.h"
+#include "logger.h"
+
+class App{
+	std::string paramListen, paramConnect;
+	denServer::Ref server;
+	denConnection::Ref connection;
+	Screen screen;
+	Input input;
+	std::shared_ptr<Logger> logger = std::make_shared<Logger>();
+	
+public:
+	bool quit = false;
+	
+	bool init(int argc, char *argv[]);
+	void run();
+	void initScreen();
+	void exitScreen();
+	void serverListen();
+	void clientConnect();
+	void drawScreen();
+	void handleInput();
+	void updateServer(float elapsed);
+	void updateClient(float elapsed);
+	void appLoop();
+	void specialTest();
+};

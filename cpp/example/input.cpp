@@ -22,12 +22,38 @@
  * SOFTWARE.
  */
 
-#include "app.h"
+#include <termios.h>
+#include <unistd.h>
+#include <iostream>
 
-int main(int argc, char *argv[]){
-	App app;
-	if(app.init(argc, argv)){
-		app.run();
+#include "input.h"
+
+void Input::nonblock(bool enable){
+	struct termios ttystate;
+	tcgetattr(STDIN_FILENO, &ttystate);
+	
+	if(enable){
+		ttystate.c_lflag &= ~ICANON;
+		ttystate.c_lflag &= ~ECHO;
+		ttystate.c_cc[VMIN] = 1;
+		std::cout << "\033[?25l";
+		
+	}else{
+		ttystate.c_lflag |= ICANON;
+		ttystate.c_lflag |= ECHO;
+		std::cout << "\033[?25h";
 	}
-	return 0;
+	
+	tcsetattr(STDIN_FILENO, TCSANOW, &ttystate);
+}
+
+bool Input::kbhit(int timeoutms){
+	struct timeval tv;
+	fd_set fds;
+	tv.tv_sec = 0;
+	tv.tv_usec = (__suseconds_t)timeoutms * 1000;
+	FD_ZERO(&fds);
+	FD_SET(STDIN_FILENO, &fds); //STDIN_FILENO is 0
+	select(STDIN_FILENO+1, &fds, NULL, NULL, &tv);
+	return FD_ISSET(STDIN_FILENO, &fds);
 }

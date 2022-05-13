@@ -22,12 +22,10 @@
  * SOFTWARE.
  */
 
-#include "app.h"
+#pragma once
 
-int main(int argc, char *argv[]){
-	App app;
-	if(app.init(argc, argv)){
-		app.run();
-	}
-	return 0;
-}
+class Input{
+public:
+	void nonblock(bool enable);
+	bool kbhit(int timeoutms = 0);
+};

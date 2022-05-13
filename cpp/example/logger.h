@@ -22,12 +22,20 @@
  * SOFTWARE.
  */
 
-#include "app.h"
+#pragma once
 
-int main(int argc, char *argv[]){
-	App app;
-	if(app.init(argc, argv)){
-		app.run();
-	}
-	return 0;
-}
+#include <list>
+
+#include <denetwork/denLogger.h>
+
+class Logger : public denLogger{
+public:
+	void Log(LogSeverity severity, const std::string &message) override;
+	
+	const char *severityText(LogSeverity severity) const;
+	
+	typedef std::list<std::string> LogBuffer;
+	LogBuffer buffer;
+	
+	void addLog(const std::string &message);
+};

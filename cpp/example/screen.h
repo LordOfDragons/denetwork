@@ -22,12 +22,24 @@
  * SOFTWARE.
  */
 
-#include "app.h"
+#pragma once
 
-int main(int argc, char *argv[]){
-	App app;
-	if(app.init(argc, argv)){
-		app.run();
-	}
-	return 0;
-}
+#include <string>
+#include <ostream>
+
+#include <denetwork/math/denPoint2.h>
+
+class Screen{
+public:
+	enum class Color{black, red, green, yellow, blue, magenta, cyan, white};
+	enum class Style{regular, bold, low, italic, underline, blinking, reverse, background, invisible};
+	
+	void clearScreen();
+	void screenTopLeft(std::ostream &s);
+	void resetColors(std::ostream &s);
+	void foregroundColor(std::ostream &s, Color color, Style style);
+	void backgroundColor(std::ostream &s, Color color, Style style);
+	void printBar(std::ostream &s, int lineWidth, const std::string &title, int length, Color color);
+	void printString(std::ostream &s, int lineWidth, const std::string &title, const std::string &value, Color color);
+	denPoint2 terminalSize();
+};

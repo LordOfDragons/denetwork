@@ -22,12 +22,27 @@
  * SOFTWARE.
  */
 
-#include "app.h"
+#include <sstream>
 
-int main(int argc, char *argv[]){
-	App app;
-	if(app.init(argc, argv)){
-		app.run();
+#include "logger.h"
+
+void Logger::Log(LogSeverity severity, const std::string &message){
+	std::stringstream s;
+	s << "[" << severityText(severity) << "] " << message;
+	addLog(s.str());
+}
+
+const char *Logger::severityText(LogSeverity severity) const{
+	switch(severity){
+		case LogSeverity::error: return "EE";
+		case LogSeverity::warning: return "WW";
+		case LogSeverity::info: return "II";
+		case LogSeverity::debug: return "DD";
 	}
-	return 0;
+	return "";
+}
+
+void Logger::addLog(const std::string &message){
+	while(buffer.size() > 9) buffer.pop_back();
+	buffer.push_front(message);
 }

@@ -22,12 +22,34 @@
  * SOFTWARE.
  */
 
-#include "app.h"
+#pragma once
 
-int main(int argc, char *argv[]){
-	App app;
-	if(app.init(argc, argv)){
-		app.run();
-	}
-	return 0;
-}
+#include <denetwork/denServer.h>
+#include <denetwork/value/denValueInteger.h>
+#include <denetwork/value/denValueString.h>
+
+class App;
+
+class Server : public denServer{
+public:
+	App &app;
+	denState::Ref state;
+	denValueString::Ref valueTime;
+	denValueInt::Ref valueBar;
+	
+	Server(App &app, const denLogger::Ref &logger);
+	
+	denConnection::Ref CreateConnection() override;
+	
+	const std::string &getTime() const;
+	void setTime(const std::string &time);
+	void updateTime();
+	
+	int getBar() const;
+	void setBar(int value);
+	void incrementBar(int value);
+	
+	void ClientConnected(const denConnection::Ref &connection) override;
+	
+	void linkClient(denConnection &connection);
+};

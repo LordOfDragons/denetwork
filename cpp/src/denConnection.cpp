@@ -233,6 +233,10 @@ void denConnection::Update(float elapsedTime){
 	
 	if(!pParentServer){
 		while(true){
+			if(pConnectionState == ConnectionState::disconnected){
+				return;
+			}
+			
 			try{
 				denSocketAddress addressReceive;
 				const denMessage::Ref message(pSocket->ReceiveDatagram(addressReceive));
