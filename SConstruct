@@ -62,6 +62,15 @@ for t in globalEnv.targetManager.targets.values():
 		pass
 globalEnv.targetManager.add('install', globalEnv.targetManager.Target('Install All', globalEnv.Alias('install', targets)))
 
+# archive all target
+targets = []
+for t in globalEnv.targetManager.targets.values():
+	try:
+		targets.extend(t.archive)
+	except:
+		pass
+globalEnv.targetManager.add('archive', globalEnv.targetManager.Target('Archive All', globalEnv.Alias('archive', targets)))
+
 # by default just build
 Default('build')
 

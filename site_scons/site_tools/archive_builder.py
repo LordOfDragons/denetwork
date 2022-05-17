@@ -73,24 +73,27 @@ def generate(env):
 	env['ARCHIVEZIPCOM'] = 'Archiving "$TARGET"'
 	env['ARCHIVEZIPCOMSTR'] = env['ARCHIVEZIPCOM']
 	
-	try:
-		class _TargetArchive(env.targetManager.Target):
-			formatTarBz2 = 'tarbz2'
-			formatZip = 'zip'
-			
-			def __init__(self, description, target=None, **args):
-				super(_TargetArchive, self).__init__(description, target)
-			
-			def archiveFiles(self, env, target, files, format=formatTarBz2):
-				if format == self.formatTarBz2:
-					self.target.extend(env.ArchiveTarBz2(target, files.values(), ARCHIVE_FILES=files))
-				elif format == self.formatZip:
-					self.target.extend(env.ArchiveZip(target, files.values(), ARCHIVE_FILES=files))
-				else:
-					raise 'Invalid format {}'.format(format)
-		env.targetManager.TargetArchive = _TargetArchive
-	except:
-		pass
-
+	class _TargetArchive(env.targetManager.Target):
+		formatTarBz2 = 'tarbz2'
+		formatZip = 'zip'
+		
+		def __init__(self, description, target=None, **args):
+			super(_TargetArchive, self).__init__(description, target)
+			self.archive = []
+		
+		def archiveFiles(self, env, target, files, format=formatTarBz2):
+			if format == self.formatTarBz2:
+				self.target.extend(env.ArchiveTarBz2(target, files.values(), ARCHIVE_FILES=files))
+			elif format == self.formatZip:
+				self.target.extend(env.ArchiveZip(target, files.values(), ARCHIVE_FILES=files))
+			else:
+				raise 'Invalid format {}'.format(format)
+		
+		## Create archive alias for all archive targets stored so far
+		def aliasArchive(self, env, name):
+			self.archive = [env.Alias(name, self.target)]
+	
+	env.targetManager.TargetArchive = _TargetArchive
+	
 def exists(env):
 	return True

@@ -118,12 +118,7 @@ globFiles(envLibrary, 'src', '*.h', headers)
 
 objects = [envLibrary.StaticObject(s) for s in sources]
 
-"""
-for h in headers:
-	envLibrary.InstallAs('denetwork-{}/include/libdscript/{}'.format(versionString, h), h)
-"""
-
-library = envLibrary.StaticLibrary(target='denetworkcpp', source=objects)
+library = envLibrary.StaticLibrary(target='denetwork', source=objects)
 
 targetLibrary.build.extend(library)
 targetLibrary.aliasBuild(envLibrary, 'denetworkcpp_build')
@@ -132,8 +127,19 @@ targetLibrary.installCutDirs(envLibrary, 'denetwork-{}/include/denetwork'.format
 targetLibrary.install.extend(envLibrary.Install('denetwork-{}/lib'.format(versionString), library))
 targetLibrary.aliasInstall(envLibrary, 'denetworkcpp')
 
+targetLibrary.archiveCutDirs(envLibrary, 'denetworkcpp-unix-x64-{}/include/denetwork'.format(versionString), headers, 1)
+targetLibrary.archiveLibrary(envLibrary, 'denetworkcpp-unix-x64-{}/lib'.format(versionString), library)
+
 targetLibrary.addParametersBuildCPP(envLibrary, library,
 	'denetwork-{}/include'.format(versionString), linkStatic=True)
+
+# archive
+targetArchive = globalEnv.targetManager.TargetArchive('DENetworkCPP Archive')
+globalEnv.targetManager.add('denetworkcpp_archive', targetArchive)
+
+targetArchive.archiveFiles(envLibrary, 'denetworkcpp-unix-x64-{}'.format(versionString),
+	targetLibrary.archiveFiles, format=globalEnv.targetManager.TargetArchive.formatZip)
+targetArchive.aliasArchive(envLibrary, 'denetworkcpp_archive')
 
 # example
 envExample = env.Clone()

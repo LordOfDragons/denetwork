@@ -50,7 +50,7 @@ def generate(env):
 	#  Archive target is used to build a release archive or self-installer. It is a dictionary
 	#  with target as value and the name inside the archive as key.
 	#  
-	#  By default install and archive are empty.
+	#  By default install and archiveFiles are empty.
 	class _TargetLibrary(_Target):
 		def __init__(self, description, target=None, **args):
 			super(_TargetLibrary, self).__init__(description)
@@ -59,7 +59,7 @@ def generate(env):
 			else:
 				self.build = [target]
 			self.install = []
-			self.archive = {}
+			self.archiveFiles = {}
 			self.params = {'STATIC_LIBS': []}
 			self.addParameters(**args)
 		
@@ -81,14 +81,14 @@ def generate(env):
 		#  \param files Files to archive
 		#  \param cutDirCount Number of parent directories to cut inside path
 		def archiveCutDirs(self, env, path, files, cutDirCount):
-			self.archive.update({os.path.normpath(os.path.join(path, *f.split(os.sep)[cutDirCount:])): env.File(f).srcnode() for f in files})
+			self.archiveFiles.update({os.path.normpath(os.path.join(path, *f.split(os.sep)[cutDirCount:])): env.File(f).srcnode() for f in files})
 		
 		## Archive library.
 		#
 		#  \param path Path to archive library in
 		#  \param library Library to archive
 		def archiveLibrary(self, env, path, library):
-			self.archive.update({os.path.normpath(os.path.join(path, l.name)): l for l in library})
+			self.archiveFiles.update({os.path.normpath(os.path.join(path, l.name)): l for l in library})
 			# todo: support library versioning
 		
 		## Create build alias for all build targets stored so far
@@ -162,7 +162,7 @@ def generate(env):
 			else:
 				self.build = [target]
 			self.install = []
-			self.archive = {}
+			self.archiveFiles = {}
 		
 		## Install files with first n destination directories cut.
 		#
@@ -182,14 +182,14 @@ def generate(env):
 		#  \param files Files to archive
 		#  \param cutDirCount Number of parent directories to cut inside path
 		def archiveCutDirs(self, env, path, files, cutDirCount):
-			self.archive.update({os.path.normpath(os.path.join(path, *f.split(os.sep)[cutDirCount:])): env.File(f).srcnode() for f in files})
+			self.archiveFiles.update({os.path.normpath(os.path.join(path, *f.split(os.sep)[cutDirCount:])): env.File(f).srcnode() for f in files})
 		
 		## Archive program.
 		#
 		#  \param path Path to archive library in
 		#  \param program Program to archive
 		def archiveProgram(self, env, path, program):
-			self.archive.update({os.path.normpath(os.path.join(path, p.name)): p for p in program})
+			self.archiveFiles.update({os.path.normpath(os.path.join(path, p.name)): p for p in program})
 		
 		## Create build alias for all build targets stored so far
 		def aliasBuild(self, env, name):
