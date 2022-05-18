@@ -50,7 +50,6 @@ public:
 	denMessageWriter &WriteULong(uint64_t value);
 	denMessageWriter &WriteFloat(float value);
 	denMessageWriter &WriteDouble(double value);
-	denMessageWriter &WriteString(const std::string &string);
 	denMessageWriter &WriteString8(const std::string &string);
 	denMessageWriter &WriteString16(const std::string &string);
 	denMessageWriter &WriteVector2(const denVector2 &vector);

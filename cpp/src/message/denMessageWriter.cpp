@@ -104,10 +104,6 @@ denMessageWriter &denMessageWriter::WriteDouble(double value){
 	return WriteULong(realValue);
 }
 
-denMessageWriter &denMessageWriter::WriteString(const std::string &string){
-	return Write(string.c_str(), string.size());
-}
-
 denMessageWriter &denMessageWriter::WriteString8(const std::string &string){
 	const size_t len = string.size();
 	if (len > 255) {

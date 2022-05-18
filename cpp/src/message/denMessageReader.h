@@ -33,7 +33,7 @@
 #include "../message/denMessage.h"
 
 /**
- * \brief Network message writer.
+ * \brief Network message reader.
  */
 class denMessageReader{
 public:
@@ -52,7 +52,6 @@ public:
 	uint64_t ReadULong();
 	float ReadFloat();
 	double ReadDouble();
-	std::string ReadString();
 	std::string ReadString8();
 	std::string ReadString16();
 	denVector2 ReadVector2();
