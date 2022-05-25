@@ -1,0 +1,41 @@
+name: Nightly
+
+on:
+  workflow_call:
+    inputs:
+      releaseVersion:
+        required: true
+        type: string
+      artifactArchive:
+        required: true
+        type: string
+
+jobs:
+  build_linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Install required packages
+        run: |
+          sudo apt -y install build-essential scons
+      
+      - name: Init custom.py
+        run: |
+          cp ${{ github.workspace }}/.github/workflows/custom_nightly.py custom.py
+      
+      - name: Build
+        run: scons -j 14 build archive
+      
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+        
+      - name: Store Archives
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ inputs.artifactArchive }}
+          path: |
+            cpp/build/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip
+          if-no-files-found: error
