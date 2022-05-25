@@ -1,5 +1,8 @@
 import os, sys
 
+from string_variable import StringVariable
+from ternary_variable import TernaryVariable
+
 # create parent environment and load tools
 globalEnv = Environment()
 globalEnv['PARAMETER_SOURCE'] = ['custom.py']
