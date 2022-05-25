@@ -26,11 +26,7 @@ jobs:
           cp ${{ github.workspace }}/.github/workflows/custom_nightly.py custom.py
       
       - name: Build
-        run: scons -j 14 build archive
-      
-      - name: Get current date
-        id: date
-        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+        run: scons -j 14 version=${{ inputs.releaseVersion }} build archive
         
       - name: Store Archives
         uses: actions/upload-artifact@v3

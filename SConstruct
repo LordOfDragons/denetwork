@@ -38,6 +38,7 @@ params.Add(BoolVariable('with_debug', 'Build with debug symbols for GDB usage', 
 params.Add(BoolVariable('with_warnerrors', 'Treat warnings as errors (dev-builds)', False))
 params.Add(BoolVariable('with_sanitize', 'Enable sanitizing (dev-builds)', False))
 params.Add(BoolVariable('with_optimizations', 'Enable run-time optimizations', True))
+params.Add(StringVariable('version', 'Version', 'development'))
 
 params.Update(globalEnv)
 

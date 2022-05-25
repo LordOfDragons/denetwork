@@ -3,7 +3,7 @@ from ternary_variable import TernaryVariable
 
 Import('globalEnv')
 
-versionString = '1.0'
+versionString = globalEnv['version']
 
 env = globalEnv.Clone()
 
