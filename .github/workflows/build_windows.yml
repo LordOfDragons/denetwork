@@ -1,4 +1,4 @@
-name: Build Linux
+name: Build Windows
 
 on:
   workflow_call:
@@ -11,7 +11,7 @@ on:
         type: string
 
 jobs:
-  build_linux:
+  build:
     runs-on: ubuntu-latest
     
     steps:
@@ -19,19 +19,19 @@ jobs:
       
       - name: Install required packages
         run: |
-          sudo apt -y install build-essential scons
+          sudo apt -y install build-essential scons mingw-w64
       
       - name: Init custom.py
         run: |
-          cp ${{ github.workspace }}/.github/workflows/custom_linux.py custom.py
+          cp ${{ github.workspace }}/.github/workflows/custom_windows.py custom.py
       
       - name: Build
         run: scons -j 14 version=${{ inputs.releaseVersion }} build archive
-        
+          
       - name: Store Archives
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.artifactArchive }}
           path: |
-            cpp/build/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip
+            cpp/build/denetworkcpp-windows-x64-${{ inputs.releaseVersion }}.zip
           if-no-files-found: error
