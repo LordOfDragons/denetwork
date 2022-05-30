@@ -22,8 +22,28 @@
  * SOFTWARE.
  */
 
-package ch.dragondreams.denetwork;
+package ch.dragondreams.denetwork.protocol;
 
-public class Server {
+/**
+ * Acknowledge connection codes.
+ */
+public enum ConnectionAck {
+	ACCEPTED(0),
+	REJECTED(1),
+	NO_COMMON_PROTOCOL(2);
 
+	public final int value;
+
+	private ConnectionAck(int value) {
+		this.value = value;
+	}
+
+	public static ConnectionAck withValue(int value) {
+		for (ConnectionAck each : values()) {
+			if (each.value == value) {
+				return each;
+			}
+		}
+		return null;
+	}
 }

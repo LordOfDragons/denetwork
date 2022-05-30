@@ -47,6 +47,7 @@ params.Update(globalEnv)
 
 # build
 SConscript(dirs='cpp', variant_dir='cpp/build', duplicate=0, exports='globalEnv')
+SConscript(dirs='java', variant_dir='java/build', duplicate=0, exports='globalEnv')
 
 # build all target
 targets = []

@@ -199,9 +199,100 @@ def generate(env):
 		def aliasInstall(self, env, name):
 			self.install = [env.Alias(name, self.install)]
 	
+	## Jar target with support to be used by other targets to compile against in-source
+	#
+	#  To use a target of this type in building use the applyBuild(env) method. This method
+	#  updates various construction parameters to add the appropriate path to build against
+	#  the build jar.
+	#  
+	#  Supports in addition to the build target install and archive target to be defined.
+	#  Archive target is used to build a release archive or self-installer. It is a dictionary
+	#  with target as value and the name inside the archive as key.
+	#  
+	#  By default install and archiveFiles are empty.
+	class _TargetJar(_Target):
+		def __init__(self, description, target=None, **args):
+			super(_TargetJar, self).__init__(description)
+			if isinstance(target, (list, tuple)):
+				self.build = target
+			else:
+				self.build = [target]
+			self.install = []
+			self.archiveFiles = {}
+			self.params = {'JAVACLASSPATH': []}
+			self.addParameters(**args)
+		
+		## Install files with first n destination directories cut.
+		#
+		#  For example using cutDirCount = 1 the file 'src/dir/file.h' is installed under path as 'dir/file.h'.
+		#
+		#  \param path Path to install files to
+		#  \param files Files to install
+		#  \param cutDirCount Number of parent directories to cut inside path
+		def installCutDirs(self, env, path, files, cutDirCount):
+			self.install.extend([env.InstallAs(os.path.join(path, *f.split(os.sep)[cutDirCount:]), f) for f in files])
+		
+		## Archive files with first n destination directories cut.
+		#
+		#  For example using cutDirCount = 1 the file 'src/dir/file.h' is archived under path as 'dir/file.h'.
+		#
+		#  \param path Path to archive files in
+		#  \param files Files to archive
+		#  \param cutDirCount Number of parent directories to cut inside path
+		def archiveCutDirs(self, env, path, files, cutDirCount):
+			self.archiveFiles.update({os.path.normpath(os.path.join(path, *f.split(os.sep)[cutDirCount:])): env.File(f).srcnode() for f in files})
+		
+		## Archive Jar.
+		#
+		#  \param path Path to archive library in
+		#  \param jar Jar to archive
+		def archiveJar(self, env, path, jar):
+			self.archiveFiles.update({os.path.normpath(os.path.join(path, l.name)): l for l in jar})
+		
+		## Create build alias for all build targets stored so far
+		def aliasBuild(self, env, name):
+			self.build = [env.Alias(name, self.build)]
+		
+		## Create install alias for all install targets stored so far
+		def aliasInstall(self, env, name):
+			self.install = [env.Alias(name, self.install)]
+		
+		## Add parameters required for this target to be used for in-source building by Java based targets.
+		#
+		#  Adds JAVACLASSPATH parameters
+		#  
+		#  \param env Environment to use to find directories in.
+		#  \param jars Jars including build ones other targets required to link against.
+		def addParametersBuildJava(self, env, jars):
+			if isinstance(jars, (list, tuple)):
+				self.addParameters(JAVACLASSPATH = jars)
+			else:
+				self.addParameters(JAVACLASSPATH = [jars])
+		
+		## Add parameters to allow building using this library in-source.
+		#  
+		#  Works similar to Environment.Append
+		def addParameters(self, **args):
+			for key in args.keys():
+				if not key in self.params:
+					self.params[key] = []
+				if isinstance(args[key], (list, tuple)):
+					self.params[key].extend(args[key])
+				else:
+					self.params[key].append(args[key])
+		
+		## Apply parameters to allow building using this library in-source.
+		#
+		#  Updates various construction parameters like JAVACLASSPATH to add the appropriate
+		#  path to build against the build library.
+		def applyBuild(self, env):
+			if self.params:
+				env.Append(**self.params)
+	
 	class TargetManager:
 		Target = _Target
 		TargetLibrary = _TargetLibrary
+		TargetJar = _TargetJar
 		TargetProgram = _TargetProgram
 		
 		def __init__(self, env):

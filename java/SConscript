@@ -1,0 +1,78 @@
+import os, sys, shlex
+from ternary_variable import TernaryVariable
+
+Import('globalEnv')
+
+versionString = globalEnv['version']
+
+env = globalEnv.Clone()
+
+# define the targets array and reports dictionary to be filled
+parent_targets = {}
+
+configGroup = 'DENetworkJava'
+#env.configReport.add('Treat warnings as errors (dev-builds)', 'with_warnerrors', configGroup)
+
+# build scripts
+from glob_files import globFiles
+
+# jar
+envJar = env.Clone()
+envJar.Tool('javac', 'jar')
+
+javaVersion = '1.7'
+
+envJar.Append(JAVACFLAGS = ['-source', javaVersion, '-target', javaVersion])
+envJar.Append(JAVACFLAGS = ['-encoding', 'UTF-8'])
+
+targetJar = globalEnv.targetManager.TargetJar('DENetwork JAR')
+globalEnv.targetManager.add('denetworkjava', targetJar)
+
+sources = envJar.Java('jar', 'src')
+jar = envJar.Jar(target='DENetwork-{}.jar'.format(versionString),
+	source=[envJar.Dir('jar')], JARCHDIR='$SOURCE', JAVAVERSION=javaVersion)
+envJar.Depends(jar, [sources])
+
+targetJar.build.extend(jar)
+targetJar.aliasBuild(envJar, 'denetworkjava_build')
+
+targetJar.install.extend(envJar.Install('denetwork-{}'.format(versionString), jar))
+targetJar.aliasInstall(envJar, 'denetworkjava')
+
+targetJar.archiveJar(envJar, 'denetworkjava-{}'.format(versionString), jar)
+
+targetJar.addParametersBuildJava(envJar, jar)
+
+# archive
+targetArchive = globalEnv.targetManager.TargetArchive('DENetworkJava Archive')
+globalEnv.targetManager.add('denetworkjava_archive', targetArchive)
+
+archiveFiles = {}
+archiveFiles['denetworkjava-{}/LICENSE'.format(versionString)] = envJar.File('#LICENSE')
+archiveFiles['denetworkjava-{}/README.md'.format(versionString)] = envJar.File('#README.md')
+
+targetArchive.archiveFiles(envJar, 'denetworkjava-{}'.format(versionString),
+	{**targetJar.archiveFiles, **archiveFiles},
+	format=globalEnv.targetManager.TargetArchive.formatZip)
+targetArchive.aliasArchive(envJar, 'denetworkjava_archive')
+
+"""
+# example
+envExample = env.Clone()
+
+targetExample = globalEnv.targetManager.TargetProgram('DENetwork Example')
+targetLibrary.applyBuild(envExample)
+globalEnv.targetManager.add('denetworkcpp_example', targetExample)
+
+sources = []
+globFiles(envExample, 'example', '*.cpp', sources)
+
+objects = [envExample.StaticObject(s) for s in sources]
+
+program = envExample.Program(target='denetworkcpp_example', source=objects + envExample['STATIC_LIBS'])
+envExample.Depends(objects, targetLibrary.install)
+
+targetExample.build.extend(program)
+targetExample.aliasBuild(envExample, 'denetworkcpp_example_build')
+targetLibrary.aliasInstall(envExample, 'denetworkcpp_example')
+"""

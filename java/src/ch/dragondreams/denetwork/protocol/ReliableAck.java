@@ -22,8 +22,27 @@
  * SOFTWARE.
  */
 
-package ch.dragondreams.denetwork;
+package ch.dragondreams.denetwork.protocol;
 
-public class Server {
+/**
+ * Reliable acknowledge codes.
+ */
+public enum ReliableAck {
+	SUCCESS(0),
+	FAILED(1);
 
+	public final int value;
+
+	private ReliableAck(int value) {
+		this.value = value;
+	}
+
+	public static ReliableAck withValue(int value) {
+		for (ReliableAck each : values()) {
+			if (each.value == value) {
+				return each;
+			}
+		}
+		return null;
+	}
 }

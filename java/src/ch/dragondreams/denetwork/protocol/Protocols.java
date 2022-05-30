@@ -22,8 +22,29 @@
  * SOFTWARE.
  */
 
-package ch.dragondreams.denetwork;
+package ch.dragondreams.denetwork.protocol;
 
-public class Server {
+/**
+ * Supported protocols.
+ */
+public enum Protocols {
+	/**
+	 * Drag[en]gine Network Protocol: Version 1.
+	 */
+	DENETWORK_PROTOCOL(0);
 
+	public final int value;
+
+	private Protocols(int value) {
+		this.value = value;
+	}
+
+	public static Protocols withValue(int value) {
+		for (Protocols each : values()) {
+			if (each.value == value) {
+				return each;
+			}
+		}
+		return null;
+	}
 }

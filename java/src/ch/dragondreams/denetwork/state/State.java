@@ -22,8 +22,15 @@
  * SOFTWARE.
  */
 
-package ch.dragondreams.denetwork;
+package ch.dragondreams.denetwork.state;
 
-public class Server {
+import ch.dragondreams.denetwork.value.Value;
+
+public class State {
+
+	public void valueChanged(Value value) {
+		// TODO Auto-generated method stub
+
+	}
 
 }

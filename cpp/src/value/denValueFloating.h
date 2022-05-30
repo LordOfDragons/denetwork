@@ -47,6 +47,7 @@ public:
 	pFormat(format),
 	pValue(0),
 	pLastValue(0),
+	pPrecision(minPrecision),
 	pMinPrecision(minPrecision){
 	}
 	
