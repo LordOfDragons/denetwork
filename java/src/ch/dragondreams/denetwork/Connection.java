@@ -24,6 +24,13 @@
 
 package ch.dragondreams.denetwork;
 
+import ch.dragondreams.denetwork.state.StateLink;
+
 public class Connection {
+
+	public void addModifiedStateLink(StateLink stateLink) {
+		// TODO Auto-generated method stub
+
+	}
 
 }

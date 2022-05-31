@@ -88,6 +88,27 @@ abstract public class Value {
 	}
 
 	/**
+	 * For internal use only.
+	 */
+	public int getIndex() {
+		return index;
+	}
+
+	/**
+	 * For internal use only.
+	 */
+	public void setIndex(int index) {
+		this.index = index;
+	}
+
+	/**
+	 * For internal use only.
+	 */
+	public void setState(State state) {
+		this.state = state;
+	}
+
+	/**
 	 * Read value from message.
 	 */
 	abstract public void read(MessageReader reader);
