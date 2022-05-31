@@ -40,9 +40,10 @@ import ch.dragondreams.denetwork.message.Message;
 /**
  * Endpoint using java.net.DatagramChannel.
  */
-public class SocketEndpoint extends Endpoint {
+public class SocketEndpoint implements Endpoint {
 	private final DatagramChannel channel;
 	private final ByteBuffer buffer = ByteBuffer.allocate(8192);
+	protected SocketAddress address;
 
 	/**
 	 * Create socket endpoint.
@@ -53,6 +54,27 @@ public class SocketEndpoint extends Endpoint {
 		channel = DatagramChannel.open();
 		channel.configureBlocking(false);
 		channel.bind(null);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 *
+	 * @see ch.dragondreams.denetwork.endpoint.Endpoint#getAddress()
+	 */
+	@Override
+	public SocketAddress getAddress() {
+		return address;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 *
+	 * @see ch.dragondreams.denetwork.endpoint.Endpoint#setAddress(java.net.
+	 * SocketAddress)
+	 */
+	@Override
+	public void setAddress(SocketAddress address) {
+		this.address = address;
 	}
 
 	/*
@@ -75,7 +97,7 @@ public class SocketEndpoint extends Endpoint {
 	 */
 	@Override
 	public void bind() throws IOException {
-		channel.close(); // to allow rebind
+		channel.close(); // to allow re-binding
 		channel.bind(address);
 	}
 
@@ -88,8 +110,8 @@ public class SocketEndpoint extends Endpoint {
 	public Datagram receiveDatagram() throws IOException {
 		buffer.reset();
 
-		SocketAddress address = channel.receive(buffer);
-		if (address == null) {
+		SocketAddress senderAddress = channel.receive(buffer);
+		if (senderAddress == null) {
 			return null;
 		}
 
@@ -98,7 +120,7 @@ public class SocketEndpoint extends Endpoint {
 		Message message = new Message();
 		message.setData(Arrays.copyOfRange(buffer.array(), buffer.position(), buffer.position() + buffer.limit()));
 		message.setLength(buffer.limit());
-		return new Datagram(message, address);
+		return new Datagram(message, senderAddress);
 	}
 
 	/*
@@ -121,7 +143,8 @@ public class SocketEndpoint extends Endpoint {
 
 		Enumeration<NetworkInterface> networkInterfaceEnumeration = NetworkInterface.getNetworkInterfaces();
 		while (networkInterfaceEnumeration.hasMoreElements()) {
-			for (InterfaceAddress interfaceAddress : networkInterfaceEnumeration.nextElement().getInterfaceAddresses()) {
+			for (InterfaceAddress interfaceAddress : networkInterfaceEnumeration.nextElement()
+					.getInterfaceAddresses()) {
 				if (interfaceAddress.getAddress().isSiteLocalAddress()) {
 					addresses.add(interfaceAddress.getAddress().getHostAddress());
 				}

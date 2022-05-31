@@ -32,7 +32,7 @@ import ch.dragondreams.denetwork.message.Message;
 /**
  * Endpoint supporting sending and receiving datagrams.
  */
-abstract public class Endpoint {
+abstract public interface Endpoint {
 	/**
 	 * Received datagram.
 	 */
@@ -55,45 +55,33 @@ abstract public class Endpoint {
 		}
 	}
 
-	protected SocketAddress address;
-
-	/**
-	 * Create endpoint.
-	 */
-	protected Endpoint() {
-	}
-
 	/**
 	 * Get socket address.
 	 */
-	public SocketAddress getAddress() {
-		return address;
-	}
+	abstract public SocketAddress getAddress();
 
 	/**
 	 * Set socket address.
 	 */
-	public void setAddress(SocketAddress address) {
-		this.address = address;
-	}
+	abstract public void setAddress(SocketAddress address);
 
 	/**
 	 * Dispose of endpoint.
 	 */
-	abstract void dispose();
+	abstract public void dispose();
 
 	/**
 	 * Bind endpoint.
 	 */
-	abstract void bind() throws IOException;
+	abstract public void bind() throws IOException;
 
 	/**
 	 * Receive datagram from socket.
 	 */
-	abstract Datagram receiveDatagram() throws IOException;
+	abstract public Datagram receiveDatagram() throws IOException;
 
 	/**
 	 * Send datagram.
 	 */
-	abstract void sendDatagram(Datagram datagram) throws IOException;
+	abstract public void sendDatagram(Datagram datagram) throws IOException;
 }
