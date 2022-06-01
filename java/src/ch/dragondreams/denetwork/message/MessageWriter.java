@@ -25,6 +25,7 @@
 package ch.dragondreams.denetwork.message;
 
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -35,7 +36,7 @@ import ch.dragondreams.denetwork.math.Quaternion;
 import ch.dragondreams.denetwork.math.Vector2;
 import ch.dragondreams.denetwork.math.Vector3;
 
-public class MessageWriter implements AutoCloseable {
+public class MessageWriter implements Closeable {
 	private final Message message;
 	private final ByteArrayOutputStream stream = new ByteArrayOutputStream();
 
@@ -225,7 +226,7 @@ public class MessageWriter implements AutoCloseable {
 	}
 
 	@Override
-	public void close() throws Exception {
+	public void close() {
 		message.setData(stream.toByteArray());
 		message.setLength(message.getData().length);
 	}

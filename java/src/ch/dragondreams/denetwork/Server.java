@@ -273,8 +273,6 @@ public class Server {
 			try (MessageWriter writer = new MessageWriter(message)) {
 				writer.writeByte((byte) CommandCodes.CONNECTION_ACK.value);
 				writer.writeByte((byte) ConnectionAck.REJECTED.value);
-			} catch (Exception e) {
-				throw new IOException(e);
 			}
 			endpoint.sendDatagram(new Datagram(message, address));
 			return;
@@ -292,8 +290,6 @@ public class Server {
 			try (MessageWriter writer = new MessageWriter(message)) {
 				writer.writeByte((byte) CommandCodes.CONNECTION_ACK.value);
 				writer.writeByte((byte) ConnectionAck.NO_COMMON_PROTOCOL.value);
-			} catch (Exception e) {
-				throw new IOException(e);
 			}
 			endpoint.sendDatagram(new Datagram(message, address));
 			return;
@@ -312,8 +308,6 @@ public class Server {
 			writer.writeByte((byte) CommandCodes.CONNECTION_ACK.value);
 			writer.writeByte((byte) ConnectionAck.ACCEPTED.value);
 			writer.writeUShort(protocol.value);
-		} catch (Exception e) {
-			throw new IOException(e);
 		}
 		endpoint.sendDatagram(new Datagram(message, address));
 
