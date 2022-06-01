@@ -24,38 +24,34 @@
 
 package ch.dragondreams.denetwork;
 
-import java.net.SocketAddress;
+import ch.dragondreams.denetwork.message.Message;
+import ch.dragondreams.denetwork.protocol.CommandCodes;
 
-import ch.dragondreams.denetwork.endpoint.Endpoint;
-import ch.dragondreams.denetwork.message.MessageReader;
-import ch.dragondreams.denetwork.protocol.Protocols;
-import ch.dragondreams.denetwork.state.StateLink;
+/**
+ * Internal use only.
+ */
+public class RealMessage {
+	public enum State{
+		/**
+		 * Message is pending to be send.
+		 */
+		PENDING,
 
-public class Connection {
+		/**
+		 * Message has been send awaiting ack.
+		 */
+		SEND,
 
-	public void addModifiedStateLink(StateLink stateLink) {
-		// TODO Auto-generated method stub
-
+		/**
+		 * Message is done.
+		 */
+		DONE
 	}
 
-	public boolean matches(Endpoint endpoint, SocketAddress addressReceive) {
-		// TODO Auto-generated method stub
-		return false;
-	}
+	public final Message message = new Message();
 
-	public void update(float elapsedTime) {
-		// TODO Auto-generated method stub
-
-	}
-
-	public void processDatagram(MessageReader reader) {
-		// TODO Auto-generated method stub
-
-	}
-
-	public void acceptConnection(Server server, Endpoint endpoint, SocketAddress address, Protocols protocol) {
-		// TODO Auto-generated method stub
-
-	}
-
+	public int number = -1;
+	public State state = State.PENDING;
+	public CommandCodes type = CommandCodes.RELIABLE_MESSAGE;
+	public float secondsSinceSend = 0.0f;
 }

@@ -24,6 +24,7 @@
 
 package ch.dragondreams.denetwork.message;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -34,9 +35,9 @@ import ch.dragondreams.denetwork.math.Quaternion;
 import ch.dragondreams.denetwork.math.Vector2;
 import ch.dragondreams.denetwork.math.Vector3;
 
-public class MessageWriter {
-	private byte[] data;
-	private int position = 0;
+public class MessageWriter implements AutoCloseable {
+	private final Message message;
+	private final ByteArrayOutputStream stream = new ByteArrayOutputStream();
 
 	static private ByteBuffer byteBuffer = createByteBuffer();
 
@@ -50,19 +51,22 @@ public class MessageWriter {
 	 * Create message writer.
 	 */
 	public MessageWriter(Message message) {
-		data = message.getData();
+		if (message == null) {
+			throw new IllegalArgumentException("message is null");
+		}
+		this.message = message;
 	}
 
 	/**
 	 * Write value.
 	 */
 	public MessageWriter writeChar(char value) {
-		data[position++] = (byte) value;
+		stream.write((byte) value);
 		return this;
 	}
 
 	public MessageWriter writeByte(byte value) {
-		data[position++] = value;
+		stream.write(value);
 		return this;
 	}
 
@@ -70,8 +74,7 @@ public class MessageWriter {
 		byteBuffer.clear();
 		byteBuffer.putShort(value);
 		byteBuffer.rewind();
-		byteBuffer.get(data, position, 2);
-		position += 2;
+		stream.write(byteBuffer.array(), 0, 2);
 		return this;
 	}
 
@@ -79,8 +82,7 @@ public class MessageWriter {
 		byteBuffer.clear();
 		byteBuffer.putShort((short) value);
 		byteBuffer.rewind();
-		byteBuffer.get(data, position, 2);
-		position += 2;
+		stream.write(byteBuffer.array(), 0, 2);
 		return this;
 	}
 
@@ -88,8 +90,7 @@ public class MessageWriter {
 		byteBuffer.clear();
 		byteBuffer.putInt(value);
 		byteBuffer.rewind();
-		byteBuffer.get(data, position, 4);
-		position += 4;
+		stream.write(byteBuffer.array(), 0, 4);
 		return this;
 	}
 
@@ -97,8 +98,7 @@ public class MessageWriter {
 		byteBuffer.clear();
 		byteBuffer.putInt((int) value);
 		byteBuffer.rewind();
-		byteBuffer.get(data, position, 4);
-		position += 4;
+		stream.write(byteBuffer.array(), 0, 4);
 		return this;
 	}
 
@@ -106,8 +106,7 @@ public class MessageWriter {
 		byteBuffer.clear();
 		byteBuffer.putLong(value);
 		byteBuffer.rewind();
-		byteBuffer.get(data, position, 8);
-		position += 8;
+		stream.write(byteBuffer.array(), 0, 8);
 		return this;
 	}
 
@@ -119,8 +118,7 @@ public class MessageWriter {
 		byteBuffer.clear();
 		byteBuffer.putFloat(value);
 		byteBuffer.rewind();
-		byteBuffer.get(data, position, 4);
-		position += 4;
+		stream.write(byteBuffer.array(), 0, 4);
 		return this;
 	}
 
@@ -128,8 +126,7 @@ public class MessageWriter {
 		byteBuffer.clear();
 		byteBuffer.putDouble(value);
 		byteBuffer.rewind();
-		byteBuffer.get(data, position, 8);
-		position += 8;
+		stream.write(byteBuffer.array(), 0, 8);
 		return this;
 	}
 
@@ -156,8 +153,7 @@ public class MessageWriter {
 		byteBuffer.putFloat(0, (float) vector.x());
 		byteBuffer.putFloat(1, (float) vector.y());
 		byteBuffer.rewind();
-		byteBuffer.get(data, position, 8);
-		position += 8;
+		stream.write(byteBuffer.array(), 0, 8);
 		return this;
 	}
 
@@ -167,8 +163,7 @@ public class MessageWriter {
 		byteBuffer.putFloat(1, (float) vector.y());
 		byteBuffer.putFloat(2, (float) vector.z());
 		byteBuffer.rewind();
-		byteBuffer.get(data, position, 12);
-		position += 12;
+		stream.write(byteBuffer.array(), 0, 12);
 		return this;
 	}
 
@@ -179,8 +174,7 @@ public class MessageWriter {
 		byteBuffer.putFloat(2, (float) quaternion.z());
 		byteBuffer.putFloat(3, (float) quaternion.w());
 		byteBuffer.rewind();
-		byteBuffer.get(data, position, 16);
-		position += 16;
+		stream.write(byteBuffer.array(), 0, 16);
 		return this;
 	}
 
@@ -189,8 +183,7 @@ public class MessageWriter {
 		byteBuffer.putInt(0, (int) point.x());
 		byteBuffer.putInt(1, (int) point.y());
 		byteBuffer.rewind();
-		byteBuffer.get(data, position, 8);
-		position += 8;
+		stream.write(byteBuffer.array(), 0, 8);
 		return this;
 	}
 
@@ -200,8 +193,7 @@ public class MessageWriter {
 		byteBuffer.putInt(1, (int) point.y());
 		byteBuffer.putInt(2, (int) point.z());
 		byteBuffer.rewind();
-		byteBuffer.get(data, position, 12);
-		position += 12;
+		stream.write(byteBuffer.array(), 0, 12);
 		return this;
 	}
 
@@ -211,8 +203,7 @@ public class MessageWriter {
 		byteBuffer.putDouble(1, vector.y());
 		byteBuffer.putDouble(2, vector.z());
 		byteBuffer.rewind();
-		byteBuffer.get(data, position, 24);
-		position += 24;
+		stream.write(byteBuffer.array(), 0, 24);
 		return this;
 	}
 
@@ -224,14 +215,18 @@ public class MessageWriter {
 			throw new IllegalArgumentException("length < 0");
 		}
 
-		System.arraycopy(buffer, offset, data, position, length);
-		position += length;
+		stream.write(buffer, offset, length);
 		return this;
 	}
 
 	public MessageWriter write(Message message) {
-		System.arraycopy(message.getData(), 0, data, position, message.getLength());
-		position += message.getLength();
+		stream.write(message.getData(), 0, message.getLength());
 		return this;
+	}
+
+	@Override
+	public void close() throws Exception {
+		message.setData(stream.toByteArray());
+		message.setLength(message.getData().length);
 	}
 }
