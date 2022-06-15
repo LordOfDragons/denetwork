@@ -741,8 +741,8 @@ void denConnection::pProcessLinkDown(denMessageReader &reader){
 		return each->GetIdentifier() == identifier;
 	}));
 	
-	if(iterLink == pStateLinks.cend() || (*iterLink)->GetLinkState() != denStateLink::State::listening){
-		throw std::invalid_argument("down link with identifier absent or not listening");
+	if(iterLink == pStateLinks.cend() || (*iterLink)->GetLinkState() != denStateLink::State::up){
+		throw std::invalid_argument("down link with identifier absent or not up");
 	}
 	
 	(*iterLink)->SetLinkState(denStateLink::State::down);
@@ -775,7 +775,7 @@ void denConnection::pProcessLinkState(denMessageReader &reader){
 		}
 		
 		if(iterLink != pStateLinks.cend()){
-			throw std::invalid_argument("Link state does not match the state provided.");
+			throw std::invalid_argument("Link state existing already.");
 		}
 		
 		const denStateLink::Ref link(std::make_shared<denStateLink>(*this, *state));

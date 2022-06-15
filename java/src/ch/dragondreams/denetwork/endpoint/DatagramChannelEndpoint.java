@@ -40,7 +40,7 @@ import ch.dragondreams.denetwork.message.Message;
 /**
  * Endpoint using java.net.DatagramChannel.
  */
-public class SocketEndpoint implements Endpoint {
+public class DatagramChannelEndpoint implements Endpoint {
 	private final DatagramChannel channel;
 	private final ByteBuffer buffer = ByteBuffer.allocate(8192);
 	protected SocketAddress address;
@@ -50,7 +50,7 @@ public class SocketEndpoint implements Endpoint {
 	 *
 	 * @throws IOException
 	 */
-	public SocketEndpoint() throws IOException {
+	public DatagramChannelEndpoint() throws IOException {
 		channel = DatagramChannel.open();
 		channel.configureBlocking(false);
 		channel.bind(null);

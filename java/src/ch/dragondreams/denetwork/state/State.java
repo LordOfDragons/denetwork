@@ -53,7 +53,7 @@ public class State {
 	/**
 	 * Read values from message.
 	 */
-	private void linkReadValues(MessageReader reader, StateLink link) {
+	public void linkReadValues(MessageReader reader, StateLink link) {
 		int i, count = reader.readByte();
 
 		for (i = 0; i < count; i++) {
@@ -97,7 +97,7 @@ public class State {
 	 * Verifies that the values in the state match in type and update their values.
 	 * Returns true if the state matches and has been updated or false otherwise.
 	 */
-	private boolean linkReadAndVerifyAllValues(MessageReader reader) {
+	public boolean linkReadAndVerifyAllValues(MessageReader reader) {
 		int i, count = values.size();
 		if (count != reader.readUShort()) {
 			throw new IllegalArgumentException("count out of range");
@@ -120,7 +120,9 @@ public class State {
 	}
 
 	/**
-	 * Write all values to message. \param[in] withTypes Include types.
+	 * Write all values to message.
+	 *
+	 * @param withTypes Include types.
 	 */
 	private void linkWriteValues(MessageWriter writer) {
 		for (Value each : values) {
@@ -129,9 +131,11 @@ public class State {
 	}
 
 	/**
-	 * Write all values to message. \param[in] withTypes Include types.
+	 * Write all values to message.
+	 *
+	 * @param withTypes Include types.
 	 */
-	private void linkWriteValuesWithVerify(MessageWriter writer) {
+	public void linkWriteValuesWithVerify(MessageWriter writer) {
 		writer.writeUShort(values.size());
 		for (Value each : values) {
 			writer.writeByte((byte) each.getDataType().value);
@@ -140,11 +144,12 @@ public class State {
 	}
 
 	/**
-	 * Write values to message if changed in link. \param[in] withTypes Include
-	 * types. Value only if \em allValues is true. \param[in] allValues Ignore
-	 * changed flags and send all values.
+	 * Write values to message if changed in link.
+	 *
+	 * @param withTypes Include types. Value only if allValues is true.
+	 * @param allValues Ignore changed flags and send all values.
 	 */
-	private void linkWriteValues(MessageWriter writer, StateLink link) {
+	public void linkWriteValues(MessageWriter writer, StateLink link) {
 		int i, count = values.size();
 		int changedCount = 0;
 		for (i = 0; i < count; i++) {

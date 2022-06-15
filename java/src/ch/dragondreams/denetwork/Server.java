@@ -35,7 +35,7 @@ import java.util.logging.Logger;
 
 import ch.dragondreams.denetwork.endpoint.Endpoint;
 import ch.dragondreams.denetwork.endpoint.Endpoint.Datagram;
-import ch.dragondreams.denetwork.endpoint.SocketEndpoint;
+import ch.dragondreams.denetwork.endpoint.DatagramChannelEndpoint;
 import ch.dragondreams.denetwork.message.Message;
 import ch.dragondreams.denetwork.message.MessageReader;
 import ch.dragondreams.denetwork.message.MessageWriter;
@@ -232,14 +232,14 @@ public class Server {
 	 * Default implementation creates instance of SocketEndpoint.
 	 */
 	public Endpoint createEndpoint() throws IOException {
-		return new SocketEndpoint();
+		return new DatagramChannelEndpoint();
 	}
 
 	/**
 	 * Find public addresses.
 	 */
 	public List<String> findPublicAddresses() throws IOException {
-		return SocketEndpoint.getPublicAddresses();
+		return DatagramChannelEndpoint.getPublicAddresses();
 	}
 
 	/**
