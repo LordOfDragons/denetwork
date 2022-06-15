@@ -25,13 +25,19 @@ import platform
 
 from SCons.Variables import Variables, BoolVariable
 from SCons.Util import NodeList
+from SCons.Defaults import Copy
+import SCons  # required for isinstance tests to work correctly
 
 def generate(env):
+	## Helpers
+	def isList(o):
+		return isinstance(o, (list, tuple, SCons.Node.NodeList))
+	
 	## Generic target.
 	class _Target(object):
 		def __init__(self, description, target=[]):
 			self.description = description
-			if isinstance(target, (list, tuple)):
+			if isList(target):
 				self.target = target
 			else:
 				self.target = [target]
@@ -54,7 +60,7 @@ def generate(env):
 	class _TargetLibrary(_Target):
 		def __init__(self, description, target=None, **args):
 			super(_TargetLibrary, self).__init__(description)
-			if isinstance(target, (list, tuple)):
+			if isList(target):
 				self.build = target
 			else:
 				self.build = [target]
@@ -108,15 +114,15 @@ def generate(env):
 		#  \param includeDir Directory containing headers required by other targets to build.
 		#  \param libDir Directory containing build library.
 		def addParametersBuildCPP(self, env, libs, includeDir, libDir='.', linkStatic=False):
-			if isinstance(includeDir, (list, tuple)):
+			if isList(includeDir):
 				self.addParameters(CPPPATH = [env.Dir(x) for x in includeDir])
 			else:
 				self.addParameters(CPPPATH = [env.Dir(includeDir)])
-			if isinstance(libDir, (list, tuple)):
+			if isList(libDir):
 				self.addParameters(LIBPATH = [env.Dir(x) for x in libDir])
 			else:
 				self.addParameters(LIBPATH = [env.Dir(libDir)])
-			if isinstance(libs, (list, tuple)):
+			if isList(libs):
 				if linkStatic:
 					self.addParameters(STATIC_LIBS = libs)
 				else:
@@ -134,7 +140,7 @@ def generate(env):
 			for key in args.keys():
 				if not key in self.params:
 					self.params[key] = []
-				if isinstance(args[key], (list, tuple)):
+				if isList(args[key]):
 					self.params[key].extend(args[key])
 				else:
 					self.params[key].append(args[key])
@@ -157,7 +163,7 @@ def generate(env):
 	class _TargetProgram(_Target):
 		def __init__(self, description, target=None):
 			super(_TargetProgram, self).__init__(description)
-			if isinstance(target, (list, tuple)):
+			if isList(target):
 				self.build = target
 			else:
 				self.build = [target]
@@ -213,14 +219,64 @@ def generate(env):
 	class _TargetJar(_Target):
 		def __init__(self, description, target=None, **args):
 			super(_TargetJar, self).__init__(description)
-			if isinstance(target, (list, tuple)):
+			if isList(target):
 				self.build = target
 			else:
 				self.build = [target]
+			self.jars = []
+			self.jarDir = 'jar'
+			self.javaVersion = '1.7'
+			self.manifest = None
+			self.sources = []
 			self.install = []
+			self.jarFiles = []
 			self.archiveFiles = {}
 			self.params = {'JAVACLASSPATH': []}
 			self.addParameters(**args)
+		
+		## Compile sources
+		#
+		#  Uses jarDir as target and depends on jarFiles.
+		def compileSources(self, env, sources):
+			env.Append(JAVACFLAGS = ['-source', self.javaVersion, '-target', self.javaVersion])
+			env.Append(JAVACFLAGS = ['-encoding', 'UTF-8'])
+			
+			self.sources.extend(env.Java(self.jarDir, sources))
+			env.Depends(self.sources, self.jarFiles)
+		
+		## Add file to include like resources.
+		#  
+		#  File is copied to jarDir. Source has to be a single file and target a single
+		#  directory relative to jarDir.
+		def includeFile(self, env, target, source):
+			if isinstance(source, str):
+				source = env.File(source)
+			self.jarFiles.append(env.Command('{}/{}/{}'.format(self.jarDir, target, source.name),
+				source.abspath, Copy('$TARGET', '$SOURCE')))
+		
+		## Build jar
+		#  
+		#  Uses jarDir as source and target as name (.jar is appended automatically).
+		#  If manifest file is set it is used too.
+		def buildJar(self, env, target):
+			source = [env.Dir(self.jarDir)]
+			if self.manifest:
+				if isinstance(self.manifest, str):
+					source.append(env.File(self.manifest))
+				else:
+					source.append(self.manifest)
+			jars = env.Jar(target='{}.jar'.format(target), source=source,
+				JARCHDIR='$SOURCE', JAVAVERSION=self.javaVersion)
+			env.Depends(jars, self.sources)
+			self.addParameters(JAVACLASSPATH = [x.abspath for x in jars])
+			self.jars.extend(jars)
+			self.build.extend(jars)
+		
+		## Install jar
+		#
+		#  Uses target as directory.
+		def installJar(self, env, target):
+			self.install.extend(env.Install(target, self.jars))
 		
 		## Install files with first n destination directories cut.
 		#
@@ -246,8 +302,8 @@ def generate(env):
 		#
 		#  \param path Path to archive library in
 		#  \param jar Jar to archive
-		def archiveJar(self, env, path, jar):
-			self.archiveFiles.update({os.path.normpath(os.path.join(path, l.name)): l for l in jar})
+		def archiveJar(self, env, path):
+			self.archiveFiles.update({os.path.normpath(os.path.join(path, l.name)): l for l in self.jars})
 		
 		## Create build alias for all build targets stored so far
 		def aliasBuild(self, env, name):
@@ -257,18 +313,6 @@ def generate(env):
 		def aliasInstall(self, env, name):
 			self.install = [env.Alias(name, self.install)]
 		
-		## Add parameters required for this target to be used for in-source building by Java based targets.
-		#
-		#  Adds JAVACLASSPATH parameters
-		#  
-		#  \param env Environment to use to find directories in.
-		#  \param jars Jars including build ones other targets required to link against.
-		def addParametersBuildJava(self, env, jars):
-			if isinstance(jars, (list, tuple)):
-				self.addParameters(JAVACLASSPATH = jars)
-			else:
-				self.addParameters(JAVACLASSPATH = [jars])
-		
 		## Add parameters to allow building using this library in-source.
 		#  
 		#  Works similar to Environment.Append
@@ -276,7 +320,7 @@ def generate(env):
 			for key in args.keys():
 				if not key in self.params:
 					self.params[key] = []
-				if isinstance(args[key], (list, tuple)):
+				if isList(args[key]):
 					self.params[key].extend(args[key])
 				else:
 					self.params[key].append(args[key])
@@ -285,9 +329,11 @@ def generate(env):
 		#
 		#  Updates various construction parameters like JAVACLASSPATH to add the appropriate
 		#  path to build against the build library.
-		def applyBuild(self, env):
+		def applyBuild(self, env, target):
 			if self.params:
 				env.Append(**self.params)
+			for jar in self.jars:
+				target.includeFile(env, 'libs', jar)
 	
 	class TargetManager:
 		Target = _Target

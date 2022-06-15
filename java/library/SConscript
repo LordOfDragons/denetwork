@@ -20,28 +20,18 @@ from glob_files import globFiles
 envJar = env.Clone()
 envJar.Tool('javac', 'jar')
 
-javaVersion = '1.7'
-
-envJar.Append(JAVACFLAGS = ['-source', javaVersion, '-target', javaVersion])
-envJar.Append(JAVACFLAGS = ['-encoding', 'UTF-8'])
-
 targetJar = globalEnv.targetManager.TargetJar('DENetwork JAR')
 globalEnv.targetManager.add('denetworkjava', targetJar)
 
-sources = envJar.Java('jar', 'src')
-jar = envJar.Jar(target='DENetwork-{}.jar'.format(versionString),
-	source=[envJar.Dir('jar')], JARCHDIR='$SOURCE', JAVAVERSION=javaVersion)
-envJar.Depends(jar, [sources])
-
-targetJar.build.extend(jar)
+targetJar.javaVersion = '1.7'
+targetJar.compileSources(envJar, 'src')
+targetJar.buildJar(envJar, 'DENetwork-{}'.format(versionString))
 targetJar.aliasBuild(envJar, 'denetworkjava_build')
 
-targetJar.install.extend(envJar.Install('denetwork-{}'.format(versionString), jar))
+targetJar.installJar(envJar, 'denetwork-{}'.format(versionString))
 targetJar.aliasInstall(envJar, 'denetworkjava')
 
-targetJar.archiveJar(envJar, 'denetworkjava-{}'.format(versionString), jar)
-
-targetJar.addParametersBuildJava(envJar, jar)
+targetJar.archiveJar(envJar, 'denetworkjava-{}'.format(versionString))
 
 # archive
 targetArchive = globalEnv.targetManager.TargetArchive('DENetworkJava Archive')
@@ -55,24 +45,3 @@ targetArchive.archiveFiles(envJar, 'denetworkjava-{}'.format(versionString),
 	{**targetJar.archiveFiles, **archiveFiles},
 	format=globalEnv.targetManager.TargetArchive.formatZip)
 targetArchive.aliasArchive(envJar, 'denetworkjava_archive')
-
-"""
-# example
-envExample = env.Clone()
-
-targetExample = globalEnv.targetManager.TargetProgram('DENetwork Example')
-targetLibrary.applyBuild(envExample)
-globalEnv.targetManager.add('denetworkcpp_example', targetExample)
-
-sources = []
-globFiles(envExample, 'example', '*.cpp', sources)
-
-objects = [envExample.StaticObject(s) for s in sources]
-
-program = envExample.Program(target='denetworkcpp_example', source=objects + envExample['STATIC_LIBS'])
-envExample.Depends(objects, targetLibrary.install)
-
-targetExample.build.extend(program)
-targetExample.aliasBuild(envExample, 'denetworkcpp_example_build')
-targetLibrary.aliasInstall(envExample, 'denetworkcpp_example')
-"""

@@ -145,22 +145,3 @@ targetArchive.archiveFiles(envLibrary, 'denetworkcpp-unix-x64-{}'.format(version
 	{**targetLibrary.archiveFiles, **archiveFiles},
 	format=globalEnv.targetManager.TargetArchive.formatZip)
 targetArchive.aliasArchive(envLibrary, 'denetworkcpp_archive')
-
-# example
-envExample = env.Clone()
-
-targetExample = globalEnv.targetManager.TargetProgram('DENetwork Example')
-targetLibrary.applyBuild(envExample)
-globalEnv.targetManager.add('denetworkcpp_example', targetExample)
-
-sources = []
-globFiles(envExample, 'example', '*.cpp', sources)
-
-objects = [envExample.StaticObject(s) for s in sources]
-
-program = envExample.Program(target='denetworkcpp_example', source=objects + envExample['STATIC_LIBS'])
-envExample.Depends(objects, targetLibrary.install)
-
-targetExample.build.extend(program)
-targetExample.aliasBuild(envExample, 'denetworkcpp_example_build')
-targetLibrary.aliasInstall(envExample, 'denetworkcpp_example')

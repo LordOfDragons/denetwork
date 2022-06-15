@@ -46,8 +46,10 @@ params.Add(StringVariable('version', 'Version', 'development'))
 params.Update(globalEnv)
 
 # build
-SConscript(dirs='cpp', variant_dir='cpp/build', duplicate=0, exports='globalEnv')
-SConscript(dirs='java', variant_dir='java/build', duplicate=0, exports='globalEnv')
+SConscript(dirs='cpp/library', variant_dir='cpp/library/build', duplicate=0, exports='globalEnv')
+SConscript(dirs='cpp/example', variant_dir='cpp/example/build', duplicate=0, exports='globalEnv')
+SConscript(dirs='java/library', variant_dir='java/library/build', duplicate=0, exports='globalEnv')
+SConscript(dirs='java/example', variant_dir='java/example/build', duplicate=0, exports='globalEnv')
 
 # build all target
 targets = []

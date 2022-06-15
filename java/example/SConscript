@@ -1,0 +1,39 @@
+import os, sys, shlex
+from ternary_variable import TernaryVariable
+
+Import('globalEnv')
+
+versionString = globalEnv['version']
+
+env = globalEnv.Clone()
+
+# define the targets array and reports dictionary to be filled
+parent_targets = {}
+
+configGroup = 'DENetworkJavaExample'
+#env.configReport.add('Treat warnings as errors (dev-builds)', 'with_warnerrors', configGroup)
+
+# build scripts
+from glob_files import globFiles
+
+# jar
+envJar = env.Clone()
+envJar.Tool('javac', 'jar')
+
+targetLibrary = globalEnv.targetManager.targets['denetworkjava']
+
+targetJar = globalEnv.targetManager.TargetJar('DENetwork Example JAR')
+globalEnv.targetManager.add('denetworkjava_example', targetJar)
+
+targetLibrary.applyBuild(envJar, targetJar)
+
+targetJar.javaVersion = '1.7'
+targetJar.manifest = 'src/Manifest.txt'
+targetJar.compileSources(envJar, 'src')
+targetJar.buildJar(envJar, 'DENetworkExample-{}'.format(versionString))
+targetJar.aliasBuild(envJar, 'denetworkjava_example_build')
+
+targetJar.installJar(envJar, 'denetwork-{}'.format(versionString))
+targetJar.aliasInstall(envJar, 'denetworkjava_example')
+
+targetJar.archiveJar(envJar, 'denetworkjava_example-{}'.format(versionString))
