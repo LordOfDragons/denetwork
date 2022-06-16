@@ -44,5 +44,5 @@ jobs:
             
             Builds are potentially unstable. Use at own risk.
           artifacts: >
-            denetworkcpp-unix-x64-nightly.zip
+            denetworkcpp-unix-x64-nightly.zip,
             DENetwork-nightly.jar
