@@ -1,11 +1,10 @@
 package ch.dragondreams.denetworkexample;
 
+import java.io.IOException;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
-
-import ch.dragondreams.denetwork.message.Message;
 
 public class ExampleApp {
 	public static final String CLASS_NAME = ExampleApp.class.getCanonicalName();
@@ -22,9 +21,12 @@ public class ExampleApp {
 		logHandlerConsole.setLevel(Level.ALL);
 		logger.addHandler(logHandlerConsole);
 
-		// run example application
-		logger.info("Running Example");
-		new Message();
+		// show main menu
+		try {
+			new WindowMain(args);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 }
