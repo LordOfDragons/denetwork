@@ -32,7 +32,7 @@ jobs:
         run: |
           mkdir artifacts
           mv cpp/library/build/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip artifacts
-          mv java/library/build/DENetwork-${{ inputs.releaseVersion }}.jar artifacts
+          mv java/library/build/denetworkjava-${{ inputs.releaseVersion }}.zip artifacts
         
       - name: Store Archives
         uses: actions/upload-artifact@v3
@@ -40,5 +40,5 @@ jobs:
           name: ${{ inputs.artifactArchive }}
           path: |
             artifacts/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip
-            artifacts/DENetwork-${{ inputs.releaseVersion }}.jar
+            artifacts/denetworkjava-${{ inputs.releaseVersion }}.zip
           if-no-files-found: error
