@@ -28,11 +28,17 @@ jobs:
       - name: Build
         run: scons -j 14 version=${{ inputs.releaseVersion }} build archive
         
+      - name: Move Artifacts
+        run: |
+          mkdir artifacts
+          mv cpp/library/build/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip artifacts
+          mv java/library/build/DENetwork-${{ inputs.releaseVersion }}.jar artifacts
+        
       - name: Store Archives
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.artifactArchive }}
           path: |
-            cpp/library/build/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip
-            java/library/build/DENetwork-${{ inputs.releaseVersion }}.jar
+            artifacts/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip
+            artifacts/DENetwork-${{ inputs.releaseVersion }}.jar
           if-no-files-found: error
