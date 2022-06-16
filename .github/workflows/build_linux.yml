@@ -33,5 +33,6 @@ jobs:
         with:
           name: ${{ inputs.artifactArchive }}
           path: |
-            cpp/build/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip
+            cpp/library/build/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip
+            java/library/build/DENetwork-${{ inputs.releaseVersion }}.jar
           if-no-files-found: error

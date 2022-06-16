@@ -33,5 +33,5 @@ jobs:
         with:
           name: ${{ inputs.artifactArchive }}
           path: |
-            cpp/build/denetworkcpp-windows-x64-${{ inputs.releaseVersion }}.zip
+            cpp/library/build/denetworkcpp-windows-x64-${{ inputs.releaseVersion }}.zip
           if-no-files-found: error
