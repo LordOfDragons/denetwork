@@ -33,6 +33,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
           artifactErrorsFailBuild: true
+          removeArtifacts: true
           draft: false
           prerelease: true
           commit: 'main'
@@ -43,7 +44,6 @@ jobs:
             Created: ${{ steps.date.outputs.date }}
             
             Builds are potentially unstable. Use at own risk.
-          removeArtifacts: true
           artifacts: >
             denetworkcpp-unix-x64-nightly.zip,
             denetworkjava-nightly.zip
