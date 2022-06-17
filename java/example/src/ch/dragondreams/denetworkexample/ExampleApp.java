@@ -20,6 +20,7 @@ public class ExampleApp {
 		logHandlerConsole.setFormatter(new SimpleLineLogFormatter());
 		logHandlerConsole.setLevel(Level.ALL);
 		logger.addHandler(logHandlerConsole);
+		Logger.getLogger("ch.dragondreams.denetwork").addHandler(logHandlerConsole);
 
 		// show main menu
 		try {

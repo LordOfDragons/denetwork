@@ -62,7 +62,7 @@ public class ValueVector3 extends ValueFloating<Vector3> {
 	}
 
 	@Override
-	public void read(MessageReader reader) {
+	public synchronized void read(MessageReader reader) {
 		double x, y, z;
 
 		switch (format) {
@@ -92,7 +92,7 @@ public class ValueVector3 extends ValueFloating<Vector3> {
 	}
 
 	@Override
-	public void write(MessageWriter writer) {
+	public synchronized void write(MessageWriter writer) {
 		switch (format) {
 		case FLOAT16:
 			writer.writeUShort(HalfFloat.floatToHalf((float) value.x()));

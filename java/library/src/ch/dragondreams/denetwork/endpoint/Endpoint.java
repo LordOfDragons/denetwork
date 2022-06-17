@@ -34,25 +34,13 @@ import ch.dragondreams.denetwork.message.Message;
  */
 abstract public interface Endpoint {
 	/**
-	 * Received datagram.
+	 * Listener.
 	 */
-	public static class Datagram {
-		public final Message message;
-		public final SocketAddress address;
-
+	public interface Listener {
 		/**
-		 * Create received datagram.
+		 * Datagram received.
 		 */
-		public Datagram(Message message, SocketAddress address) {
-			if (message == null) {
-				throw new IllegalArgumentException("message is null");
-			}
-			if (address == null) {
-				throw new IllegalArgumentException("address is null");
-			}
-			this.message = message;
-			this.address = address;
-		}
+		void receivedDatagram(SocketAddress address, Message message);
 	}
 
 	/**
@@ -61,27 +49,24 @@ abstract public interface Endpoint {
 	abstract public SocketAddress getAddress();
 
 	/**
-	 * Set socket address.
-	 */
-	abstract public void setAddress(SocketAddress address);
-
-	/**
 	 * Dispose of endpoint.
 	 */
 	abstract public void dispose();
 
 	/**
-	 * Bind endpoint.
+	 * Open endpoint delivering events to the provided listener. If address is null
+	 * listen on random port.
 	 */
-	abstract public void bind() throws IOException;
+	abstract public void open(SocketAddress address, Listener listener) throws IOException;
 
 	/**
-	 * Receive datagram from socket.
+	 * Close endpoint if open and stop delivering events to listener provided in the
+	 * previous open call.
 	 */
-	abstract public Datagram receiveDatagram() throws IOException;
+	abstract public void close();
 
 	/**
 	 * Send datagram.
 	 */
-	abstract public void sendDatagram(Datagram datagram) throws IOException;
+	abstract public void sendDatagram(SocketAddress address, Message message) throws IOException;
 }

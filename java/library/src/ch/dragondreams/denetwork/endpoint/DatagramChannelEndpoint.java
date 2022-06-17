@@ -25,9 +25,11 @@
 package ch.dragondreams.denetwork.endpoint;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
 import java.net.SocketAddress;
+import java.net.StandardProtocolFamily;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.ArrayList;
@@ -41,19 +43,29 @@ import ch.dragondreams.denetwork.message.Message;
  * Endpoint using java.net.DatagramChannel.
  */
 public class DatagramChannelEndpoint implements Endpoint {
-	private final DatagramChannel channel;
+	private class ReceiveDatagramTask implements Runnable {
+		@Override
+		public void run() {
+			try {
+				while (receiveDatagram()) {
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	private Listener listener = null;
+	private SocketAddress address = null;
+	private DatagramChannel channel = null;
 	private final ByteBuffer buffer = ByteBuffer.allocate(8192);
-	protected SocketAddress address;
+	private boolean keepThreadRunning = true;
+	private Thread threadReceive = null;
 
 	/**
-	 * Create socket endpoint.
-	 *
-	 * @throws IOException
+	 * Create datagram channel endpoint.
 	 */
-	public DatagramChannelEndpoint() throws IOException {
-		channel = DatagramChannel.open();
-		channel.configureBlocking(false);
-		channel.bind(null);
+	public DatagramChannelEndpoint() {
 	}
 
 	/*
@@ -69,58 +81,99 @@ public class DatagramChannelEndpoint implements Endpoint {
 	/*
 	 * (non-Javadoc)
 	 *
-	 * @see ch.dragondreams.denetwork.endpoint.Endpoint#setAddress(java.net.
-	 * SocketAddress)
-	 */
-	@Override
-	public void setAddress(SocketAddress address) {
-		this.address = address;
-	}
-
-	/*
-	 * (non-Javadoc)
-	 *
 	 * @see ch.dragondreams.denetwork.endpoint.Endpoint#dispose()
 	 */
 	@Override
 	public void dispose() {
+		close();
+	}
+
+	/*
+	 * (non-Javadoc)
+	 *
+	 * @see ch.dragondreams.denetwork.endpoint.Endpoint#open(SocketAddress,Message)
+	 */
+	@Override
+	public void open(SocketAddress address, Listener listener) throws IOException {
+		if (channel != null) {
+			throw new IllegalArgumentException("already open");
+		}
+		if (listener == null) {
+			throw new IllegalArgumentException("listener is null");
+		}
+
+		if (address == null) {
+			address = new InetSocketAddress(0);
+		}
+
+		channel = DatagramChannel.open(StandardProtocolFamily.INET);
+		channel.bind(address);
+
+		this.listener = listener;
+		this.address = address;
+
+		threadReceive = new Thread(new ReceiveDatagramTask());
+		threadReceive.start();
+	}
+
+	/*
+	 * (non-Javadoc)
+	 *
+	 * @see ch.dragondreams.denetwork.endpoint.Endpoint#close()
+	 */
+	@Override
+	public void close() {
+		if (channel == null) {
+			return;
+		}
+
 		try {
+			synchronized (this) {
+				keepThreadRunning = false;
+			}
 			channel.close();
 		} catch (IOException ignore) {
 		}
+
+		try {
+			threadReceive.join();
+		} catch (InterruptedException ignore) {
+		}
+		threadReceive = null;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 *
-	 * @see ch.dragondreams.denetwork.endpoint.Endpoint#bind()
+	/**
+	 * Called asynchronously by receiver thread.
 	 */
-	@Override
-	public void bind() throws IOException {
-		channel.close(); // to allow re-binding
-		channel.bind(address);
-	}
-
-	/*
-	 * (non-Javadoc)
-	 *
-	 * @see ch.dragondreams.denetwork.endpoint.Endpoint#receiveDatagram()
-	 */
-	@Override
-	public Datagram receiveDatagram() throws IOException {
-		buffer.reset();
-
-		SocketAddress senderAddress = channel.receive(buffer);
-		if (senderAddress == null) {
-			return null;
+	protected boolean receiveDatagram() throws IOException {
+		DatagramChannel safeChannel;
+		synchronized (this) {
+			if (!keepThreadRunning || channel == null) {
+				return false;
+			}
+			safeChannel = channel;
 		}
 
+		buffer.clear();
+		SocketAddress senderAddress = safeChannel.receive(buffer);
+		if (senderAddress == null) {
+			return false;
+		}
 		buffer.flip();
 
 		Message message = new Message();
 		message.setData(Arrays.copyOfRange(buffer.array(), buffer.position(), buffer.position() + buffer.limit()));
 		message.setLength(buffer.limit());
-		return new Datagram(message, senderAddress);
+
+		Listener safeListener;
+		synchronized (this) {
+			safeListener = listener;
+		}
+		if (safeListener != null) {
+			safeListener.receivedDatagram(senderAddress, message);
+		}
+
+		return true;
 	}
 
 	/*
@@ -131,8 +184,8 @@ public class DatagramChannelEndpoint implements Endpoint {
 	 * denetwork.SocketEndpoint#Datagram)
 	 */
 	@Override
-	public void sendDatagram(Datagram datagram) throws IOException {
-		channel.send(ByteBuffer.wrap(datagram.message.getData(), 0, datagram.message.getLength()), address);
+	public void sendDatagram(SocketAddress address, Message message) throws IOException {
+		channel.send(ByteBuffer.wrap(message.getData(), 0, message.getLength()), address);
 	}
 
 	/**

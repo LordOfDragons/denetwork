@@ -48,14 +48,14 @@ public class ValueData extends Value {
 	/**
 	 * Value.
 	 */
-	public byte[] getValue() {
+	public synchronized byte[] getValue() {
 		return value;
 	}
 
 	/**
 	 * Set value.
 	 */
-	public void setValue(byte[] value) {
+	public synchronized void setValue(byte[] value) {
 		if (value == null) {
 			throw new IllegalArgumentException("value is null");
 		}
@@ -68,7 +68,7 @@ public class ValueData extends Value {
 	 * @see ch.dragondreams.denetwork.value.Value#read(ch.dragondreams.denetwork.message.MessageReader)
 	 */
 	@Override
-	public void read(MessageReader reader) {
+	public synchronized void read(MessageReader reader) {
 		value = new byte[reader.readUShort()];
 		reader.read(value, 0, value.length);
 		lastValue = value;
@@ -78,7 +78,7 @@ public class ValueData extends Value {
 	 * @see ch.dragondreams.denetwork.value.Value#write(ch.dragondreams.denetwork.message.MessageWriter)
 	 */
 	@Override
-	public void write(MessageWriter writer) {
+	public synchronized void write(MessageWriter writer) {
 		writer.writeUShort(value.length);
 		writer.write(value, 0, value.length);
 	}
@@ -87,7 +87,7 @@ public class ValueData extends Value {
 	 * @see ch.dragondreams.denetwork.value.Value#updateValue(boolean)
 	 */
 	@Override
-	public boolean updateValue(boolean force) {
+	public synchronized boolean updateValue(boolean force) {
 		if (!force && Arrays.equals(value, lastValue)) {
 			return false;
 

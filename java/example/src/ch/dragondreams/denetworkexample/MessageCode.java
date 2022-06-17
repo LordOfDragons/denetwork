@@ -11,4 +11,13 @@ public enum MessageCode {
 	private MessageCode(int value) {
 		this.value = (byte) value;
 	}
+
+	static public MessageCode withValue(byte value) {
+		for (MessageCode each : values()) {
+			if (each.value == value) {
+				return each;
+			}
+		}
+		return null;
+	}
 }

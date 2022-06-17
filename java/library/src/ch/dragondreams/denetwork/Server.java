@@ -33,9 +33,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import ch.dragondreams.denetwork.endpoint.Endpoint;
-import ch.dragondreams.denetwork.endpoint.Endpoint.Datagram;
 import ch.dragondreams.denetwork.endpoint.DatagramChannelEndpoint;
+import ch.dragondreams.denetwork.endpoint.Endpoint;
 import ch.dragondreams.denetwork.message.Message;
 import ch.dragondreams.denetwork.message.MessageReader;
 import ch.dragondreams.denetwork.message.MessageWriter;
@@ -46,7 +45,7 @@ import ch.dragondreams.denetwork.protocol.Protocols;
 /**
  * Network server.
  */
-public class Server {
+public class Server implements Endpoint.Listener {
 	public static final String CLASS_NAME = Server.class.getCanonicalName();
 	public static final String LOGGER_NAME = Server.class.getPackage().getName();
 
@@ -119,8 +118,7 @@ public class Server {
 		}
 
 		endpoint = createEndpoint();
-		endpoint.setAddress(resolveAddress(useAddress));
-		endpoint.bind();
+		endpoint.open(resolveAddress(useAddress), this);
 
 		logger.info("Server: Listening on " + endpoint.getAddress().toString());
 		listening = true;
@@ -150,70 +148,37 @@ public class Server {
 	}
 
 	/**
-	 * Update server.
-	 *
-	 * Send and received queued messages. Call this on each frame update or in a
-	 * loop from inside a thread. If using a thread use a mutex to ensure thread
-	 * safety.
-	 *
-	 * \param[in] elapsedTime Elapsed time in seconds since the last call to
-	 * Update();
+	 * Datagram received. Called asynchronous.
 	 */
-	public void update(float elapsedTime) throws IOException {
-		if (endpoint == null) {
-			return;
-		}
+	public void receivedDatagram(SocketAddress address, Message message) {
+		Connection connection = null;
 
-		// receive messages
-		while (true) {
-			Connection connection = null;
+		try {
+			MessageReader reader = new MessageReader(message);
 
-			try {
-				SocketAddress addressReceive;
-				Datagram message = endpoint.receiveDatagram();
-				if (message == null) {
+			for (Connection each : connections) {
+				if (each.matches(endpoint, address)) {
+					connection = each;
 					break;
 				}
+			}
 
-				MessageReader reader = new MessageReader(message.message);
-				addressReceive = message.address;
+			if (connection != null) {
+				connection.processDatagram(reader);
 
-				for (Connection each : connections) {
-					if (each.matches(endpoint, addressReceive)) {
-						connection = each;
-						break;
-					}
-				}
-
-				if (connection != null) {
-					connection.processDatagram(reader);
+			} else {
+				CommandCodes command = CommandCodes.withValue(reader.readByte());
+				if (command == CommandCodes.CONNECTION_REQUEST) {
+					processConnectionRequest(address, reader);
 
 				} else {
-					CommandCodes command = CommandCodes.withValue(reader.readByte());
-					if (command == CommandCodes.CONNECTION_REQUEST) {
-						processConnectionRequest(addressReceive, reader);
-
-					} else {
-						// ignore invalid package
-						// logger.warning("Invalid datagram: Sender does not match any connection!");
-					}
+					// ignore invalid package
+					// logger.warning("Invalid datagram: Sender does not match any connection!");
 				}
-
-			} catch (Exception e) {
-				logger.log(Level.SEVERE, "Update[1]", e);
-				throw e;
 			}
-		}
 
-		// update connections
-		for (Connection each : connections) {
-			try {
-				each.update(elapsedTime);
-
-			} catch (Exception e) {
-				logger.log(Level.SEVERE, "Update[2]", e);
-				throw e;
-			}
+		} catch (Exception e) {
+			logger.log(Level.SEVERE, "receivedDatagram", e);
 		}
 	}
 
@@ -231,7 +196,7 @@ public class Server {
 	 *
 	 * Default implementation creates instance of SocketEndpoint.
 	 */
-	public Endpoint createEndpoint() throws IOException {
+	public Endpoint createEndpoint() {
 		return new DatagramChannelEndpoint();
 	}
 
@@ -261,7 +226,7 @@ public class Server {
 	/**
 	 * Client connected event. For overwriting by subclass.
 	 */
-	public void onClientConnected(Connection connection) {
+	public void onClientConnected(Connection connection) throws IOException {
 	}
 
 	/**
@@ -274,7 +239,7 @@ public class Server {
 				writer.writeByte((byte) CommandCodes.CONNECTION_ACK.value);
 				writer.writeByte((byte) ConnectionAck.REJECTED.value);
 			}
-			endpoint.sendDatagram(new Datagram(message, address));
+			endpoint.sendDatagram(address, message);
 			return;
 		}
 
@@ -291,7 +256,7 @@ public class Server {
 				writer.writeByte((byte) CommandCodes.CONNECTION_ACK.value);
 				writer.writeByte((byte) ConnectionAck.NO_COMMON_PROTOCOL.value);
 			}
-			endpoint.sendDatagram(new Datagram(message, address));
+			endpoint.sendDatagram(address, message);
 			return;
 		}
 
@@ -309,7 +274,7 @@ public class Server {
 			writer.writeByte((byte) ConnectionAck.ACCEPTED.value);
 			writer.writeUShort(protocol.value);
 		}
-		endpoint.sendDatagram(new Datagram(message, address));
+		endpoint.sendDatagram(address, message);
 
 		logger.info("Server: Client connected from " + address.toString());
 		onClientConnected(connection);

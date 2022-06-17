@@ -80,7 +80,7 @@ public class ValueInt extends ValueInteger<Long> {
 	}
 
 	@Override
-	public void read(MessageReader reader) {
+	public synchronized void read(MessageReader reader) {
 		switch (format) {
 		case SINT8:
 			lastValue = (long) reader.readChar();
@@ -119,7 +119,7 @@ public class ValueInt extends ValueInteger<Long> {
 	}
 
 	@Override
-	public void write(MessageWriter writer) {
+	public synchronized void write(MessageWriter writer) {
 		switch (format) {
 		case SINT8:
 			writer.writeChar((char) value.intValue());

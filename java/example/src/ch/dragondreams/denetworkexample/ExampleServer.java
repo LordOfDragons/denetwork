@@ -1,8 +1,18 @@
 package ch.dragondreams.denetworkexample;
 
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
+import ch.dragondreams.denetwork.Connection;
 import ch.dragondreams.denetwork.Server;
+import ch.dragondreams.denetwork.message.Message;
+import ch.dragondreams.denetwork.message.MessageWriter;
 import ch.dragondreams.denetwork.state.State;
 import ch.dragondreams.denetwork.value.ValueInt;
 import ch.dragondreams.denetwork.value.ValueInteger.Format;
@@ -19,11 +29,29 @@ public class ExampleServer extends Server {
 	final private ValueString valueTime = new ValueString();
 	final private ValueInt valueBar = new ValueInt(Format.SINT16);
 
+	final static public SimpleDateFormat timeFormatter = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy");
+
+	final private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+	final private ScheduledFuture<?> futureUpdateTask;
+
 	public ExampleServer(WindowMain windowMain) {
 		this.windowMain = windowMain;
 		valueBar.setValue(30L);
 		state.addValue(valueTime);
 		state.addValue(valueBar);
+
+		futureUpdateTask = scheduler.scheduleAtFixedRate(new Runnable() {
+			@Override
+			public void run() {
+				updateTime();
+			}
+		}, 1L, 1L, TimeUnit.SECONDS);
+	}
+
+	@Override
+	public void dispose() {
+		futureUpdateTask.cancel(false);
+		super.dispose();
 	}
 
 	public WindowMain getWindowMain() {
@@ -40,5 +68,61 @@ public class ExampleServer extends Server {
 
 	public ValueInt getValueBar() {
 		return valueBar;
+	}
+
+	@Override
+	public Connection createConnection() {
+		return new ExampleConnection(windowMain, true);
+	}
+
+	@Override
+	public void onClientConnected(Connection connection) throws IOException {
+		linkClient(connection);
+	}
+
+	protected void linkClient(Connection connection) throws IOException {
+		ExampleConnection excon = (ExampleConnection) connection;
+
+		// link server state. read-only on client side
+		Message message = new Message();
+		try (MessageWriter writer = new MessageWriter(message)) {
+			writer.writeByte(MessageCode.LINK_SERVER_STATE.value);
+		}
+		connection.linkState(message, state, true);
+
+		// link all client states. this includes connecting client itself
+		for (Connection each : getConnections()) {
+			if (each == excon) {
+				// connecting client gets read-write state of its own state
+				message = new Message();
+				try (MessageWriter writer = new MessageWriter(message)) {
+					writer.writeByte(MessageCode.LINK_CLIENT_STATE.value);
+				}
+				connection.linkState(message, excon.getState(), false);
+
+			} else {
+				ExampleConnection othercon = (ExampleConnection) each;
+
+				// all other client states are read-only to the connecting client
+				message = new Message();
+				try (MessageWriter writer = new MessageWriter(message)) {
+					writer.writeByte(MessageCode.LINK_OTHER_CLIENT_STATE.value);
+					writer.writeUShort(othercon.getIdentifier());
+				}
+				connection.linkState(message, othercon.getState(), true);
+
+				// and the connecting client state is also read-only to the others
+				message = new Message();
+				try (MessageWriter writer = new MessageWriter(message)) {
+					writer.writeByte(MessageCode.LINK_OTHER_CLIENT_STATE.value);
+					writer.writeUShort(excon.getIdentifier());
+				}
+				othercon.linkState(message, excon.getState(), true);
+			}
+		}
+	}
+
+	public void updateTime() {
+		valueTime.setValue(timeFormatter.format(new Date()));
 	}
 }

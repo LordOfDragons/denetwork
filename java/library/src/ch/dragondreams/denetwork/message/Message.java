@@ -47,7 +47,7 @@ public class Message {
 	 * Set message data. Can be longer than actual message length.
 	 */
 	public void setData(byte[] data) {
-		if (data != null) {
+		if (data == null) {
 			throw new IllegalArgumentException("data is null");
 		}
 		this.data = data;

@@ -1,6 +1,5 @@
 package ch.dragondreams.denetworkexample;
 
-import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.util.logging.Logger;
@@ -11,6 +10,8 @@ import ch.dragondreams.denetwork.Connection;
 import ch.dragondreams.denetwork.Server;
 
 public class WindowMain extends JFrame {
+	private static final long serialVersionUID = 3936704916883629102L;
+
 	public static final String CLASS_NAME = WindowMain.class.getCanonicalName();
 	public static final String LOGGER_NAME = WindowMain.class.getPackage().getName();
 

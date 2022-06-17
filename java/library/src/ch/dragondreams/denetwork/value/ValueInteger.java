@@ -88,14 +88,14 @@ abstract public class ValueInteger<T> extends Value {
 	/**
 	 * Value.
 	 */
-	public T getValue() {
+	public synchronized T getValue() {
 		return value;
 	}
 
 	/**
 	 * Set value.
 	 */
-	public void setValue(T value) {
+	public synchronized void setValue(T value) {
 		if (value == null) {
 			throw new IllegalArgumentException("value is null");
 		}
@@ -108,7 +108,7 @@ abstract public class ValueInteger<T> extends Value {
 	 * @see ch.dragondreams.denetwork.value.Value#updateValue(boolean)
 	 */
 	@Override
-	public boolean updateValue(boolean force) {
+	public synchronized boolean updateValue(boolean force) {
 		if (!force && value.equals(lastValue)) {
 			return false;
 

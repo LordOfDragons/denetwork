@@ -62,7 +62,7 @@ public class ValueQuaternion extends ValueFloating<Quaternion> {
 	}
 
 	@Override
-	public void read(MessageReader reader) {
+	public synchronized void read(MessageReader reader) {
 		double x, y, z, w;
 
 		switch (format) {
@@ -95,7 +95,7 @@ public class ValueQuaternion extends ValueFloating<Quaternion> {
 	}
 
 	@Override
-	public void write(MessageWriter writer) {
+	public synchronized void write(MessageWriter writer) {
 		switch (format) {
 		case FLOAT16:
 			writer.writeUShort(HalfFloat.floatToHalf((float) value.x()));

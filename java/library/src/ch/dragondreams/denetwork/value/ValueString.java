@@ -46,14 +46,14 @@ public class ValueString extends Value {
 	/**
 	 * Value.
 	 */
-	public String getValue() {
+	public synchronized String getValue() {
 		return value;
 	}
 
 	/**
 	 * Set value.
 	 */
-	public void setValue(String value) {
+	public synchronized void setValue(String value) {
 		if (value == null) {
 			throw new IllegalArgumentException("value is null");
 		}
@@ -66,7 +66,7 @@ public class ValueString extends Value {
 	 * @see ch.dragondreams.denetwork.value.Value#read(ch.dragondreams.denetwork.message.MessageReader)
 	 */
 	@Override
-	public void read(MessageReader reader) {
+	public synchronized void read(MessageReader reader) {
 		value = reader.readString16();
 		lastValue = value;
 	}
@@ -75,7 +75,7 @@ public class ValueString extends Value {
 	 * @see ch.dragondreams.denetwork.value.Value#write(ch.dragondreams.denetwork.message.MessageWriter)
 	 */
 	@Override
-	public void write(MessageWriter writer) {
+	public synchronized void write(MessageWriter writer) {
 		writer.writeString16(value);
 	}
 
@@ -83,7 +83,7 @@ public class ValueString extends Value {
 	 * @see ch.dragondreams.denetwork.value.Value#updateValue(boolean)
 	 */
 	@Override
-	public boolean updateValue(boolean force) {
+	public synchronized boolean updateValue(boolean force) {
 		if (!force && value.equals(lastValue)) {
 			return false;
 

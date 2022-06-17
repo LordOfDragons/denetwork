@@ -27,16 +27,20 @@ package ch.dragondreams.denetwork;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.ArrayDeque;
 import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.PriorityQueue;
 import java.util.Queue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import ch.dragondreams.denetwork.endpoint.DatagramChannelEndpoint;
 import ch.dragondreams.denetwork.endpoint.Endpoint;
-import ch.dragondreams.denetwork.endpoint.Endpoint.Datagram;
 import ch.dragondreams.denetwork.message.Message;
 import ch.dragondreams.denetwork.message.MessageReader;
 import ch.dragondreams.denetwork.message.MessageWriter;
@@ -50,7 +54,7 @@ import ch.dragondreams.denetwork.state.StateLink;
 /**
  * Connection.
  */
-public class Connection {
+public class Connection implements Endpoint.Listener {
 	public static final String CLASS_NAME = Connection.class.getCanonicalName();
 	public static final String LOGGER_NAME = Connection.class.getPackage().getName();
 
@@ -75,13 +79,38 @@ public class Connection {
 	private LinkedList<StateLink> modifiedStateLinks = new LinkedList<>();
 	private int nextLinkIdentifier = 0;
 
-	private Queue<RealMessage> reliableMessagesSend = new PriorityQueue<>();
-	private Queue<RealMessage> reliableMessagesRecv = new PriorityQueue<>();
+	private Queue<RealMessage> reliableMessagesSend = new ArrayDeque<>();
+	private Queue<RealMessage> reliableMessagesRecv = new ArrayDeque<>();
 	private int reliableNumberSend = 0;
 	private int reliableNumberRecv = 0;
 	private int reliableWindowSize = 10;
 
 	private Server parentServer = null;
+
+	final private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+	private ScheduledFuture<?> futureUpdateTask = null;
+
+	protected class UpdateStatesTask implements Runnable {
+		private long lastTime = 0L;
+
+		@Override
+		public void run() {
+			long curTime = System.nanoTime();
+			float elapsed = 0.0f;
+			if (lastTime != 0) {
+				elapsed = (float) (1e-9 * (curTime - lastTime));
+			}
+			lastTime = curTime;
+
+			try {
+				updateTimeouts(elapsed);
+				updateStates();
+
+			} catch (Exception e) {
+				logger.log(Level.SEVERE, "UpdateStatesTask", e);
+			}
+		}
+	}
 
 	public Connection() {
 	}
@@ -90,10 +119,17 @@ public class Connection {
 	 * Dispose of connection.
 	 */
 	public void dispose() {
-		reliableMessagesSend.clear();
-		reliableMessagesRecv.clear();
-		modifiedStateLinks.clear();
-		stateLinks.clear();
+		if (futureUpdateTask != null) {
+			futureUpdateTask.cancel(false);
+			futureUpdateTask = null;
+		}
+
+		synchronized (this) {
+			reliableMessagesSend.clear();
+			reliableMessagesRecv.clear();
+			modifiedStateLinks.clear();
+			stateLinks.clear();
+		}
 
 		if (endpoint != null) {
 			endpoint.dispose();
@@ -133,9 +169,8 @@ public class Connection {
 			throw new IllegalArgumentException("already connected");
 		}
 
-		endpoint = createSocket();
-		endpoint.setAddress(new InetSocketAddress(0));
-		endpoint.bind();
+		endpoint = createEndpoint();
+		endpoint.open(null, this);
 
 		localAddress = endpoint.getAddress().toString();
 
@@ -150,7 +185,7 @@ public class Connection {
 
 		logger.info(String.format("Connection: Connecting to %s", realRemoteAddress.toString()));
 
-		endpoint.sendDatagram(new Datagram(connectRequest, realRemoteAddress));
+		endpoint.sendDatagram(realRemoteAddress, connectRequest);
 
 		connectionState = ConnectionState.CONNECTING;
 		logger.exiting(CLASS_NAME, "connectTo");
@@ -203,7 +238,7 @@ public class Connection {
 			writer.write(message);
 		}
 
-		endpoint.sendDatagram(new Datagram(unrealMessage, realRemoteAddress));
+		endpoint.sendDatagram(realRemoteAddress, unrealMessage);
 	}
 
 	/**
@@ -213,7 +248,7 @@ public class Connection {
 	 * as possible. Reliable messages always arrive in the same order they have been
 	 * queued.
 	 */
-	public void sendReliableMessage(Message message) throws IOException {
+	public synchronized void sendReliableMessage(Message message) throws IOException {
 		if (message == null) {
 			throw new IllegalArgumentException("message is null");
 		}
@@ -239,7 +274,7 @@ public class Connection {
 
 		// if the message fits into the window send it right now
 		if (reliableMessagesSend.size() <= reliableWindowSize) {
-			endpoint.sendDatagram(new Datagram(realMessage.message, realRemoteAddress));
+			endpoint.sendDatagram(realRemoteAddress, realMessage.message);
 
 			realMessage.state = RealMessage.State.SEND;
 			realMessage.secondsSinceSend = 0.0f;
@@ -254,7 +289,7 @@ public class Connection {
 	 * state is considered the master state and the remote state the slave state. By
 	 * default only the master state can apply changes. s
 	 */
-	public void linkState(Message message, State state, boolean readOnly) throws IOException {
+	public synchronized void linkState(Message message, State state, boolean readOnly) throws IOException {
 		if (message == null) {
 			throw new IllegalArgumentException("message is null");
 		}
@@ -329,7 +364,7 @@ public class Connection {
 
 		// if the message fits into the window send it right now
 		if (reliableMessagesSend.size() <= reliableWindowSize) {
-			endpoint.sendDatagram(new Datagram(realMessage.message, realRemoteAddress));
+			endpoint.sendDatagram(realRemoteAddress, realMessage.message);
 
 			realMessage.state = RealMessage.State.SEND;
 			realMessage.secondsSinceSend = 0.0f;
@@ -339,16 +374,9 @@ public class Connection {
 	}
 
 	/**
-	 * Update connection.
-	 *
-	 * Send and received queued messages. Call this on each frame update or in a
-	 * loop from inside a thread. If using a thread use a mutex to ensure thread
-	 * safety.
-	 *
-	 * @param elapsedTime
-	 *            Elapsed time in seconds since the last call to Update();
+	 * Datagram received. Called asynchronous.
 	 */
-	public void update(float elapsedTime) {
+	public synchronized void receivedDatagram(SocketAddress address, Message message) {
 		if (connectionState == ConnectionState.DISCONNECTED) {
 			return;
 		}
@@ -360,25 +388,12 @@ public class Connection {
 				}
 
 				try {
-					Datagram datagram = endpoint.receiveDatagram();
-					if (datagram.message == null) {
-						break;
-					}
-
-					processDatagram(new MessageReader(datagram.message));
+					processDatagram(new MessageReader(message));
 
 				} catch (Exception e) {
 					logger.log(Level.SEVERE, "Connection.update()[1]", e);
 				}
 			}
-		}
-
-		try {
-			updateTimeouts(elapsedTime);
-			updateStates();
-
-		} catch (Exception e) {
-			logger.log(Level.SEVERE, "Connection.update()[2]", e);
 		}
 	}
 
@@ -386,26 +401,26 @@ public class Connection {
 	 * Create endpoint. Default implementation creates instance of
 	 * DatagramChannelEndpoint.
 	 */
-	public Endpoint createSocket() throws IOException {
+	public Endpoint createEndpoint() throws IOException {
 		return new DatagramChannelEndpoint();
 	}
 
 	/**
 	 * Connection established. Callback for subclass.
 	 */
-	public void connectionEstablished() {
+	public void connectionEstablished() throws IOException {
 	}
 
 	/**
 	 * Connection closed. Callback for subclass.
 	 */
-	public void connectionClosed() {
+	public void connectionClosed() throws IOException {
 	}
 
 	/**
 	 * Long message is in progress of receiving. Callback for subclass.
 	 */
-	public void messageProgress(int bytesReceived) {
+	public void messageProgress(int bytesReceived) throws IOException {
 	}
 
 	/**
@@ -414,7 +429,7 @@ public class Connection {
 	 * @param message
 	 *            Received message. Object can be stored for later use.
 	 */
-	public void messageReceived(Message message) {
+	public void messageReceived(Message message) throws IOException {
 	}
 
 	/**
@@ -422,7 +437,7 @@ public class Connection {
 	 *
 	 * @returns State or null to reject.
 	 */
-	public State createState(Message message, boolean readOnly) {
+	public State createState(Message message, boolean readOnly) throws IOException {
 		return null;
 	}
 
@@ -457,7 +472,7 @@ public class Connection {
 	/**
 	 * Process datagram.
 	 */
-	public void processDatagram(MessageReader reader) throws IOException {
+	public synchronized void processDatagram(MessageReader reader) throws IOException {
 		switch (CommandCodes.withValue(reader.readByte())) {
 		case CONNECTION_ACK:
 			processConnectionAck(reader);
@@ -503,7 +518,8 @@ public class Connection {
 	/**
 	 * For internal use only.
 	 */
-	public void acceptConnection(Server server, Endpoint endpoint, SocketAddress address, Protocols protocol) {
+	public void acceptConnection(Server server, Endpoint endpoint, SocketAddress address, Protocols protocol)
+			throws IOException {
 		this.endpoint = endpoint;
 		realRemoteAddress = address;
 		remoteAddress = address.toString();
@@ -512,6 +528,8 @@ public class Connection {
 		parentServer = server;
 
 		connectionEstablished();
+
+		futureUpdateTask = scheduler.scheduleAtFixedRate(new UpdateStatesTask(), 0L, 5L, TimeUnit.MILLISECONDS);
 	}
 
 	private void disconnect(boolean notify) throws IOException {
@@ -526,13 +544,19 @@ public class Connection {
 			try (MessageWriter writer = new MessageWriter(connectionClose)) {
 				writer.writeByte((byte) CommandCodes.CONNECTION_CLOSE.value);
 			}
-			endpoint.sendDatagram(new Datagram(connectionClose, realRemoteAddress));
+			endpoint.sendDatagram(realRemoteAddress, connectionClose);
 		}
 
-		clearStates();
+		if (futureUpdateTask != null) {
+			futureUpdateTask.cancel(false);
+			futureUpdateTask = null;
+		}
 
-		reliableMessagesRecv.clear();
-		reliableMessagesSend.clear();
+		synchronized (this) {
+			clearStates();
+			reliableMessagesRecv.clear();
+			reliableMessagesSend.clear();
+		}
 
 		closeEndpoint();
 
@@ -545,6 +569,9 @@ public class Connection {
 		removeConnectionFromParentServer();
 	}
 
+	/**
+	 * Synchronized by caller.
+	 */
 	private void clearStates() {
 		modifiedStateLinks.clear();
 
@@ -578,6 +605,9 @@ public class Connection {
 		parentServer = null;
 	}
 
+	/**
+	 * Synchronized by caller.
+	 */
 	private void updateStates() throws IOException {
 		int linkCount = modifiedStateLinks.size();
 		if (linkCount == 0) {
@@ -624,9 +654,12 @@ public class Connection {
 			}
 		}
 
-		endpoint.sendDatagram(new Datagram(updateMessage, realRemoteAddress));
+		endpoint.sendDatagram(realRemoteAddress, updateMessage);
 	}
 
+	/**
+	 * Synchronized by caller.
+	 */
 	private void updateTimeouts(float elapsedTime) throws IOException {
 		// increase the timeouts on all send packages
 		float timeout = 3.0f;
@@ -640,7 +673,7 @@ public class Connection {
 
 			if (each.secondsSinceSend > timeout) {
 				// resend message
-				endpoint.sendDatagram(new Datagram(each.message, realRemoteAddress));
+				endpoint.sendDatagram(realRemoteAddress, each.message);
 				each.secondsSinceSend = 0.0f;
 			}
 		}
@@ -664,10 +697,13 @@ public class Connection {
 	/**
 	 * Internal use only.
 	 */
-	public void addModifiedStateLink(StateLink stateLink) {
+	public synchronized void addModifiedStateLink(StateLink stateLink) {
 		modifiedStateLinks.add(stateLink);
 	}
 
+	/**
+	 * Synchronized by caller.
+	 */
 	private void processQueuedMessages() throws IOException {
 		while (true) {
 			RealMessage message = null;
@@ -699,7 +735,10 @@ public class Connection {
 		}
 	}
 
-	private void processConnectionAck(MessageReader reader) {
+	/**
+	 * Synchronized by caller.
+	 */
+	private void processConnectionAck(MessageReader reader) throws IOException {
 		if (connectionState != ConnectionState.CONNECTING) {
 			throw new IllegalArgumentException("Not connecting");
 		}
@@ -721,11 +760,17 @@ public class Connection {
 		}
 	}
 
+	/**
+	 * Synchronized by caller.
+	 */
 	private void processConnectionClose(MessageReader reader) throws IOException {
 		disconnect(true);
 	}
 
-	private void processMessage(MessageReader reader) {
+	/**
+	 * Synchronized by caller.
+	 */
+	private void processMessage(MessageReader reader) throws IOException {
 		/* const int flags = */ reader.readByte();
 
 		Message message = new Message();
@@ -735,6 +780,9 @@ public class Connection {
 		messageReceived(message);
 	}
 
+	/**
+	 * Synchronized by caller.
+	 */
 	private void processReliableMessage(MessageReader reader) throws IOException {
 		if (connectionState != ConnectionState.CONNECTED) {
 			throw new IllegalArgumentException("Reliable message received although not connected.");
@@ -759,7 +807,7 @@ public class Connection {
 			writer.writeUShort(number);
 			writer.writeByte((byte) ReliableAck.SUCCESS.value);
 		}
-		endpoint.sendDatagram(new Datagram(ackMessage, realRemoteAddress));
+		endpoint.sendDatagram(realRemoteAddress, ackMessage);
 
 		if (number == reliableNumberRecv) {
 			processReliableMessageMessage(reader);
@@ -771,7 +819,10 @@ public class Connection {
 		}
 	}
 
-	private void processReliableMessageMessage(MessageReader reader) {
+	/**
+	 * Synchronized by caller.
+	 */
+	private void processReliableMessageMessage(MessageReader reader) throws IOException {
 		Message message = new Message();
 		message.setLength(reader.length() - reader.position());
 		reader.read(message);
@@ -779,6 +830,9 @@ public class Connection {
 		messageReceived(message);
 	}
 
+	/**
+	 * Synchronized by caller.
+	 */
 	private void processReliableAck(MessageReader reader) throws IOException {
 		if (connectionState != ConnectionState.CONNECTED) {
 			throw new IllegalArgumentException("Reliable ack: not connected.");
@@ -807,11 +861,14 @@ public class Connection {
 
 		case FAILED:
 			message.secondsSinceSend = 0.0f;
-			endpoint.sendDatagram(new Datagram(message.message, realRemoteAddress));
+			endpoint.sendDatagram(realRemoteAddress, message.message);
 			break;
 		}
 	}
 
+	/**
+	 * Synchronized by caller.
+	 */
 	private void processReliableLinkState(MessageReader reader) throws IOException {
 		if (connectionState != ConnectionState.CONNECTED) {
 			throw new IllegalArgumentException("Link state: not connected.");
@@ -836,7 +893,7 @@ public class Connection {
 			writer.writeUShort(number);
 			writer.writeByte((byte) ReliableAck.SUCCESS.value);
 		}
-		endpoint.sendDatagram(new Datagram(ackMessage, realRemoteAddress));
+		endpoint.sendDatagram(realRemoteAddress, ackMessage);
 
 		if (number == reliableNumberRecv) {
 			processLinkState(reader);
@@ -848,6 +905,9 @@ public class Connection {
 		}
 	}
 
+	/**
+	 * Synchronized by caller.
+	 */
 	private void processLinkUp(MessageReader reader) {
 		if (connectionState != ConnectionState.CONNECTED) {
 			throw new IllegalArgumentException("Reliable ack: not connected.");
@@ -869,6 +929,9 @@ public class Connection {
 		link.setLinkState(StateLink.LinkState.UP);
 	}
 
+	/**
+	 * Synchronized by caller.
+	 */
 	private void processLinkDown(MessageReader reader) {
 		if (connectionState != ConnectionState.CONNECTED) {
 			throw new IllegalArgumentException("Reliable ack: not connected.");
@@ -890,6 +953,9 @@ public class Connection {
 		link.setLinkState(StateLink.LinkState.DOWN);
 	}
 
+	/**
+	 * Synchronized by caller.
+	 */
 	private void processLinkState(MessageReader reader) throws IOException {
 		int identifier = reader.readUShort();
 		boolean readOnly = reader.readByte() == 1; // flags: 0x1=readOnly
@@ -936,9 +1002,12 @@ public class Connection {
 			writer.writeByte((byte) code.value);
 			writer.writeUShort(identifier);
 		}
-		endpoint.sendDatagram(new Datagram(message, realRemoteAddress));
+		endpoint.sendDatagram(realRemoteAddress, message);
 	}
 
+	/**
+	 * Synchronized by caller.
+	 */
 	private void processLinkUpdate(MessageReader reader) {
 		if (connectionState != ConnectionState.CONNECTED) {
 			throw new IllegalArgumentException("Reliable ack: not connected.");
@@ -968,6 +1037,9 @@ public class Connection {
 		}
 	}
 
+	/**
+	 * Synchronized by caller.
+	 */
 	private void addReliableReceive(CommandCodes type, int number, MessageReader reader) {
 		RealMessage message = new RealMessage();
 		message.message.setLength(reader.length() - reader.position());
@@ -980,6 +1052,9 @@ public class Connection {
 		reliableMessagesRecv.add(message);
 	}
 
+	/**
+	 * Synchronized by caller.
+	 */
 	private void removeSendReliablesDone() throws IOException {
 		boolean anyRemoved = false;
 
@@ -998,6 +1073,9 @@ public class Connection {
 		}
 	}
 
+	/**
+	 * Synchronized by caller.
+	 */
 	private void sendPendingReliables() throws IOException {
 		int sendCount = 0;
 
@@ -1006,7 +1084,7 @@ public class Connection {
 				continue;
 			}
 
-			endpoint.sendDatagram(new Datagram(each.message, realRemoteAddress));
+			endpoint.sendDatagram(realRemoteAddress, each.message);
 
 			each.state = RealMessage.State.SEND;
 			each.secondsSinceSend = 0.0f;

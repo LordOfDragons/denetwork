@@ -44,7 +44,7 @@ public class MessageWriter implements Closeable {
 
 	private static ByteBuffer createByteBuffer() {
 		ByteBuffer buffer = ByteBuffer.allocate(24);
-		buffer.order(ByteOrder.BIG_ENDIAN);
+		buffer.order(ByteOrder.LITTLE_ENDIAN);
 		return buffer;
 	}
 

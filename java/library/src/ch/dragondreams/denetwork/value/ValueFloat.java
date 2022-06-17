@@ -61,7 +61,7 @@ public class ValueFloat extends ValueFloating<Double> {
 	}
 
 	@Override
-	public void read(MessageReader reader) {
+	public synchronized void read(MessageReader reader) {
 		switch (format) {
 		case FLOAT16:
 			lastValue = (double) HalfFloat.halfToFloat(reader.readUShort());
@@ -80,7 +80,7 @@ public class ValueFloat extends ValueFloating<Double> {
 	}
 
 	@Override
-	public void write(MessageWriter writer) {
+	public synchronized void write(MessageWriter writer) {
 		switch (format) {
 		case FLOAT16:
 			writer.writeUShort(HalfFloat.floatToHalf(value.floatValue()));

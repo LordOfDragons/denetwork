@@ -80,7 +80,7 @@ public class ValuePoint2 extends ValueInteger<Point2> {
 	}
 
 	@Override
-	public void read(MessageReader reader) {
+	public synchronized void read(MessageReader reader) {
 		long x, y;
 
 		switch (format) {
@@ -132,7 +132,7 @@ public class ValuePoint2 extends ValueInteger<Point2> {
 	}
 
 	@Override
-	public void write(MessageWriter writer) {
+	public synchronized void write(MessageWriter writer) {
 		switch (format) {
 		case SINT8:
 			writer.writeChar((char) value.x());
