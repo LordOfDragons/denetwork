@@ -41,6 +41,7 @@ import ch.dragondreams.denetwork.message.MessageWriter;
 import ch.dragondreams.denetwork.protocol.CommandCodes;
 import ch.dragondreams.denetwork.protocol.ConnectionAck;
 import ch.dragondreams.denetwork.protocol.Protocols;
+import ch.dragondreams.denetwork.utils.CloseableReentrantLock;
 
 /**
  * Network server.
@@ -55,6 +56,8 @@ public class Server implements Endpoint.Listener {
 	private Endpoint endpoint = null;
 	private boolean listening = false;
 	private LinkedList<Connection> connections = new LinkedList<>();
+
+	private final CloseableReentrantLock lock = new CloseableReentrantLock();
 
 	/**
 	 * Create server.
@@ -153,7 +156,7 @@ public class Server implements Endpoint.Listener {
 	public void receivedDatagram(SocketAddress address, Message message) {
 		Connection connection = null;
 
-		try {
+		try (CloseableReentrantLock locked = lock.open()) {
 			MessageReader reader = new MessageReader(message);
 
 			for (Connection each : connections) {

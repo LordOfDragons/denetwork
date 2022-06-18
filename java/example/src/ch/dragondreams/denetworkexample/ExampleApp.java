@@ -21,6 +21,7 @@ public class ExampleApp {
 		logHandlerConsole.setLevel(Level.ALL);
 		logger.addHandler(logHandlerConsole);
 		Logger.getLogger("ch.dragondreams.denetwork").addHandler(logHandlerConsole);
+		Logger.getLogger("ch.dragondreams.denetwork").setLevel(Level.ALL);
 
 		// show main menu
 		try {

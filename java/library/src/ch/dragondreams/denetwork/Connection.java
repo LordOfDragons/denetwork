@@ -30,7 +30,6 @@ import java.net.SocketAddress;
 import java.util.ArrayDeque;
 import java.util.LinkedList;
 import java.util.ListIterator;
-import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -50,6 +49,7 @@ import ch.dragondreams.denetwork.protocol.Protocols;
 import ch.dragondreams.denetwork.protocol.ReliableAck;
 import ch.dragondreams.denetwork.state.State;
 import ch.dragondreams.denetwork.state.StateLink;
+import ch.dragondreams.denetwork.utils.CloseableReentrantLock;
 
 /**
  * Connection.
@@ -86,6 +86,8 @@ public class Connection implements Endpoint.Listener {
 	private int reliableWindowSize = 10;
 
 	private Server parentServer = null;
+
+	private final CloseableReentrantLock lock = new CloseableReentrantLock();
 
 	final private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 	private ScheduledFuture<?> futureUpdateTask = null;
@@ -124,17 +126,17 @@ public class Connection implements Endpoint.Listener {
 			futureUpdateTask = null;
 		}
 
-		synchronized (this) {
+		try (CloseableReentrantLock locked = lock.open()) {
 			reliableMessagesSend.clear();
 			reliableMessagesRecv.clear();
 			modifiedStateLinks.clear();
 			stateLinks.clear();
 		}
 
-		if (endpoint != null) {
+		if (parentServer == null && endpoint != null) {
 			endpoint.dispose();
-			endpoint = null;
 		}
+		endpoint = null;
 
 		parentServer = null;
 	}
@@ -248,36 +250,38 @@ public class Connection implements Endpoint.Listener {
 	 * as possible. Reliable messages always arrive in the same order they have been
 	 * queued.
 	 */
-	public synchronized void sendReliableMessage(Message message) throws IOException {
-		if (message == null) {
-			throw new IllegalArgumentException("message is null");
-		}
-		if (message.getLength() < 1) {
-			throw new IllegalArgumentException("message has 0 length");
-		}
-		if (connectionState != ConnectionState.CONNECTED) {
-			throw new IllegalArgumentException("not connected");
-		}
+	public void sendReliableMessage(Message message) throws IOException {
+		try (CloseableReentrantLock locked = lock.open()) {
+			if (message == null) {
+				throw new IllegalArgumentException("message is null");
+			}
+			if (message.getLength() < 1) {
+				throw new IllegalArgumentException("message has 0 length");
+			}
+			if (connectionState != ConnectionState.CONNECTED) {
+				throw new IllegalArgumentException("not connected");
+			}
 
-		RealMessage realMessage = new RealMessage();
-		realMessage.type = CommandCodes.RELIABLE_MESSAGE;
-		realMessage.number = (reliableNumberSend + reliableMessagesSend.size()) % 65535;
-		realMessage.state = RealMessage.State.PENDING;
+			RealMessage realMessage = new RealMessage();
+			realMessage.type = CommandCodes.RELIABLE_MESSAGE;
+			realMessage.number = (reliableNumberSend + reliableMessagesSend.size()) % 65535;
+			realMessage.state = RealMessage.State.PENDING;
 
-		try (MessageWriter writer = new MessageWriter(realMessage.message)) {
-			writer.writeByte((byte) CommandCodes.RELIABLE_MESSAGE.value);
-			writer.writeUShort(realMessage.number);
-			writer.write(message);
-		}
+			try (MessageWriter writer = new MessageWriter(realMessage.message)) {
+				writer.writeByte((byte) CommandCodes.RELIABLE_MESSAGE.value);
+				writer.writeUShort(realMessage.number);
+				writer.write(message);
+			}
 
-		reliableMessagesSend.add(realMessage);
+			reliableMessagesSend.add(realMessage);
 
-		// if the message fits into the window send it right now
-		if (reliableMessagesSend.size() <= reliableWindowSize) {
-			endpoint.sendDatagram(realRemoteAddress, realMessage.message);
+			// if the message fits into the window send it right now
+			if (reliableMessagesSend.size() <= reliableWindowSize) {
+				endpoint.sendDatagram(realRemoteAddress, realMessage.message);
 
-			realMessage.state = RealMessage.State.SEND;
-			realMessage.secondsSinceSend = 0.0f;
+				realMessage.state = RealMessage.State.SEND;
+				realMessage.secondsSinceSend = 0.0f;
+			}
 		}
 	}
 
@@ -289,109 +293,113 @@ public class Connection implements Endpoint.Listener {
 	 * state is considered the master state and the remote state the slave state. By
 	 * default only the master state can apply changes. s
 	 */
-	public synchronized void linkState(Message message, State state, boolean readOnly) throws IOException {
-		if (message == null) {
-			throw new IllegalArgumentException("message is null");
-		}
-		if (message.getLength() < 1) {
-			throw new IllegalArgumentException("message has 0 length");
-		}
-		if (message.getLength() > 0xffff) {
-			throw new IllegalArgumentException("message too long");
-		}
-		if (state == null) {
-			throw new IllegalArgumentException("state is null");
-		}
-		if (connectionState != ConnectionState.CONNECTED) {
-			throw new IllegalArgumentException("not connected");
-		}
-
-		// check if a link exists with this state already that is not broken
-		StateLink stateLink = null;
-		for (StateLink each : stateLinks) {
-			if (each.getState() == state) {
-				stateLink = each;
-				break;
+	public void linkState(Message message, State state, boolean readOnly) throws IOException {
+		try (CloseableReentrantLock locked = lock.open()) {
+			if (message == null) {
+				throw new IllegalArgumentException("message is null");
 			}
-		}
+			if (message.getLength() < 1) {
+				throw new IllegalArgumentException("message has 0 length");
+			}
+			if (message.getLength() > 0xffff) {
+				throw new IllegalArgumentException("message too long");
+			}
+			if (state == null) {
+				throw new IllegalArgumentException("state is null");
+			}
+			if (connectionState != ConnectionState.CONNECTED) {
+				throw new IllegalArgumentException("not connected");
+			}
 
-		if (stateLink != null && stateLink.getLinkState() != StateLink.LinkState.DOWN) {
-			throw new IllegalArgumentException("link with state present");
-		}
-
-		// create the link if not existing, assign it a new identifier and add it
-		if (stateLink == null) {
-			int lastNextLinkIdentifier = nextLinkIdentifier;
-
-			boolean found = false;
+			// check if a link exists with this state already that is not broken
+			StateLink stateLink = null;
 			for (StateLink each : stateLinks) {
-				if (each.getIdentifier() == nextLinkIdentifier) {
-					found = true;
+				if (each.getState() == state) {
+					stateLink = each;
 					break;
 				}
 			}
-			if (found) {
-				nextLinkIdentifier = (nextLinkIdentifier + 1) % 65535;
-				if (nextLinkIdentifier == lastNextLinkIdentifier) {
-					throw new IllegalArgumentException("too many state links");
-				}
+
+			if (stateLink != null && stateLink.getLinkState() != StateLink.LinkState.DOWN) {
+				throw new IllegalArgumentException("link with state present");
 			}
 
-			stateLink = new StateLink(this, state);
-			stateLink.setIdentifier(nextLinkIdentifier);
-			stateLinks.add(stateLink);
+			// create the link if not existing, assign it a new identifier and add it
+			if (stateLink == null) {
+				int lastNextLinkIdentifier = nextLinkIdentifier;
 
-			state.getLinks().add(stateLink);
+				boolean found = false;
+				for (StateLink each : stateLinks) {
+					if (each.getIdentifier() == nextLinkIdentifier) {
+						found = true;
+						break;
+					}
+				}
+				if (found) {
+					nextLinkIdentifier = (nextLinkIdentifier + 1) % 65535;
+					if (nextLinkIdentifier == lastNextLinkIdentifier) {
+						throw new IllegalArgumentException("too many state links");
+					}
+				}
+
+				stateLink = new StateLink(this, state);
+				stateLink.setIdentifier(nextLinkIdentifier);
+				stateLinks.add(stateLink);
+
+				state.getLinks().add(stateLink);
+			}
+
+			// add message
+			RealMessage realMessage = new RealMessage();
+			realMessage.type = CommandCodes.RELIABLE_LINK_STATE;
+			realMessage.number = (reliableNumberSend + reliableMessagesSend.size()) % 65535;
+			realMessage.state = RealMessage.State.PENDING;
+
+			try (MessageWriter writer = new MessageWriter(realMessage.message)) {
+				writer.writeByte((byte) CommandCodes.RELIABLE_LINK_STATE.value);
+				writer.writeUShort(realMessage.number);
+				writer.writeUShort(stateLink.getIdentifier());
+				writer.writeByte((byte) (readOnly ? 1 : 0)); // flags: readOnly=0x1
+				writer.writeUShort(message.getLength());
+				writer.write(message);
+				state.linkWriteValuesWithVerify(writer);
+			}
+
+			reliableMessagesSend.add(realMessage);
+
+			// if the message fits into the window send it right now
+			if (reliableMessagesSend.size() <= reliableWindowSize) {
+				endpoint.sendDatagram(realRemoteAddress, realMessage.message);
+
+				realMessage.state = RealMessage.State.SEND;
+				realMessage.secondsSinceSend = 0.0f;
+			}
+
+			stateLink.setLinkState(StateLink.LinkState.LISTENING);
 		}
-
-		// add message
-		RealMessage realMessage = new RealMessage();
-		realMessage.type = CommandCodes.RELIABLE_LINK_STATE;
-		realMessage.number = (reliableNumberSend + reliableMessagesSend.size()) % 65535;
-		realMessage.state = RealMessage.State.PENDING;
-
-		try (MessageWriter writer = new MessageWriter(realMessage.message)) {
-			writer.writeByte((byte) CommandCodes.RELIABLE_LINK_STATE.value);
-			writer.writeUShort(realMessage.number);
-			writer.writeUShort(stateLink.getIdentifier());
-			writer.writeByte((byte) (readOnly ? 1 : 0)); // flags: readOnly=0x1
-			writer.writeUShort(message.getLength());
-			writer.write(message);
-			state.linkWriteValuesWithVerify(writer);
-		}
-
-		reliableMessagesSend.add(realMessage);
-
-		// if the message fits into the window send it right now
-		if (reliableMessagesSend.size() <= reliableWindowSize) {
-			endpoint.sendDatagram(realRemoteAddress, realMessage.message);
-
-			realMessage.state = RealMessage.State.SEND;
-			realMessage.secondsSinceSend = 0.0f;
-		}
-
-		stateLink.setLinkState(StateLink.LinkState.LISTENING);
 	}
 
 	/**
 	 * Datagram received. Called asynchronous.
 	 */
-	public synchronized void receivedDatagram(SocketAddress address, Message message) {
-		if (connectionState == ConnectionState.DISCONNECTED) {
-			return;
-		}
+	public void receivedDatagram(SocketAddress address, Message message) {
+		try (CloseableReentrantLock locked = lock.open()) {
+			if (connectionState == ConnectionState.DISCONNECTED) {
+				return;
+			}
 
-		if (parentServer == null) {
-			while (true) {
-				if (connectionState == ConnectionState.DISCONNECTED) {
-					return;
-				}
+			if (parentServer == null) {
+				while (true) {
+					if (connectionState == ConnectionState.DISCONNECTED) {
+						return;
+					}
 
-				try {
-					processDatagram(new MessageReader(message));
+					try {
+						processDatagram(new MessageReader(message));
 
-				} catch (Exception e) {
-					logger.log(Level.SEVERE, "Connection.update()[1]", e);
+					} catch (Exception e) {
+						logger.log(Level.SEVERE, "Connection.update()[1]", e);
+					}
 				}
 			}
 		}
@@ -406,25 +414,26 @@ public class Connection implements Endpoint.Listener {
 	}
 
 	/**
-	 * Connection established. Callback for subclass.
+	 * Connection established. Called asynchronously. Callback for subclass.
 	 */
 	public void connectionEstablished() throws IOException {
 	}
 
 	/**
-	 * Connection closed. Callback for subclass.
+	 * Connection closed. Called asynchronously. Callback for subclass.
 	 */
 	public void connectionClosed() throws IOException {
 	}
 
 	/**
-	 * Long message is in progress of receiving. Callback for subclass.
+	 * Long message is in progress of receiving. Called asynchronously. Callback for
+	 * subclass.
 	 */
 	public void messageProgress(int bytesReceived) throws IOException {
 	}
 
 	/**
-	 * Message received. Callback for subclass.
+	 * Message received. Called asynchronously. Callback for subclass.
 	 *
 	 * @param message
 	 *            Received message. Object can be stored for later use.
@@ -472,7 +481,7 @@ public class Connection implements Endpoint.Listener {
 	/**
 	 * Process datagram.
 	 */
-	public synchronized void processDatagram(MessageReader reader) throws IOException {
+	public void processDatagram(MessageReader reader) throws IOException {
 		switch (CommandCodes.withValue(reader.readByte())) {
 		case CONNECTION_ACK:
 			processConnectionAck(reader);
@@ -552,7 +561,7 @@ public class Connection implements Endpoint.Listener {
 			futureUpdateTask = null;
 		}
 
-		synchronized (this) {
+		try (CloseableReentrantLock locked = lock.open()) {
 			clearStates();
 			reliableMessagesRecv.clear();
 			reliableMessagesSend.clear();
@@ -590,16 +599,18 @@ public class Connection implements Endpoint.Listener {
 
 	private void closeEndpoint() {
 		connectionState = ConnectionState.DISCONNECTED;
-		if (endpoint != null) {
+		if (parentServer == null && endpoint != null) {
 			endpoint.dispose();
-			endpoint = null;
 		}
+		endpoint = null;
 	}
 
 	private void removeConnectionFromParentServer() {
 		if (parentServer == null) {
 			return;
 		}
+
+		closeEndpoint();
 
 		parentServer.getConnections().remove(this);
 		parentServer = null;
@@ -697,8 +708,10 @@ public class Connection implements Endpoint.Listener {
 	/**
 	 * Internal use only.
 	 */
-	public synchronized void addModifiedStateLink(StateLink stateLink) {
-		modifiedStateLinks.add(stateLink);
+	public void addModifiedStateLink(StateLink stateLink) {
+		try (CloseableReentrantLock locked = lock.open()) {
+			modifiedStateLinks.add(stateLink);
+		}
 	}
 
 	/**

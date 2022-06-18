@@ -31,36 +31,89 @@ import java.net.NetworkInterface;
 import java.net.SocketAddress;
 import java.net.StandardProtocolFamily;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import ch.dragondreams.denetwork.message.Message;
+import ch.dragondreams.denetwork.utils.CloseableReentrantLock;
 
 /**
  * Endpoint using java.net.DatagramChannel.
  */
 public class DatagramChannelEndpoint implements Endpoint {
-	private class ReceiveDatagramTask implements Runnable {
+	public static final String CLASS_NAME = DatagramChannelEndpoint.class.getCanonicalName();
+	public static final String LOGGER_NAME = DatagramChannelEndpoint.class.getPackage().getName();
+
+	protected static final Logger logger = Logger.getLogger(LOGGER_NAME);
+
+	/**
+	 * Task receiving datagrams.
+	 */
+	protected class ReceiveDatagramTask implements Runnable {
+		protected final String className = ReceiveDatagramTask.class.getCanonicalName();
+
+		protected final ByteBuffer buffer = ByteBuffer.allocate(8192);
+		protected final DatagramChannel channel;
+		protected final Listener listener;
+
+		protected boolean keepRunning = true;
+
+		public ReceiveDatagramTask(DatagramChannel channel, Listener listener) {
+			this.channel = channel;
+			this.listener = listener;
+		}
+
+		public void cancel() {
+			keepRunning = false;
+		}
+
 		@Override
 		public void run() {
+			logger.entering(className, "run");
 			try {
-				while (receiveDatagram()) {
+				while (keepRunning) {
+					receiveDatagram();
 				}
+			} catch (ClosedChannelException e) {
+				logger.info("channel closed");
 			} catch (IOException e) {
-				e.printStackTrace();
+				logger.log(Level.SEVERE, "receiveDiagram failed", e);
+			}
+			logger.exiting(className, "run");
+		}
+
+		protected void receiveDatagram() throws IOException {
+			buffer.clear();
+			SocketAddress senderAddress = channel.receive(buffer);
+			if (senderAddress == null) {
+				logger.info("senderAddress is null");
+				keepRunning = false;
+				return;
+			}
+			buffer.flip();
+
+			Message message = new Message();
+			message.setData(Arrays.copyOfRange(buffer.array(), buffer.position(), buffer.position() + buffer.limit()));
+			message.setLength(buffer.limit());
+
+			if (keepRunning && listener != null) {
+				listener.receivedDatagram(senderAddress, message);
 			}
 		}
 	}
 
-	private Listener listener = null;
 	private SocketAddress address = null;
 	private DatagramChannel channel = null;
-	private final ByteBuffer buffer = ByteBuffer.allocate(8192);
-	private boolean keepThreadRunning = true;
+	private ReceiveDatagramTask taskReceive = null;
 	private Thread threadReceive = null;
+
+	private final CloseableReentrantLock lock = new CloseableReentrantLock();
 
 	/**
 	 * Create datagram channel endpoint.
@@ -85,7 +138,9 @@ public class DatagramChannelEndpoint implements Endpoint {
 	 */
 	@Override
 	public void dispose() {
+		logger.entering(CLASS_NAME, "dispose");
 		close();
+		logger.exiting(CLASS_NAME, "dispose");
 	}
 
 	/*
@@ -95,25 +150,32 @@ public class DatagramChannelEndpoint implements Endpoint {
 	 */
 	@Override
 	public void open(SocketAddress address, Listener listener) throws IOException {
-		if (channel != null) {
-			throw new IllegalArgumentException("already open");
+		logger.entering(CLASS_NAME, "open", address);
+
+		try (CloseableReentrantLock locked = lock.open()) {
+			if (channel != null) {
+				throw new IllegalArgumentException("already open");
+			}
+			if (listener == null) {
+				throw new IllegalArgumentException("listener is null");
+			}
+
+			if (address == null) {
+				address = new InetSocketAddress(0);
+			}
+
+			channel = DatagramChannel.open(StandardProtocolFamily.INET);
+			channel.bind(address);
+
+			this.address = address;
+
+			taskReceive = new ReceiveDatagramTask(channel, listener);
+
+			threadReceive = new Thread(taskReceive);
+			threadReceive.start();
 		}
-		if (listener == null) {
-			throw new IllegalArgumentException("listener is null");
-		}
 
-		if (address == null) {
-			address = new InetSocketAddress(0);
-		}
-
-		channel = DatagramChannel.open(StandardProtocolFamily.INET);
-		channel.bind(address);
-
-		this.listener = listener;
-		this.address = address;
-
-		threadReceive = new Thread(new ReceiveDatagramTask());
-		threadReceive.start();
+		logger.exiting(CLASS_NAME, "open");
 	}
 
 	/*
@@ -123,57 +185,26 @@ public class DatagramChannelEndpoint implements Endpoint {
 	 */
 	@Override
 	public void close() {
-		if (channel == null) {
-			return;
-		}
+		logger.entering(CLASS_NAME, "close");
 
-		try {
-			synchronized (this) {
-				keepThreadRunning = false;
+		try (CloseableReentrantLock locked = lock.open()) {
+			if (taskReceive != null) {
+				taskReceive.cancel();
+				taskReceive = null;
 			}
-			channel.close();
-		} catch (IOException ignore) {
-		}
 
-		try {
-			threadReceive.join();
-		} catch (InterruptedException ignore) {
-		}
-		threadReceive = null;
-	}
+			threadReceive = null;
 
-	/**
-	 * Called asynchronously by receiver thread.
-	 */
-	protected boolean receiveDatagram() throws IOException {
-		DatagramChannel safeChannel;
-		synchronized (this) {
-			if (!keepThreadRunning || channel == null) {
-				return false;
+			if (channel != null) {
+				try {
+					channel.close();
+				} catch (IOException ignore) {
+				}
+				channel = null;
 			}
-			safeChannel = channel;
 		}
 
-		buffer.clear();
-		SocketAddress senderAddress = safeChannel.receive(buffer);
-		if (senderAddress == null) {
-			return false;
-		}
-		buffer.flip();
-
-		Message message = new Message();
-		message.setData(Arrays.copyOfRange(buffer.array(), buffer.position(), buffer.position() + buffer.limit()));
-		message.setLength(buffer.limit());
-
-		Listener safeListener;
-		synchronized (this) {
-			safeListener = listener;
-		}
-		if (safeListener != null) {
-			safeListener.receivedDatagram(senderAddress, message);
-		}
-
-		return true;
+		logger.exiting(CLASS_NAME, "close");
 	}
 
 	/*
@@ -185,7 +216,9 @@ public class DatagramChannelEndpoint implements Endpoint {
 	 */
 	@Override
 	public void sendDatagram(SocketAddress address, Message message) throws IOException {
-		channel.send(ByteBuffer.wrap(message.getData(), 0, message.getLength()), address);
+		try (CloseableReentrantLock locked = lock.open()) {
+			channel.send(ByteBuffer.wrap(message.getData(), 0, message.getLength()), address);
+		}
 	}
 
 	/**

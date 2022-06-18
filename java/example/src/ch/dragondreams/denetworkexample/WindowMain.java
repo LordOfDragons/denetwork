@@ -2,6 +2,7 @@ package ch.dragondreams.denetworkexample;
 
 import java.awt.event.WindowEvent;
 import java.io.IOException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.JFrame;
@@ -31,7 +32,7 @@ public class WindowMain extends JFrame {
 		createContent();
 
 		setSize(800, 400);
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
 		setDefaultLookAndFeelDecorated(true);
 		setVisible(true);
@@ -61,6 +62,8 @@ public class WindowMain extends JFrame {
 			connection = null;
 		}
 		super.dispose();
+
+		System.exit(0);
 	}
 
 	public void closeWindow() {
