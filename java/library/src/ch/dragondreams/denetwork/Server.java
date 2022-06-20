@@ -135,6 +135,11 @@ public class Server implements Endpoint.Listener {
 			throw new IllegalArgumentException("Not listening");
 		}
 
+		for (Connection each : connections) {
+			each.dispose();
+		}
+		connections.clear();
+
 		if (endpoint != null) {
 			endpoint.dispose();
 			endpoint = null;

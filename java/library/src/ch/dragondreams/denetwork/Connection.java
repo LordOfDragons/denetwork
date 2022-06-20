@@ -126,6 +126,12 @@ public class Connection implements Endpoint.Listener {
 			futureUpdateTask = null;
 		}
 
+		try {
+			disconnect(false);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
 		try (CloseableReentrantLock locked = lock.open()) {
 			reliableMessagesSend.clear();
 			reliableMessagesRecv.clear();
@@ -547,7 +553,7 @@ public class Connection implements Endpoint.Listener {
 		}
 
 		if (connectionState == ConnectionState.CONNECTED) {
-			logger.info("Disconnecting");
+			logger.info("Disconnecting ");
 
 			Message connectionClose = new Message();
 			try (MessageWriter writer = new MessageWriter(connectionClose)) {

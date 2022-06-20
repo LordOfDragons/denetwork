@@ -25,7 +25,7 @@ public class ExampleApp {
 
 		// show main menu
 		try {
-			new WindowMain(args);
+			new WindowMain();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
