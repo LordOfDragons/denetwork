@@ -81,6 +81,9 @@ void denState::SetLogger(const denLogger::Ref &logger){
 	pLogger = logger;
 }
 
+void denState::RemoteValueChanged(denValue&){
+}
+
 void denState::Update(){
 }
 
@@ -96,8 +99,7 @@ void denState::LinkReadValues(denMessageReader &reader, denStateLink &link){
 		
 		pValues[index]->Read(reader);
 		InvalidateValueAtExcept(index, link);
-		
-		ValueChanged(*pValues[index]);
+		RemoteValueChanged(*pValues[index]);
 	}
 	
 	link.SetChanged(link.HasChangedValues());
@@ -110,8 +112,7 @@ void denState::LinkReadAllValues(denMessageReader &reader, denStateLink &link){
 	for(i=0; i<count; i++){
 		pValues[ i ]->Read(reader);
 		InvalidateValueAt(i);
-		
-		ValueChanged(*pValues[ i ]);
+		RemoteValueChanged(*pValues[ i ]);
 	}
 	
 	if(!link.HasChangedValues()){
@@ -134,8 +135,7 @@ bool denState::LinkReadAndVerifyAllValues(denMessageReader &reader){
 		
 		pValues[i]->Read(reader);
 		InvalidateValueAt(i);
-		
-		ValueChanged(*pValues[i]);
+		RemoteValueChanged(*pValues[i]);
 	}
 	
 	return i == count;

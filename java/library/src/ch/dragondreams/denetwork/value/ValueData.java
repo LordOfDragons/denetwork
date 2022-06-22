@@ -42,6 +42,7 @@ public class ValueData extends Value {
 	 */
 	public ValueData() {
 		super(Type.DATA);
+		lastValue = value = new byte[0];
 		dataType = ValueTypes.DATA;
 	}
 

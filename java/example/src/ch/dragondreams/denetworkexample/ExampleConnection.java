@@ -5,6 +5,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
+import javax.swing.DefaultBoundedRangeModel;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.PlainDocument;
+
 import ch.dragondreams.denetwork.Connection;
 import ch.dragondreams.denetwork.Server;
 import ch.dragondreams.denetwork.message.Message;
@@ -23,7 +27,7 @@ public class ExampleConnection extends Connection {
 
 	static class OtherClientState extends State {
 		final private int identifier;
-		final private ValueInt valueBar = new ValueInt(Format.SINT16);
+		final private LocalValueBar valueBar = new LocalValueBar();
 
 		public OtherClientState(int identifier) {
 			super(true);
@@ -34,10 +38,38 @@ public class ExampleConnection extends Connection {
 			return identifier;
 		}
 
-		public ValueInt getValueBar() {
+		public LocalValueBar getValueBar() {
 			return valueBar;
 		}
-	};
+	}
+
+	class ServerValueTime extends ValueString {
+		final public PlainDocument model = new PlainDocument();
+
+		@Override
+		public void remoteValueChanged() {
+			try {
+				model.replace(0, model.getLength(), getValue(), null);
+			} catch (BadLocationException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	class ServerValueBar extends ValueInt {
+		final public DefaultBoundedRangeModel model = new DefaultBoundedRangeModel(30, 0, 0, 60);
+
+		public ServerValueBar() {
+			super(Format.SINT16);
+		}
+
+		@Override
+		public void remoteValueChanged() {
+			model.setValue(getValue().intValue());
+		}
+	}
+
+
 
 	final private WindowMain windowMain;
 
@@ -48,8 +80,8 @@ public class ExampleConnection extends Connection {
 	final private ValueInt valueBar = new ValueInt(Format.SINT16);
 
 	private State serverState;
-	private ValueString serverValueTime;
-	private ValueInt serverValueBar;
+	private ServerValueTime serverValueTime;
+	private ServerValueBar serverValueBar;
 
 	private List<OtherClientState> otherClientStates = new ArrayList<>();
 
@@ -153,8 +185,8 @@ public class ExampleConnection extends Connection {
 		case LINK_SERVER_STATE:
 			// create local state for server state. read-only to us
 			serverState = new State(readOnly);
-			serverValueTime = new ValueString();
-			serverValueBar = new ValueInt(Format.SINT16);
+			serverValueTime = new ServerValueTime();
+			serverValueBar = new ServerValueBar();
 			serverState.addValue(serverValueTime);
 			serverState.addValue(serverValueBar);
 			return serverState;

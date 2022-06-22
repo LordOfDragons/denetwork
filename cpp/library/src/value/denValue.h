@@ -77,6 +77,14 @@ public:
 	 */
 	virtual bool UpdateValue(bool force) = 0;
 	
+	/**
+	 * \brief Remote value changed.
+	 * 
+	 * For use by subclass to react to remote value changes.
+	 */
+	virtual void RemoteValueChanged();
+	
+	
 	
 protected:
 	const Type pType;

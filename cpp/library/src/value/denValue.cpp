@@ -32,6 +32,9 @@ pState(nullptr),
 pIndex(0){
 }
 
+void denValue::RemoteValueChanged(){
+}
+
 void denValue::pValueChanged(){
 	if(pState){
 		pState->ValueChanged(*this);

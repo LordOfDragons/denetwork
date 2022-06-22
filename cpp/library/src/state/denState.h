@@ -79,6 +79,14 @@ public:
 	/** \brief Read only state. */
 	inline bool GetReadOnly() const{ return pReadOnly; }
 	
+	/**
+	 * \brief Remote value changed.
+	 * 
+	 * For use by subclass to react to remote value changes. After this call
+	 * denValue::RemoteValueChanged() is called too so you can decide where to subclass.
+	 */
+	virtual void RemoteValueChanged(denValue &value);
+	
 private:
 	Values pValues;
 	StateLinks pLinks;

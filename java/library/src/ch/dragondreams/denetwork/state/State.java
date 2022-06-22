@@ -65,8 +65,7 @@ public class State {
 			Value value = values.get(index);
 			value.read(reader);
 			invalidateValueAtExcept(index, link);
-
-			valueChanged(value);
+			remoteValueChanged(value);
 		}
 
 		link.setChanged(link.hasChangedValues());
@@ -82,8 +81,7 @@ public class State {
 			Value value = values.get(i);
 			value.read(reader);
 			invalidateValueAt(i);
-
-			valueChanged(value);
+			remoteValueChanged(value);
 		}
 
 		if (!link.hasChangedValues()) {
@@ -112,8 +110,7 @@ public class State {
 
 			value.read(reader);
 			invalidateValueAt(i);
-
-			valueChanged(value);
+			remoteValueChanged(value);
 		}
 
 		return i == count;
@@ -274,5 +271,13 @@ public class State {
 	 */
 	public boolean getReadOnly() {
 		return readOnly;
+	}
+
+	/**
+	 * Remote value changed. For use by subclass to react to remote value changes.
+	 * After this call {@link Value#remoteValueChanged()} is called too so you can
+	 * decide where to subclass.
+	 */
+	public void remoteValueChanged(Value value) {
 	}
 }

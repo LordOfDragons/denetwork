@@ -123,4 +123,11 @@ abstract public class Value {
 	 * otherwise false if not changed enough.
 	 */
 	abstract public boolean updateValue(boolean force);
+
+	/**
+	 * Remote value changed. For use by subclass to react to remote value changes.
+	 */
+	public void remoteValueChanged() {
+	}
+
 }

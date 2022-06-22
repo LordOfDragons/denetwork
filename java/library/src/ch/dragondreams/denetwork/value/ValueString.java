@@ -40,6 +40,7 @@ public class ValueString extends Value {
 	 */
 	public ValueString() {
 		super(Type.STRING);
+		lastValue = value = "";
 		dataType = ValueTypes.STRING;
 	}
 

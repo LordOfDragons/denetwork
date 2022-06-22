@@ -9,14 +9,13 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
+import javax.swing.text.BadLocationException;
+
 import ch.dragondreams.denetwork.Connection;
 import ch.dragondreams.denetwork.Server;
 import ch.dragondreams.denetwork.message.Message;
 import ch.dragondreams.denetwork.message.MessageWriter;
 import ch.dragondreams.denetwork.state.State;
-import ch.dragondreams.denetwork.value.ValueInt;
-import ch.dragondreams.denetwork.value.ValueInteger.Format;
-import ch.dragondreams.denetwork.value.ValueString;
 
 public class ExampleServer extends Server {
 	public static final String CLASS_NAME = ExampleServer.class.getCanonicalName();
@@ -26,8 +25,8 @@ public class ExampleServer extends Server {
 
 	final private WindowMain windowMain;
 	final private State state = new State(false);
-	final private ValueString valueTime = new ValueString();
-	final private ValueInt valueBar = new ValueInt(Format.SINT16);
+	final private LocalValueTime valueTime = new LocalValueTime();
+	final private LocalValueBar valueBar = new LocalValueBar();
 
 	final static public SimpleDateFormat timeFormatter = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy");
 
@@ -62,11 +61,11 @@ public class ExampleServer extends Server {
 		return state;
 	}
 
-	public ValueString getValueTime() {
+	public LocalValueTime getValueTime() {
 		return valueTime;
 	}
 
-	public ValueInt getValueBar() {
+	public LocalValueBar getValueBar() {
 		return valueBar;
 	}
 
@@ -123,6 +122,10 @@ public class ExampleServer extends Server {
 	}
 
 	public void updateTime() {
-		valueTime.setValue(timeFormatter.format(new Date()));
+		try {
+			valueTime.model.replace(0, valueTime.model.getLength(), timeFormatter.format(new Date()), null);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
 	}
 }
