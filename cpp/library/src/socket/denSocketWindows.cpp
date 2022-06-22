@@ -28,24 +28,20 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <stdexcept>
 #include <memory.h>
 
-#include "include_windows.h"
+#include <Iphlpapi.h>
+
 typedef int socklen_t;
 
-#include <dragengine/app/include_windows.h>
-#include <iphlpapi.h>
-
-#include "denSocketWindows.h"
 #include "../denConnection.h"
 #include "../denServer.h"
 
 denSocketWindows::denSocketWindows() :
 pSocket(-1)
 {
-	pSocket = socket(PF_INET, SOCK_DGRAM, 0);
+	pSocket = (int)socket(PF_INET, SOCK_DGRAM, 0);
 	if(pSocket == -1){
 		throw std::invalid_argument("socket failed");
 	}
@@ -53,7 +49,11 @@ pSocket(-1)
 
 denSocketWindows::~denSocketWindows() noexcept{
 	if(pSocket != -1){
+		#ifdef OS_W32_VS
+		closesocket(pSocket);
+		#else
 		close(pSocket);
+		#endif
 	}
 }
 
@@ -93,7 +93,7 @@ denMessage::Ref denSocketWindows::ReceiveDatagram(denSocketAddress &address){
 			data.assign(dataLen, 0);
 		}
 		
-		dataLen = recvfrom(pSocket, (char*)data.c_str(), dataLen, 0, (struct sockaddr *)&sa, &slen);
+		dataLen = recvfrom(pSocket, (char*)data.c_str(), (int)dataLen, 0, (struct sockaddr *)&sa, &slen);
 		
 		if(dataLen > 0){
 			address = AddressFromSocket(sa);
@@ -111,7 +111,7 @@ void denSocketWindows::SendDatagram(const denMessage &message, const denSocketAd
     sa.sin_family = AF_INET;
 	SocketFromAddress(address, sa);
 	
-	sendto(pSocket, (char*)message.GetData().c_str(), message.GetLength(), 0, (struct sockaddr *)&sa, sizeof(sockaddr));
+	sendto(pSocket, (char*)message.GetData().c_str(), (int)message.GetLength(), 0, (struct sockaddr *)&sa, sizeof(sockaddr));
 }
 
 denSocketAddress denSocketWindows::ResolveAddress(const std::string &address){

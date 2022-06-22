@@ -24,8 +24,8 @@
 
 #pragma once
 
-#include <math.h>
+#include <cmath>
 #include <stdint.h>
-#include "../config.h"
+#include <config.h>
 
 #define DENM_THRESHOLD_DOUBLE 1e-15

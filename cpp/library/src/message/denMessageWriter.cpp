@@ -123,32 +123,32 @@ denMessageWriter &denMessageWriter::WriteString16(const std::string &string){
 }
 
 denMessageWriter &denMessageWriter::WriteVector2(const denVector2 &vector){
-	WriteFloat(vector.x);
-	return WriteFloat(vector.y);
+	WriteFloat((float)vector.x);
+	return WriteFloat((float)vector.y);
 }
 
 denMessageWriter &denMessageWriter::WriteVector3(const denVector3 &vector){
-	WriteFloat(vector.x);
-	WriteFloat(vector.y);
-	return WriteFloat(vector.z);
+	WriteFloat((float)vector.x);
+	WriteFloat((float)vector.y);
+	return WriteFloat((float)vector.z);
 }
 
 denMessageWriter &denMessageWriter::WriteQuaternion(const denQuaternion &quaternion){
-	WriteFloat(quaternion.x);
-	WriteFloat(quaternion.y);
-	WriteFloat(quaternion.z);
-	return WriteFloat(quaternion.w);
+	WriteFloat((float)quaternion.x);
+	WriteFloat((float)quaternion.y);
+	WriteFloat((float)quaternion.z);
+	return WriteFloat((float)quaternion.w);
 }
 
 denMessageWriter &denMessageWriter::WritePoint2(const denPoint2 &point){
-	WriteInt(point.x);
-	return WriteInt(point.y);
+	WriteInt((uint32_t)point.x);
+	return WriteInt((uint32_t)point.y);
 }
 
 denMessageWriter &denMessageWriter::WritePoint3(const denPoint3 &point){
-	WriteInt(point.x);
-	WriteInt(point.y);
-	return WriteInt(point.z);
+	WriteInt((uint32_t)point.x);
+	WriteInt((uint32_t)point.y);
+	return WriteInt((uint32_t)point.z);
 }
 
 denMessageWriter &denMessageWriter::WriteDVector(const denVector3 &vector){

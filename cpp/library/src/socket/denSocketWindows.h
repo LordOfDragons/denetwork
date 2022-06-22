@@ -22,13 +22,14 @@
  * SOFTWARE.
  */
 
-#include "../config.h"
+#include <config.h>
 
 #ifdef OS_W32
 
-#include "denSocket.h"
+#include <Windows.h>
+#include <winsock.h>
 
-#include "include_windows.h"
+#include "denSocket.h"
 
 /**
  * \brief Socket on windows platform.

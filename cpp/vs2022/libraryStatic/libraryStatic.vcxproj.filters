@@ -1,0 +1,201 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\half">
+      <UniqueIdentifier>{7ba8da7d-20e8-4c94-a602-a7c17f80a0c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\math">
+      <UniqueIdentifier>{2f332ecf-dea5-463d-a3dd-6fff58c60127}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\math">
+      <UniqueIdentifier>{e012acd4-e3c2-4023-a15b-aa9ca76f4765}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\message">
+      <UniqueIdentifier>{5568d69c-46ac-4243-84d6-78cd1020b43d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\message">
+      <UniqueIdentifier>{fdef31cf-7b31-4985-aacb-0bcf51ecd789}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\socket">
+      <UniqueIdentifier>{694a839c-ce04-447e-9c4a-3164dc16d7f1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\socket">
+      <UniqueIdentifier>{1cbcd7dc-ebe2-4f4d-8ce8-711a6b78bae1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\state">
+      <UniqueIdentifier>{de6926de-e292-4637-bc60-69da48350c8b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\state">
+      <UniqueIdentifier>{2d8c9458-c660-4871-9a8c-0a9d89359412}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\value">
+      <UniqueIdentifier>{a2541efb-d990-4b3f-a4ce-767ea966ee3c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\half">
+      <UniqueIdentifier>{48733072-7750-445f-b7c4-84c34011b43e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\value">
+      <UniqueIdentifier>{7079067c-b063-473a-a4bc-810010e0a132}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\library\src\denProtocolEnums.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\denConnection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\denLogger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\denPool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\denRealMessage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\denServer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\half\half.h">
+      <Filter>Header Files\half</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\math\denMath.h">
+      <Filter>Header Files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\math\denPoint2.h">
+      <Filter>Header Files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\math\denPoint3.h">
+      <Filter>Header Files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\math\denQuaternion.h">
+      <Filter>Header Files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\math\denVector2.h">
+      <Filter>Header Files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\math\denVector3.h">
+      <Filter>Header Files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\message\denMessage.h">
+      <Filter>Header Files\message</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\message\denMessageReader.h">
+      <Filter>Header Files\message</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\message\denMessageWriter.h">
+      <Filter>Header Files\message</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\socket\denSocket.h">
+      <Filter>Header Files\socket</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\socket\denSocketAddress.h">
+      <Filter>Header Files\socket</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\socket\denSocketShared.h">
+      <Filter>Header Files\socket</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\socket\denSocketWindows.h">
+      <Filter>Header Files\socket</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\socket\include_windows.h">
+      <Filter>Header Files\socket</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\state\denState.h">
+      <Filter>Header Files\state</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\state\denStateLink.h">
+      <Filter>Header Files\state</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\value\denValue.h">
+      <Filter>Header Files\value</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\value\denValueData.h">
+      <Filter>Header Files\value</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\value\denValueFloating.h">
+      <Filter>Header Files\value</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\value\denValueInteger.h">
+      <Filter>Header Files\value</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\library\src\value\denValueString.h">
+      <Filter>Header Files\value</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\library\src\denConnection.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\denLogger.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\denPools.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\denRealMessage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\denServer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\half\half.cpp">
+      <Filter>Source Files\half</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\message\denMessage.cpp">
+      <Filter>Source Files\message</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\message\denMessageReader.cpp">
+      <Filter>Source Files\message</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\message\denMessageWriter.cpp">
+      <Filter>Source Files\message</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\socket\denSocket.cpp">
+      <Filter>Source Files\socket</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\socket\denSocketAddress.cpp">
+      <Filter>Source Files\socket</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\socket\denSocketShared.cpp">
+      <Filter>Source Files\socket</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\socket\denSocketWindows.cpp">
+      <Filter>Source Files\socket</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\state\denState.cpp">
+      <Filter>Source Files\state</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\state\denStateLink.cpp">
+      <Filter>Source Files\state</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\value\denValue.cpp">
+      <Filter>Source Files\value</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\value\denValueData.cpp">
+      <Filter>Source Files\value</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\value\denValueFloating.cpp">
+      <Filter>Source Files\value</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\value\denValueInteger.cpp">
+      <Filter>Source Files\value</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\library\src\value\denValueString.cpp">
+      <Filter>Source Files\value</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
