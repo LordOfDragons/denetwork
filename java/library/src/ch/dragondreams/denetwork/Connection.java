@@ -177,25 +177,32 @@ public class Connection implements Endpoint.Listener {
 			throw new IllegalArgumentException("already connected");
 		}
 
-		endpoint = createEndpoint();
-		endpoint.open(null, this);
+		try (CloseableReentrantLock locked = lock.open()) {
+			endpoint = createEndpoint();
+			endpoint.open(null, this);
 
-		localAddress = endpoint.getAddress().toString();
+			localAddress = endpoint.getAddress().toString();
 
-		Message connectRequest = new Message();
-		try (MessageWriter writer = new MessageWriter(connectRequest)) {
-			writer.writeByte((byte) CommandCodes.CONNECTION_REQUEST.value);
-			writer.writeUShort(1); // version
-			writer.writeUShort(Protocols.DENETWORK_PROTOCOL.value);
+			Message connectRequest = new Message();
+			try (MessageWriter writer = new MessageWriter(connectRequest)) {
+				writer.writeByte((byte) CommandCodes.CONNECTION_REQUEST.value);
+				writer.writeUShort(1); // version
+				writer.writeUShort(Protocols.DENETWORK_PROTOCOL.value);
+			}
+			realRemoteAddress = resolveAddress(address);
+			remoteAddress = address;
+
+			logger.info(String.format("Connection: Connecting to %s", realRemoteAddress.toString()));
+
+			endpoint.sendDatagram(realRemoteAddress, connectRequest);
+
+			connectionState = ConnectionState.CONNECTING;
+
+		} catch (Exception e) {
+			disconnect();
+			throw e;
 		}
-		realRemoteAddress = resolveAddress(address);
-		remoteAddress = address;
 
-		logger.info(String.format("Connection: Connecting to %s", realRemoteAddress.toString()));
-
-		endpoint.sendDatagram(realRemoteAddress, connectRequest);
-
-		connectionState = ConnectionState.CONNECTING;
 		logger.exiting(CLASS_NAME, "connectTo");
 	}
 
@@ -395,17 +402,15 @@ public class Connection implements Endpoint.Listener {
 			}
 
 			if (parentServer == null) {
-				while (true) {
-					if (connectionState == ConnectionState.DISCONNECTED) {
-						return;
-					}
+				if (connectionState == ConnectionState.DISCONNECTED) {
+					return;
+				}
 
-					try {
-						processDatagram(new MessageReader(message));
+				try {
+					processDatagram(new MessageReader(message));
 
-					} catch (Exception e) {
-						logger.log(Level.SEVERE, "Connection.update()[1]", e);
-					}
+				} catch (Exception e) {
+					logger.log(Level.SEVERE, "Connection.update()[1]", e);
 				}
 			}
 		}
@@ -541,10 +546,8 @@ public class Connection implements Endpoint.Listener {
 		connectionState = ConnectionState.CONNECTED;
 		this.protocol = protocol;
 		parentServer = server;
-
-		connectionEstablished();
-
 		futureUpdateTask = scheduler.scheduleAtFixedRate(new UpdateStatesTask(), 0L, 5L, TimeUnit.MILLISECONDS);
+		connectionEstablished();
 	}
 
 	private void disconnect(boolean notify) throws IOException {
@@ -767,6 +770,7 @@ public class Connection implements Endpoint.Listener {
 			protocol = Protocols.withValue(reader.readUShort());
 			connectionState = ConnectionState.CONNECTED;
 			logger.info("Connection established");
+			futureUpdateTask = scheduler.scheduleAtFixedRate(new UpdateStatesTask(), 0L, 5L, TimeUnit.MILLISECONDS);
 			connectionEstablished();
 			break;
 

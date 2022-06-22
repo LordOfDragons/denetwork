@@ -5,19 +5,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
-import javax.swing.DefaultBoundedRangeModel;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.PlainDocument;
-
 import ch.dragondreams.denetwork.Connection;
 import ch.dragondreams.denetwork.Server;
 import ch.dragondreams.denetwork.message.Message;
 import ch.dragondreams.denetwork.message.MessageReader;
 import ch.dragondreams.denetwork.message.MessageWriter;
 import ch.dragondreams.denetwork.state.State;
-import ch.dragondreams.denetwork.value.ValueInt;
-import ch.dragondreams.denetwork.value.ValueInteger.Format;
-import ch.dragondreams.denetwork.value.ValueString;
 
 public class ExampleConnection extends Connection {
 	public static final String CLASS_NAME = ExampleConnection.class.getCanonicalName();
@@ -27,49 +20,22 @@ public class ExampleConnection extends Connection {
 
 	static class OtherClientState extends State {
 		final private int identifier;
-		final private LocalValueBar valueBar = new LocalValueBar();
+		final private RemoteValueBar valueBar = new RemoteValueBar();
 
 		public OtherClientState(int identifier) {
 			super(true);
 			this.identifier = identifier;
+			addValue(valueBar);
 		}
 
 		public int getIdentifier() {
 			return identifier;
 		}
 
-		public LocalValueBar getValueBar() {
+		public RemoteValueBar getValueBar() {
 			return valueBar;
 		}
 	}
-
-	class ServerValueTime extends ValueString {
-		final public PlainDocument model = new PlainDocument();
-
-		@Override
-		public void remoteValueChanged() {
-			try {
-				model.replace(0, model.getLength(), getValue(), null);
-			} catch (BadLocationException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	class ServerValueBar extends ValueInt {
-		final public DefaultBoundedRangeModel model = new DefaultBoundedRangeModel(30, 0, 0, 60);
-
-		public ServerValueBar() {
-			super(Format.SINT16);
-		}
-
-		@Override
-		public void remoteValueChanged() {
-			model.setValue(getValue().intValue());
-		}
-	}
-
-
 
 	final private WindowMain windowMain;
 
@@ -77,11 +43,11 @@ public class ExampleConnection extends Connection {
 
 	final private int identifier;
 	final private State state;
-	final private ValueInt valueBar = new ValueInt(Format.SINT16);
+	final private LocalValueBar valueBar = new LocalValueBar();
 
 	private State serverState;
-	private ServerValueTime serverValueTime;
-	private ServerValueBar serverValueBar;
+	private RemoteValueTime serverValueTime;
+	private RemoteValueBar serverValueBar;
 
 	private List<OtherClientState> otherClientStates = new ArrayList<>();
 
@@ -93,7 +59,15 @@ public class ExampleConnection extends Connection {
 		state.addValue(valueBar);
 	}
 
-	public ValueInt getValueBar() {
+	@Override
+	public void dispose() {
+		if (getParentServer() == null) {
+			windowMain.disconnectClientServerState();
+		}
+		super.dispose();
+	}
+
+	public LocalValueBar getValueBar() {
 		return valueBar;
 	}
 
@@ -109,11 +83,11 @@ public class ExampleConnection extends Connection {
 		return serverState;
 	}
 
-	public ValueString getServerValueTime() {
+	public RemoteValueTime getServerValueTime() {
 		return serverValueTime;
 	}
 
-	public ValueInt getServerValueBar() {
+	public RemoteValueBar getServerValueBar() {
 		return serverValueBar;
 	}
 
@@ -123,13 +97,10 @@ public class ExampleConnection extends Connection {
 
 	@Override
 	public void connectionEstablished() {
-		logger.info("Connection established: Client " + identifier);
 	}
 
 	@Override
 	public void connectionClosed() {
-		logger.info("Connection closed: Client " + identifier);
-
 		Server server = getParentServer();
 		if (server == null) {
 			windowMain.closeWindow();
@@ -166,6 +137,7 @@ public class ExampleConnection extends Connection {
 			for (OtherClientState each : otherClientStates) {
 				if (each.getIdentifier() == otherIdentifier) {
 					remove.add(each);
+					windowMain.disconnectClientState(each);
 				}
 			}
 			otherClientStates.removeAll(remove);
@@ -185,10 +157,11 @@ public class ExampleConnection extends Connection {
 		case LINK_SERVER_STATE:
 			// create local state for server state. read-only to us
 			serverState = new State(readOnly);
-			serverValueTime = new ServerValueTime();
-			serverValueBar = new ServerValueBar();
+			serverValueTime = new RemoteValueTime();
+			serverValueBar = new RemoteValueBar();
 			serverState.addValue(serverValueTime);
 			serverState.addValue(serverValueBar);
+			windowMain.connectClientServerState();
 			return serverState;
 
 		case LINK_CLIENT_STATE:
@@ -199,6 +172,7 @@ public class ExampleConnection extends Connection {
 			// create other client state. read-only to us
 			OtherClientState otherState = new OtherClientState(reader.readUShort());
 			otherClientStates.add(otherState);
+			windowMain.connectClientState(otherState);
 			return otherState;
 		}
 

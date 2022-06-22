@@ -66,6 +66,7 @@ public class State {
 			value.read(reader);
 			invalidateValueAtExcept(index, link);
 			remoteValueChanged(value);
+			value.remoteValueChanged();
 		}
 
 		link.setChanged(link.hasChangedValues());
@@ -82,6 +83,7 @@ public class State {
 			value.read(reader);
 			invalidateValueAt(i);
 			remoteValueChanged(value);
+			value.remoteValueChanged();
 		}
 
 		if (!link.hasChangedValues()) {
@@ -111,6 +113,7 @@ public class State {
 			value.read(reader);
 			invalidateValueAt(i);
 			remoteValueChanged(value);
+			value.remoteValueChanged();
 		}
 
 		return i == count;

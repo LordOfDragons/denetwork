@@ -8,9 +8,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Iterator;
-import java.util.Queue;
+import java.util.List;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -29,15 +30,12 @@ import javax.swing.JScrollPane;
 import javax.swing.JSlider;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.JViewport;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingConstants;
-import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultCaret;
 import javax.swing.text.PlainDocument;
 
-import ch.dragondreams.denetwork.Connection;
-import ch.dragondreams.denetwork.Server;
+import ch.dragondreams.denetworkexample.ExampleConnection.OtherClientState;
 
 public class WindowMain extends JFrame {
 	private static final long serialVersionUID = 3936704916883629102L;
@@ -47,6 +45,37 @@ public class WindowMain extends JFrame {
 
 	protected static final Logger logger = Logger.getLogger(LOGGER_NAME);
 
+	static class OtherClientPanel extends JPanel {
+		private static final long serialVersionUID = -4697052619163906273L;
+
+		private final OtherClientState state;
+		private JSlider sliderBar;
+
+		public OtherClientPanel(OtherClientState state) {
+			this.state = state;
+
+			setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+			setBorder(BorderFactory.createTitledBorder(String.format("Client %d:", state.getIdentifier())));
+
+			JPanel panel = new JPanel();
+			panel.setLayout(new BorderLayout(20, 0));
+			panel.add(new JLabel("Bar:"), BorderLayout.WEST);
+			sliderBar = new JSlider(SwingConstants.HORIZONTAL, 0, 60, 30);
+			sliderBar.setMinorTickSpacing(5);
+			sliderBar.setMajorTickSpacing(30);
+			sliderBar.setPaintTicks(true);
+			sliderBar.setEnabled(false);
+			sliderBar.setModel(state.getValueBar().model);
+			panel.add(sliderBar, BorderLayout.CENTER);
+			add(panel);
+		}
+
+		public void dispose() {
+			sliderBar.setModel(new DefaultBoundedRangeModel(30, 0, 0, 60));
+			sliderBar = null;
+		}
+	}
+
 	private JTextField textAddress;
 	private JButton buttonListen;
 	private JButton buttonConnect;
@@ -55,7 +84,10 @@ public class WindowMain extends JFrame {
 
 	private JTextField textServerTime;
 	private JSlider sliderServerBar;
+	private JPanel panelOtherClientStates;
 
+	private JSlider sliderLocalBar;
+	private List<OtherClientPanel> otherClientPanel = new ArrayList<>();
 
 	private ExampleServer server = null;
 	private ExampleConnection connection = null;
@@ -122,6 +154,12 @@ public class WindowMain extends JFrame {
 			connection.dispose();
 			connection = null;
 		}
+
+		for (OtherClientPanel each : otherClientPanel) {
+			each.dispose();
+		}
+		otherClientPanel.clear();
+
 		super.dispose();
 
 		System.exit(0);
@@ -129,6 +167,37 @@ public class WindowMain extends JFrame {
 
 	public void closeWindow() {
 		dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
+	}
+
+	public void connectClientServerState() {
+		textServerTime.setDocument(connection.getServerValueTime().model);
+		sliderServerBar.setModel(connection.getServerValueBar().model);
+	}
+
+	public void disconnectClientServerState() {
+		textServerTime.setDocument(new PlainDocument());
+		sliderServerBar.setModel(new DefaultBoundedRangeModel(30, 0, 0, 60));
+	}
+
+	public void connectClientState(OtherClientState state) {
+		OtherClientPanel panel = new OtherClientPanel(state);
+		panelOtherClientStates.add(panel);
+		otherClientPanel.add(panel);
+		validate();
+		repaint();
+	}
+
+	public void disconnectClientState(OtherClientState state) {
+		for (OtherClientPanel each : otherClientPanel) {
+			if (each.state == state) {
+				panelOtherClientStates.remove(each);
+				each.dispose();
+				otherClientPanel.remove(each);
+				validate();
+				repaint();
+				return;
+			}
+		}
 	}
 
 	private void serverListen() throws IOException {
@@ -145,11 +214,26 @@ public class WindowMain extends JFrame {
 		buttonDisconnect.setEnabled(true);
 	}
 
-	private void clientConnect() {
+	private void clientConnect() throws IOException {
+		connection = new ExampleConnection(this, false);
+		connection.connectTo(textAddress.getText());
 
+		sliderLocalBar.setModel(connection.getValueBar().model);
+		sliderLocalBar.setEnabled(true);
+
+		buttonConnect.setEnabled(false);
+		buttonListen.setEnabled(false);
+		buttonDisconnect.setEnabled(true);
 	}
 
 	private void disconnect() {
+		for (OtherClientPanel each : otherClientPanel) {
+			panelOtherClientStates.remove(each);
+			each.dispose();
+		}
+		otherClientPanel.clear();
+		panelOtherClientStates.validate();
+
 		if (connection != null) {
 			connection.dispose();
 			connection = null;
@@ -164,6 +248,9 @@ public class WindowMain extends JFrame {
 		sliderServerBar.setEnabled(false);
 		sliderServerBar.setModel(new DefaultBoundedRangeModel(30, 0, 0, 60));
 
+		sliderLocalBar.setEnabled(false);
+		sliderLocalBar.setModel(new DefaultBoundedRangeModel(30, 0, 0, 60));
+
 		buttonConnect.setEnabled(true);
 		buttonListen.setEnabled(true);
 		buttonDisconnect.setEnabled(false);
@@ -177,8 +264,7 @@ public class WindowMain extends JFrame {
 	}
 
 	private JPanel createTopPanel() {
-		JPanel panel = new JPanel();
-		panel.setLayout(new FlowLayout(FlowLayout.LEFT, 5, 5));
+		JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
 
 		panel.add(new JLabel("Address:", SwingConstants.LEFT));
 
@@ -240,19 +326,22 @@ public class WindowMain extends JFrame {
 	}
 
 	private JPanel createContentPanel() {
-		JPanel panel = new JPanel();
-		panel.setLayout(new BorderLayout());
+		JPanel panel = new JPanel(new BorderLayout());
+		panel.add(createContentPanelServer(), BorderLayout.NORTH);
 
-		JPanel panel2 = new JPanel();
-		panel2.setLayout(new GridLayout(0, 1));
+		JPanel panel2 = new JPanel(new BorderLayout());
+		panel.add(panel2, BorderLayout.CENTER);
+		panel2.add(createContentPanelLocal(), BorderLayout.NORTH);
 
-		panel2.add(createContentPanelServer());
+		JPanel panel3 = new JPanel(new BorderLayout());
+		panel2.add(panel3, BorderLayout.CENTER);
 
-		panel.add(panel2, BorderLayout.NORTH);
+		panelOtherClientStates = new JPanel(new GridLayout(0, 1));
+		panel3.add(panelOtherClientStates, BorderLayout.NORTH);
 
 		JScrollPane scrollPane = new JScrollPane(panel);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+		scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
 
 		JPanel cpane = new JPanel();
 		cpane.setLayout(new BoxLayout(cpane, BoxLayout.Y_AXIS));
@@ -265,16 +354,14 @@ public class WindowMain extends JFrame {
 		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
 		panel.setBorder(BorderFactory.createTitledBorder("Server:"));
 
-		JPanel panel2 = new JPanel();
-		panel2.setLayout(new BorderLayout(20, 0));
+		JPanel panel2 = new JPanel(new BorderLayout(20, 0));
 		panel2.add(new JLabel("Time:"), BorderLayout.WEST);
 		textServerTime = new JTextField(20);
 		textServerTime.setEditable(false);
 		panel2.add(textServerTime, BorderLayout.CENTER);
 		panel.add(panel2);
 
-		panel2 = new JPanel();
-		panel2.setLayout(new BorderLayout(20, 0));
+		panel2 = new JPanel(new BorderLayout(20, 0));
 		panel2.add(new JLabel("Bar:"), BorderLayout.WEST);
 		sliderServerBar = new JSlider(SwingConstants.HORIZONTAL, 0, 60, 30);
 		sliderServerBar.setMinorTickSpacing(5);
@@ -287,11 +374,35 @@ public class WindowMain extends JFrame {
 		return panel;
 	}
 
+	private JPanel createContentPanelLocal() {
+		JPanel panel = new JPanel();
+		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+		panel.setBorder(BorderFactory.createTitledBorder("Local:"));
+
+		JPanel panel2 = new JPanel(new BorderLayout(20, 0));
+		panel2.add(new JLabel("Bar:"), BorderLayout.WEST);
+		sliderLocalBar = new JSlider(SwingConstants.HORIZONTAL, 0, 60, 30);
+		sliderLocalBar.setMinorTickSpacing(5);
+		sliderLocalBar.setMajorTickSpacing(30);
+		sliderLocalBar.setPaintTicks(true);
+		sliderLocalBar.setEnabled(false);
+		panel2.add(sliderLocalBar, BorderLayout.CENTER);
+		panel.add(panel2);
+
+		return panel;
+	}
+
 	private void onConnect() {
 		if (server != null || connection != null) {
 			JOptionPane.showMessageDialog(this, "Already connected", "Connect", JOptionPane.INFORMATION_MESSAGE);
 		} else {
-			clientConnect();
+			try {
+				clientConnect();
+			} catch (IOException e) {
+				disconnect();
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(this, e.toString(), "Connect", JOptionPane.ERROR_MESSAGE);
+			}
 		}
 	}
 
@@ -303,6 +414,7 @@ public class WindowMain extends JFrame {
 			try {
 				serverListen();
 			} catch (IOException e) {
+				disconnect();
 				e.printStackTrace();
 				JOptionPane.showMessageDialog(this, e.toString(), "Listen", JOptionPane.ERROR_MESSAGE);
 			}
