@@ -25,7 +25,7 @@
 #pragma once
 
 #include <memory>
-#include <config.h>
+#include "../config.h"
 #include "../denProtocolEnums.h"
 
 class denMessageReader;

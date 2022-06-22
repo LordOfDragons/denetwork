@@ -27,7 +27,7 @@
 #include <memory>
 #include <vector>
 #include <list>
-#include <config.h>
+#include "../config.h"
 #include "denStateLink.h"
 #include "../denLogger.h"
 #include "../value/denValue.h"

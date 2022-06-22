@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include <config.h>
+#include "../config.h"
 
 #ifdef OS_UNIX
 

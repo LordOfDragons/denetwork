@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-#include <config.h>
+#include "../config.h"
 
 #ifdef OS_W32
 

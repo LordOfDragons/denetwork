@@ -29,7 +29,7 @@
 #include <ctime>
 #include <chrono>
 #include <string>
-#include <config.h>
+#include "../config.h"
 #include "../denPool.h"
 
 /**
