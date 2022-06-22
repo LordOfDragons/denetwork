@@ -13,8 +13,14 @@ jobs:
       releaseVersion: nightly
       artifactArchive: archives-linux
   
+  build_windows:
+    uses: ./.github/workflows/build_windows.yml
+    with:
+      releaseVersion: nightly
+      artifactArchive: archives-windows
+  
   upload:
-    needs: [build_linux]
+    needs: [build_linux, build_windows]
     runs-on: ubuntu-latest
     
     steps:
@@ -22,6 +28,11 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: archives-linux
+      
+      - name: Get Windows Archives
+        uses: actions/download-artifact@v3
+        with:
+          name: archives-windows
       
       - name: Get current date
         id: date
@@ -46,4 +57,5 @@ jobs:
             Builds are potentially unstable. Use at own risk.
           artifacts: >
             denetworkcpp-unix-x64-nightly.zip,
-            denetworkjava-nightly.zip
+            denetworkjava-nightly.zip,
+            DENetworkSDK-nightly.zip

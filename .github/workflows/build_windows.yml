@@ -12,26 +12,36 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     
     steps:
       - uses: actions/checkout@v2
       
-      - name: Install required packages
-        run: |
-          sudo apt -y install build-essential scons mingw-w64
-      
-      - name: Init custom.py
-        run: |
-          cp ${{ github.workspace }}/.github/workflows/custom_windows.py custom.py
-      
+      - name: Setup MSBuild.exe
+        uses: microsoft/setup-msbuild@v1.0.3
+        
       - name: Build
-        run: scons -j 14 version=${{ inputs.releaseVersion }} build archive
+        run: msbuild 'cpp/vs2022/vs2022.sln' /p:configuration=Release /p:platform=x64
+        
+      - name: Archive
+        run: |
+          New-Item -Path build\DENetwork\SDK\Include -ItemType Directory
+          New-Item -Path build\DENetwork\SDK\Library\x64 -ItemType Directory
           
+          Copy-Item -Filter *.h -Path cpp\library\src -Recurse -Destination build\DENetwork\SDK\Include
+          Move-Item build\DENetwork\SDK\Include\src build\DENetwork\SDK\Include\denetwork
+          
+          Copy-Item cpp\vs2022\x64\Release\DENetwork.lib build\DENetwork\SDK\Library\x64
+          #Copy-Item cpp\vs2022\x64\Release\DENetwork.pdb build\DENetwork\SDK\Library\x64
+          
+          Copy-Item LICENSE build\DENetwork
+          Copy-Item README.md build\DENetwork
+          
+          Compress-Archive -Path build\DENetwork\* -DestinationPath DENetworkSDK-${{ inputs.releaseVersion }}.zip
+
       - name: Store Archives
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.artifactArchive }}
-          path: |
-            cpp/library/build/denetworkcpp-windows-x64-${{ inputs.releaseVersion }}.zip
+          path: DENetworkSDK-${{ inputs.releaseVersion }}.zip
           if-no-files-found: error
