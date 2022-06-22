@@ -135,6 +135,9 @@
       </SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PreBuildEvent>
+      <Command>copy $(SolutionDir)include\config.h  $(SolutionDir)..\library\src\config.h</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -161,6 +164,9 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PreBuildEvent>
+      <Command>copy $(SolutionDir)include\config.h  $(SolutionDir)..\library\src\config.h</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\library\src\denConnection.h" />
@@ -191,6 +197,7 @@
     <ClInclude Include="..\..\library\src\value\denValueFloating.h" />
     <ClInclude Include="..\..\library\src\value\denValueInteger.h" />
     <ClInclude Include="..\..\library\src\value\denValueString.h" />
+    <ClInclude Include="..\include\config.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\library\src\denConnection.cpp" />
