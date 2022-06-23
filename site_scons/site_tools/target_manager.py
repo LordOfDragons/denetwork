@@ -262,9 +262,12 @@ def generate(env):
 			source = [env.Dir(self.jarDir)]
 			if self.manifest:
 				if isinstance(self.manifest, str):
-					source.append(env.File(self.manifest))
+					node = env.File(self.manifest)
+					source.append(node)
+					self.includeFile(env, '', node)
 				else:
 					source.append(self.manifest)
+					self.includeFile(env, '', self.manifest)
 			jars = env.Jar(target='{}.jar'.format(target), source=source,
 				JARCHDIR='$SOURCE', JAVAVERSION=self.javaVersion)
 			env.Depends(jars, self.sources)
