@@ -43,7 +43,8 @@ public class ExampleConnection extends Connection {
 
 	final private int identifier;
 	final private State state;
-	final private LocalValueBar valueBar = new LocalValueBar();
+	final private LocalValueBar localValueBar;
+	final private RemoteValueBar remoteValueBar;
 
 	private State serverState;
 	private RemoteValueTime serverValueTime;
@@ -55,8 +56,18 @@ public class ExampleConnection extends Connection {
 		this.windowMain = windowMain;
 		identifier = nextIdentifier++;
 		state = new State(readOnly);
-		valueBar.setValue(30L);
-		state.addValue(valueBar);
+		
+		if (readOnly) {
+			localValueBar = null;
+			remoteValueBar = new RemoteValueBar();
+			remoteValueBar.setValue(30L);
+			state.addValue(remoteValueBar);
+		} else {
+			remoteValueBar = null;
+			localValueBar = new LocalValueBar();
+			localValueBar.setValue(30L);
+			state.addValue(localValueBar);
+		}
 	}
 
 	@Override
@@ -67,8 +78,12 @@ public class ExampleConnection extends Connection {
 		super.dispose();
 	}
 
-	public LocalValueBar getValueBar() {
-		return valueBar;
+	public LocalValueBar getLocalValueBar() {
+		return localValueBar;
+	}
+
+	public RemoteValueBar getRemoteValueBar() {
+		return remoteValueBar;
 	}
 
 	public int getIdentifier() {
@@ -107,6 +122,8 @@ public class ExampleConnection extends Connection {
 			return;
 		}
 
+		windowMain.disconnectClientState(this);
+		
 		for (Connection each : server.getConnections()) {
 			if (each == this) {
 				continue;

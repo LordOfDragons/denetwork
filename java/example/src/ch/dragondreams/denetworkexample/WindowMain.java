@@ -49,10 +49,12 @@ public class WindowMain extends JFrame {
 		private static final long serialVersionUID = -4697052619163906273L;
 
 		private final OtherClientState state;
+		private final ExampleConnection ecstate;
 		private JSlider sliderBar;
 
 		public OtherClientPanel(OtherClientState state) {
 			this.state = state;
+			ecstate = null;
 
 			setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 			setBorder(BorderFactory.createTitledBorder(String.format("Client %d:", state.getIdentifier())));
@@ -66,6 +68,26 @@ public class WindowMain extends JFrame {
 			sliderBar.setPaintTicks(true);
 			sliderBar.setEnabled(false);
 			sliderBar.setModel(state.getValueBar().model);
+			panel.add(sliderBar, BorderLayout.CENTER);
+			add(panel);
+		}
+
+		public OtherClientPanel(ExampleConnection ecstate) {
+			this.ecstate = ecstate;
+			state = null;
+
+			setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+			setBorder(BorderFactory.createTitledBorder(String.format("Client %d:", ecstate.getIdentifier())));
+
+			JPanel panel = new JPanel();
+			panel.setLayout(new BorderLayout(20, 0));
+			panel.add(new JLabel("Bar:"), BorderLayout.WEST);
+			sliderBar = new JSlider(SwingConstants.HORIZONTAL, 0, 60, 30);
+			sliderBar.setMinorTickSpacing(5);
+			sliderBar.setMajorTickSpacing(30);
+			sliderBar.setPaintTicks(true);
+			sliderBar.setEnabled(false);
+			sliderBar.setModel(ecstate.getRemoteValueBar().model);
 			panel.add(sliderBar, BorderLayout.CENTER);
 			add(panel);
 		}
@@ -200,6 +222,27 @@ public class WindowMain extends JFrame {
 		}
 	}
 
+	public void connectClientState(ExampleConnection state) {
+		OtherClientPanel panel = new OtherClientPanel(state);
+		panelOtherClientStates.add(panel);
+		otherClientPanel.add(panel);
+		validate();
+		repaint();
+	}
+
+	public void disconnectClientState(ExampleConnection state) {
+		for (OtherClientPanel each : otherClientPanel) {
+			if (each.ecstate == state) {
+				panelOtherClientStates.remove(each);
+				each.dispose();
+				otherClientPanel.remove(each);
+				validate();
+				repaint();
+				return;
+			}
+		}
+	}
+
 	private void serverListen() throws IOException {
 		server = new ExampleServer(this);
 		server.listenOn(textAddress.getText());
@@ -218,7 +261,7 @@ public class WindowMain extends JFrame {
 		connection = new ExampleConnection(this, false);
 		connection.connectTo(textAddress.getText());
 
-		sliderLocalBar.setModel(connection.getValueBar().model);
+		sliderLocalBar.setModel(connection.getLocalValueBar().model);
 		sliderLocalBar.setEnabled(true);
 
 		buttonConnect.setEnabled(false);

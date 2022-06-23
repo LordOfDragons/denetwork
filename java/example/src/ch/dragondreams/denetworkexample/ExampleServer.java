@@ -98,6 +98,7 @@ public class ExampleServer extends Server {
 					writer.writeByte(MessageCode.LINK_CLIENT_STATE.value);
 				}
 				connection.linkState(message, excon.getState(), false);
+				windowMain.connectClientState(excon);
 
 			} else {
 				ExampleConnection othercon = (ExampleConnection) each;
