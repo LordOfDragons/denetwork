@@ -156,6 +156,7 @@
       </SmallerTypeCheck>
       <BasicRuntimeChecks>
       </BasicRuntimeChecks>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>
