@@ -471,15 +471,15 @@ void denConnection::pUpdateStates(){
 		
 		writer.WriteUShort((uint16_t)((*iter)->GetIdentifier()));
 		denState * const state = (*iter)->GetState();
-		if(state){
-			state->LinkWriteValues(writer, **iter);
-			
-		}else{
+		if(!state){
 			//throw std::invalid_argument("state link droppped");
+			pModifiedStateLinks.erase(ModifiedStateLinks::iterator(iter++));
+			continue;
 		}
 		
+		state->LinkWriteValues(writer, **iter);
+		
 		pModifiedStateLinks.erase(ModifiedStateLinks::iterator(iter++));
-		linkCount--;
 		
 		changedCount--;
 		if(changedCount == 0){

@@ -575,7 +575,8 @@ public class Connection implements Endpoint.Listener {
 			break;
 
 		default:
-			throw new IllegalArgumentException("Invalid command code");
+			// throw new IllegalArgumentException("Invalid command code");
+			break;
 		}
 	}
 
@@ -702,7 +703,9 @@ public class Connection implements Endpoint.Listener {
 				writer.writeUShort(link.getIdentifier());
 				State state = link.getState();
 				if (state == null) {
-					throw new IllegalArgumentException("state link droppped");
+					// throw new IllegalArgumentException("state link droppped");
+					iter.remove();
+					continue;
 				}
 
 				state.linkWriteValues(writer, link);
@@ -822,7 +825,8 @@ public class Connection implements Endpoint.Listener {
 	 */
 	private void processConnectionAck(MessageReader reader) throws IOException {
 		if (connectionState != ConnectionState.CONNECTING) {
-			throw new IllegalArgumentException("Not connecting");
+			// throw new IllegalArgumentException("Not connecting");
+			return;
 		}
 
 		switch (ConnectionAck.withValue(reader.readByte())) {
@@ -878,7 +882,9 @@ public class Connection implements Endpoint.Listener {
 	 */
 	private void processReliableMessage(MessageReader reader) throws IOException {
 		if (connectionState != ConnectionState.CONNECTED) {
-			throw new IllegalArgumentException("Reliable message received although not connected.");
+			// throw new IllegalArgumentException("Reliable message received although not
+			// connected.");
+			return;
 		}
 
 		int number = reader.readUShort();
@@ -891,7 +897,9 @@ public class Connection implements Endpoint.Listener {
 			validNumber = number < reliableNumberRecv + reliableWindowSize;
 		}
 		if (!validNumber) {
-			throw new IllegalArgumentException("Reliable message: invalid sequence number.");
+			// throw new IllegalArgumentException("Reliable message: invalid sequence
+			// number.");
+			return;
 		}
 
 		Message ackMessage = new Message();
@@ -928,7 +936,8 @@ public class Connection implements Endpoint.Listener {
 	 */
 	private void processReliableAck(MessageReader reader) throws IOException {
 		if (connectionState != ConnectionState.CONNECTED) {
-			throw new IllegalArgumentException("Reliable ack: not connected.");
+			// throw new IllegalArgumentException("Reliable ack: not connected.");
+			return;
 		}
 
 		int number = reader.readUShort();
@@ -942,8 +951,9 @@ public class Connection implements Endpoint.Listener {
 			}
 		}
 		if (message == null) {
-			throw new IllegalArgumentException(
-					"Reliable ack: no reliable transmission with this number waiting for an ack!");
+			// throw new IllegalArgumentException("Reliable ack: no reliable transmission
+			// with this number waiting for an ack!");
+			return;
 		}
 
 		switch (code) {
@@ -964,7 +974,8 @@ public class Connection implements Endpoint.Listener {
 	 */
 	private void processReliableLinkState(MessageReader reader) throws IOException {
 		if (connectionState != ConnectionState.CONNECTED) {
-			throw new IllegalArgumentException("Link state: not connected.");
+			// throw new IllegalArgumentException("Link state: not connected.");
+			return;
 		}
 
 		int number = reader.readUShort();
@@ -977,7 +988,8 @@ public class Connection implements Endpoint.Listener {
 			validNumber = number < reliableNumberRecv + reliableWindowSize;
 		}
 		if (!validNumber) {
-			throw new IllegalArgumentException("Link state: invalid sequence number.");
+			// throw new IllegalArgumentException("Link state: invalid sequence number.");
+			return;
 		}
 
 		Message ackMessage = new Message();
@@ -1003,7 +1015,8 @@ public class Connection implements Endpoint.Listener {
 	 */
 	private void processLinkUp(MessageReader reader) {
 		if (connectionState != ConnectionState.CONNECTED) {
-			throw new IllegalArgumentException("Reliable ack: not connected.");
+			// throw new IllegalArgumentException("Reliable ack: not connected.");
+			return;
 		}
 
 		int identifier = reader.readUShort();
@@ -1015,8 +1028,13 @@ public class Connection implements Endpoint.Listener {
 				break;
 			}
 		}
-		if (link == null || link.getLinkState() != StateLink.LinkState.LISTENING) {
-			throw new IllegalArgumentException("Link with identifier absent or not listening");
+		if (link == null) {
+			// throw new IllegalArgumentException("Link with identifier absent");
+			return;
+		}
+		if (link.getLinkState() != StateLink.LinkState.LISTENING) {
+			// throw new IllegalArgumentException("Link with identifier not listening");
+			return;
 		}
 
 		link.setLinkState(StateLink.LinkState.UP);
@@ -1027,7 +1045,8 @@ public class Connection implements Endpoint.Listener {
 	 */
 	private void processLinkDown(MessageReader reader) {
 		if (connectionState != ConnectionState.CONNECTED) {
-			throw new IllegalArgumentException("Reliable ack: not connected.");
+			// throw new IllegalArgumentException("Reliable ack: not connected.");
+			return;
 		}
 
 		int identifier = reader.readUShort();
@@ -1039,8 +1058,13 @@ public class Connection implements Endpoint.Listener {
 				break;
 			}
 		}
-		if (link == null || link.getLinkState() != StateLink.LinkState.UP) {
-			throw new IllegalArgumentException("Link with identifier absent or not up");
+		if (link == null) {
+			// throw new IllegalArgumentException("Link with identifier absent");
+			return;
+		}
+		if (link.getLinkState() != StateLink.LinkState.UP) {
+			// throw new IllegalArgumentException("Link with identifier not up");
+			return;
 		}
 
 		link.setLinkState(StateLink.LinkState.DOWN);
@@ -1061,7 +1085,7 @@ public class Connection implements Endpoint.Listener {
 			}
 		}
 		if (link != null && link.getLinkState() != StateLink.LinkState.DOWN) {
-			throw new IllegalArgumentException("Link with identifier exists already");
+			// throw new IllegalArgumentException("Link with identifier exists already");
 		}
 
 		// create linked network state
@@ -1074,11 +1098,13 @@ public class Connection implements Endpoint.Listener {
 		CommandCodes code = CommandCodes.LINK_DOWN;
 		if (state != null) {
 			if (!state.linkReadAndVerifyAllValues(reader)) {
-				throw new IllegalArgumentException("Link state does not match the state provided.");
+				// throw new IllegalArgumentException("Link state does not match the state
+				// provided.");
+				return;
 			}
-
 			if (link != null) {
-				throw new IllegalArgumentException("Link state existing already.");
+				// throw new IllegalArgumentException("Link state existing already.");
+				return;
 			}
 
 			link = new StateLink(this, state);
@@ -1103,7 +1129,8 @@ public class Connection implements Endpoint.Listener {
 	 */
 	private void processLinkUpdate(MessageReader reader) {
 		if (connectionState != ConnectionState.CONNECTED) {
-			throw new IllegalArgumentException("Reliable ack: not connected.");
+			// throw new IllegalArgumentException("Reliable ack: not connected.");
+			return;
 		}
 
 		int i, count = reader.readByte();
@@ -1117,13 +1144,19 @@ public class Connection implements Endpoint.Listener {
 					break;
 				}
 			}
-			if (link == null || link.getLinkState() != StateLink.LinkState.UP) {
-				throw new IllegalArgumentException("Invalid link identifier");
+			if (link == null) {
+				// throw new IllegalArgumentException("Invalid link identifier");
+				return;
+			}
+			if (link.getLinkState() != StateLink.LinkState.UP) {
+				// throw new IllegalArgumentException("Invalid link identifier");
+				return;
 			}
 
 			State state = link.getState();
 			if (state == null) {
-				throw new IllegalArgumentException("State link droppped");
+				// throw new IllegalArgumentException("State link droppped");
+				return;
 			}
 
 			state.linkReadValues(reader, link);
