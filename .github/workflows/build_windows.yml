@@ -32,7 +32,7 @@ jobs:
           Move-Item build\DENetwork\SDK\Include\src build\DENetwork\SDK\Include\denetwork
           
           Copy-Item cpp\vs2022\x64\Release\DENetwork.lib build\DENetwork\SDK\Library\x64
-          #Copy-Item cpp\vs2022\x64\Release\DENetwork.pdb build\DENetwork\SDK\Library\x64
+          Copy-Item cpp\vs2022\x64\Release\DENetwork.pdb build\DENetwork\SDK\Library\x64
           
           Copy-Item LICENSE build\DENetwork
           Copy-Item README.md build\DENetwork
