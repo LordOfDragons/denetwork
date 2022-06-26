@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <stdexcept>
 #include <memory.h>
+#include <errno.h>
 
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -92,11 +93,18 @@ denMessage::Ref denSocketUnix::ReceiveDatagram(denSocketAddress &address){
 			data.assign(dataLen, 0);
 		}
 		
-		dataLen = recvfrom(pSocket, (char*)data.c_str(), dataLen, 0, (struct sockaddr *)&sa, &slen);
+		const int result = recvfrom(pSocket, (char*)data.c_str(), dataLen, 0, (struct sockaddr *)&sa, &slen);
 		
-		if(dataLen > 0){
+		if(result == -1){
+			const int error = errno;
+			std::stringstream s;
+			s << "recvfrom failed: error " << error;
+			throw std::runtime_error(s.str());
+		}
+		
+		if(result > 0){
 			address = AddressFromSocket(sa);
-			message->Item().SetLength(dataLen);
+			message->Item().SetLength(result);
 			return message;
 		} // connection closed returns 0 length
 	}

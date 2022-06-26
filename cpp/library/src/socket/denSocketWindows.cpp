@@ -97,7 +97,7 @@ denMessage::Ref denSocketWindows::ReceiveDatagram(denSocketAddress &address){
 		if(result == SOCKET_ERROR){
 			const int error = WSAGetLastError();
 			std::stringstream s;
-			s << "recvfrom failed: error 0x" << error;
+			s << "recvfrom failed: error " << error;
 			throw std::runtime_error(s.str());
 		}
 
