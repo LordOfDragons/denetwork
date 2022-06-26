@@ -610,8 +610,6 @@ public class Connection implements Endpoint.Listener {
 			endpoint.sendDatagram(realRemoteAddress, connectionClose);
 		}
 
-		stopUpdateTask();
-
 		try (CloseableReentrantLock locked = lock.open()) {
 			clearStates();
 			reliableMessagesRecv.clear();
@@ -750,8 +748,7 @@ public class Connection implements Endpoint.Listener {
 			// increase connecting timeout
 			secondsSinceConnectTo += elapsedTime;
 			if (secondsSinceConnectTo > connectTimeout) {
-				connectionState = ConnectionState.DISCONNECTED;
-				secondsSinceConnectTo = 0.0f;
+				closeEndpoint();
 				logger.info("Connection failed (timeout)");
 				connectionFailed(ConnectionFailedReason.TIMEOUT);
 			}
@@ -838,25 +835,19 @@ public class Connection implements Endpoint.Listener {
 			break;
 
 		case REJECTED:
-			stopUpdateTask();
-			connectionState = ConnectionState.DISCONNECTED;
-			secondsSinceConnectTo = 0.0f;
+			closeEndpoint();
 			logger.info("Connection failed (rejected)");
 			connectionFailed(ConnectionFailedReason.REJECTED);
 			break;
 
 		case NO_COMMON_PROTOCOL:
-			stopUpdateTask();
-			connectionState = ConnectionState.DISCONNECTED;
-			secondsSinceConnectTo = 0.0f;
+			closeEndpoint();
 			logger.info("Connection failed (no common protocol)");
 			connectionFailed(ConnectionFailedReason.NO_COMMON_PROTOCOL);
 			break;
 
 		default:
-			stopUpdateTask();
-			connectionState = ConnectionState.DISCONNECTED;
-			secondsSinceConnectTo = 0.0f;
+			closeEndpoint();
 			logger.info("Connection failed (invalid message)");
 			connectionFailed(ConnectionFailedReason.INVALID_MESSAGE);
 		}

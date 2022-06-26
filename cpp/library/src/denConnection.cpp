@@ -281,7 +281,7 @@ denSocketAddress denConnection::ResolveAddress(const std::string &address){
 void denConnection::ConnectionEstablished(){
 }
 
-void denConnection::ConnectionFailed(ConnectionFailedReason reason){
+void denConnection::ConnectionFailed(ConnectionFailedReason){
 }
 
 void denConnection::ConnectionClosed(){
@@ -515,8 +515,7 @@ void denConnection::pUpdateTimeouts(float elapsedTime){
 		// increase connecting timeout
 		pSecondsSinceConnectTo += elapsedTime;
 		if(pSecondsSinceConnectTo > pConnectTimeout){
-			pConnectionState = ConnectionState::disconnected;
-			pSecondsSinceConnectTo = 0.0f;
+			pCloseSocket();
 			if(pLogger){
 				pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection failed (timeout)");
 			}
@@ -602,8 +601,7 @@ void denConnection::pProcessConnectionAck(denMessageReader &reader){
 		break;
 		
 	case denProtocol::ConnectionAck::rejected:
-		pConnectionState = ConnectionState::disconnected;
-		pSecondsSinceConnectTo = 0.0f;
+		pCloseSocket();
 		if(pLogger){
 			pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection failed (rejected)");
 		}
@@ -611,8 +609,7 @@ void denConnection::pProcessConnectionAck(denMessageReader &reader){
 		break;
 		
 	case denProtocol::ConnectionAck::noCommonProtocol:
-		pConnectionState = ConnectionState::disconnected;
-		pSecondsSinceConnectTo = 0.0f;
+		pCloseSocket();
 		if(pLogger){
 			pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection failed (no common protocol)");
 		}
@@ -620,8 +617,7 @@ void denConnection::pProcessConnectionAck(denMessageReader &reader){
 		break;
 		
 	default:
-		pConnectionState = ConnectionState::disconnected;
-		pSecondsSinceConnectTo = 0.0f;
+		pCloseSocket();
 		if(pLogger){
 			pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection failed (invalid message)");
 		}
