@@ -340,7 +340,8 @@ void denConnection::ProcessDatagram(denMessageReader& reader){
 		break;
 		
 	default:
-		throw std::invalid_argument("Invalid command code");
+		// throw std::invalid_argument("Invalid command code");
+		break;
 	}
 }
 
@@ -470,11 +471,12 @@ void denConnection::pUpdateStates(){
 		
 		writer.WriteUShort((uint16_t)((*iter)->GetIdentifier()));
 		denState * const state = (*iter)->GetState();
-		if(!state){
-			throw std::invalid_argument("state link droppped");
+		if(state){
+			state->LinkWriteValues(writer, **iter);
+			
+		}else{
+			//throw std::invalid_argument("state link droppped");
 		}
-		
-		state->LinkWriteValues(writer, **iter);
 		
 		pModifiedStateLinks.erase(ModifiedStateLinks::iterator(iter++));
 		linkCount--;
@@ -586,7 +588,8 @@ void denConnection::pProcessQueuedMessages(){
 
 void denConnection::pProcessConnectionAck(denMessageReader &reader){
 	if(pConnectionState != ConnectionState::connecting){
-		throw std::invalid_argument("Not connecting");
+		//throw std::invalid_argument("Not connecting");
+		return;
 	}
 	
 	switch((denProtocol::ConnectionAck)reader.ReadByte()){
@@ -641,7 +644,8 @@ void denConnection::pProcessMessage(denMessageReader &reader){
 
 void denConnection::pProcessReliableMessage(denMessageReader &reader){
 	if(pConnectionState != ConnectionState::connected){
-		throw std::invalid_argument("Reliable message received although not connected.");
+		//throw std::invalid_argument("Reliable message received although not connected.");
+		return;
 	}
 	
 	const int number = reader.ReadUShort();
@@ -654,7 +658,8 @@ void denConnection::pProcessReliableMessage(denMessageReader &reader){
 		validNumber = number < pReliableNumberRecv + pReliableWindowSize;
 	}
 	if(!validNumber){
-		throw std::invalid_argument("Reliable message: invalid sequence number.");
+		//throw std::invalid_argument("Reliable message: invalid sequence number.");
+		return;
 	}
 	
 	const denMessage::Ref ackMessage(denMessage::Pool().Get());
@@ -686,7 +691,8 @@ void denConnection::pProcessReliableMessageMessage(denMessageReader &reader){
 
 void denConnection::pProcessReliableAck(denMessageReader &reader){
 	if(pConnectionState != ConnectionState::connected){
-		throw std::invalid_argument("Reliable ack: not connected.");
+		//throw std::invalid_argument("Reliable ack: not connected.");
+		return;
 	}
 	
 	const int number = reader.ReadUShort();
@@ -697,7 +703,8 @@ void denConnection::pProcessReliableAck(denMessageReader &reader){
 			return (*each).Item().number == number;
 		}));
 	if(iter == pReliableMessagesSend.cend()){
-		throw std::invalid_argument("Reliable ack: no reliable transmission with this number waiting for an ack!");
+		//throw std::invalid_argument("Reliable ack: no reliable transmission with this number waiting for an ack!");
+		return;
 	}
 	
 	const denRealMessage::Ref message(*iter);
@@ -717,7 +724,8 @@ void denConnection::pProcessReliableAck(denMessageReader &reader){
 
 void denConnection::pProcessReliableLinkState(denMessageReader &reader){
 	if(pConnectionState != ConnectionState::connected){
-		throw std::invalid_argument("Link state: not connected.");
+		//throw std::invalid_argument("Link state: not connected.");
+		return;
 	}
 	
 	const int number = reader.ReadUShort();
@@ -730,7 +738,8 @@ void denConnection::pProcessReliableLinkState(denMessageReader &reader){
 		validNumber = number < pReliableNumberRecv + pReliableWindowSize;
 	}
 	if( ! validNumber ){
-		throw std::invalid_argument("Link state: invalid sequence number.");
+		//throw std::invalid_argument("Link state: invalid sequence number.");
+		return;
 	}
 	
 	const denMessage::Ref ackMessage(denMessage::Pool().Get());
@@ -754,7 +763,8 @@ void denConnection::pProcessReliableLinkState(denMessageReader &reader){
 
 void denConnection::pProcessLinkUp(denMessageReader &reader){
 	if(pConnectionState != ConnectionState::connected){
-		throw std::invalid_argument("Reliable ack: not connected.");
+		//throw std::invalid_argument("Reliable ack: not connected.");
+		return;
 	}
 	
 	const int identifier = reader.ReadUShort();
@@ -764,8 +774,13 @@ void denConnection::pProcessLinkUp(denMessageReader &reader){
 		return each->GetIdentifier() == identifier;
 	}));
 	
-	if(iterLink == pStateLinks.cend() || (*iterLink)->GetLinkState() != denStateLink::State::listening){
-		throw std::invalid_argument("up link with identifier absent or not listening");
+	if(iterLink == pStateLinks.cend()){
+		//throw std::invalid_argument("up link with identifier absent");
+		return;
+	}
+	if((*iterLink)->GetLinkState() != denStateLink::State::listening){
+		//throw std::invalid_argument("up link with identifier absent or not listening");
+		return;
 	}
 	
 	(*iterLink)->SetLinkState(denStateLink::State::up);
@@ -773,7 +788,8 @@ void denConnection::pProcessLinkUp(denMessageReader &reader){
 
 void denConnection::pProcessLinkDown(denMessageReader &reader){
 	if(pConnectionState != ConnectionState::connected){
-		throw std::invalid_argument("Reliable ack: not connected.");
+		//throw std::invalid_argument("Reliable ack: not connected.");
+		return;
 	}
 	
 	const int identifier = reader.ReadUShort();
@@ -783,8 +799,13 @@ void denConnection::pProcessLinkDown(denMessageReader &reader){
 		return each->GetIdentifier() == identifier;
 	}));
 	
-	if(iterLink == pStateLinks.cend() || (*iterLink)->GetLinkState() != denStateLink::State::up){
-		throw std::invalid_argument("down link with identifier absent or not up");
+	if(iterLink == pStateLinks.cend()){
+		//throw std::invalid_argument("down link with identifier absent");
+		return;
+	}
+	if((*iterLink)->GetLinkState() != denStateLink::State::up){
+		//throw std::invalid_argument("down link with identifier not up");
+		return;
 	}
 	
 	(*iterLink)->SetLinkState(denStateLink::State::down);
@@ -800,7 +821,8 @@ void denConnection::pProcessLinkState(denMessageReader &reader){
 	}));
 	
 	if(iterLink != pStateLinks.cend() && (*iterLink)->GetLinkState() != denStateLink::State::down){
-		throw std::invalid_argument("Link state: link with this identifier already exists.");
+		//throw std::invalid_argument("Link state: link with this identifier already exists.");
+		return;
 	}
 	
 	// create linked network state
@@ -813,11 +835,12 @@ void denConnection::pProcessLinkState(denMessageReader &reader){
 	denProtocol::CommandCodes code = denProtocol::CommandCodes::linkDown;
 	if(state){
 		if(!state->LinkReadAndVerifyAllValues(reader)){
-			throw std::invalid_argument("Link state does not match the state provided.");
+			//throw std::invalid_argument("Link state does not match the state provided.");
+			return;
 		}
-		
 		if(iterLink != pStateLinks.cend()){
-			throw std::invalid_argument("Link state existing already.");
+			//throw std::invalid_argument("Link state existing already.");
+			return;
 		}
 		
 		const denStateLink::Ref link(std::make_shared<denStateLink>(*this, *state));
@@ -840,7 +863,8 @@ void denConnection::pProcessLinkState(denMessageReader &reader){
 
 void denConnection::pProcessLinkUpdate(denMessageReader &reader){
 	if(pConnectionState != ConnectionState::connected){
-		throw std::invalid_argument("Reliable ack: not connected.");
+		//throw std::invalid_argument("Reliable ack: not connected.");
+		return;
 	}
 	
 	const int count = reader.ReadByte();
@@ -853,13 +877,19 @@ void denConnection::pProcessLinkUpdate(denMessageReader &reader){
 			return each->GetIdentifier() == identifier;
 		}));
 		
-		if(iterLink == pStateLinks.cend() || (*iterLink)->GetLinkState() != denStateLink::State::up){
-			throw std::invalid_argument("invalid link identifier");
+		if(iterLink == pStateLinks.cend()){
+			//throw std::invalid_argument("invalid link identifier");
+			return;
+		}
+		if((*iterLink)->GetLinkState() != denStateLink::State::up){
+			//throw std::invalid_argument("invalid link identifier");
+			return;
 		}
 		
 		denState * const state = (*iterLink)->GetState();
 		if(!state){
-			throw std::invalid_argument("state link droppped");
+			//throw std::invalid_argument("state link droppped");
+			return;
 		}
 		
 		state->LinkReadValues(reader, *iterLink->get());
