@@ -30,10 +30,9 @@
 #include <stdlib.h>
 #include <stdexcept>
 #include <memory.h>
+#include <iomanip>
 
 #include <Iphlpapi.h>
-
-typedef int socklen_t;
 
 #include "../denConnection.h"
 #include "../denServer.h"
@@ -63,28 +62,26 @@ void denSocketWindows::Bind(){
 	sa.sin_family = AF_INET;
 	SocketFromAddress(pAddress, sa);
 	
-	if(bind(pSocket, (struct sockaddr *)&sa, sizeof(sockaddr))){
+	if(bind(pSocket, (SOCKADDR*)&sa, sizeof(sa))){
 		throw std::invalid_argument("bind failed");
 	}
 	
-	socklen_t slen = sizeof(sockaddr);
-	if(getsockname(pSocket, (struct sockaddr *)&sa, &slen)){
+	int slen = sizeof(sa);
+	if(getsockname(pSocket, (SOCKADDR*)&sa, &slen)){
 		throw std::invalid_argument("getsockname failed");
 	}
 	pAddress = AddressFromSocket(sa);
 }
 
 denMessage::Ref denSocketWindows::ReceiveDatagram(denSocketAddress &address){
-	socklen_t slen = sizeof(sockaddr);
-	struct sockaddr_in sa;
 	fd_set fd;
-	
 	FD_ZERO(&fd);
 	FD_SET(pSocket, &fd);
 	
 	TIMEVAL tv;
 	tv.tv_sec = 0;
 	tv.tv_usec = 0;
+
 	if(select(0, &fd, nullptr, nullptr, &tv) == 1){
 		const denMessage::Ref message(denMessage::Pool().Get());
 		std::string &data = message->Item().GetData();
@@ -93,11 +90,20 @@ denMessage::Ref denSocketWindows::ReceiveDatagram(denSocketAddress &address){
 			data.assign(dataLen, 0);
 		}
 		
-		dataLen = recvfrom(pSocket, (char*)data.c_str(), (int)dataLen, 0, (struct sockaddr *)&sa, &slen);
+		struct sockaddr_in sa;
+		int slen = sizeof(sa);
+		const int result = recvfrom(pSocket, (char*)data.c_str(), (int)dataLen, 0, (SOCKADDR*)&sa, &slen);
 		
-		if(dataLen > 0){
+		if(result == SOCKET_ERROR){
+			const int error = WSAGetLastError();
+			std::stringstream s;
+			s << "recvfrom failed: error 0x" << error;
+			throw std::runtime_error(s.str());
+		}
+
+		if(result > 0){
 			address = AddressFromSocket(sa);
-			message->Item().SetLength(dataLen);
+			message->Item().SetLength(result);
 			return message;
 		} // connection closed returns 0 length
 	}
@@ -111,7 +117,7 @@ void denSocketWindows::SendDatagram(const denMessage &message, const denSocketAd
     sa.sin_family = AF_INET;
 	SocketFromAddress(address, sa);
 	
-	sendto(pSocket, (char*)message.GetData().c_str(), (int)message.GetLength(), 0, (struct sockaddr *)&sa, sizeof(sockaddr));
+	sendto(pSocket, (char*)message.GetData().c_str(), (int)message.GetLength(), 0, (SOCKADDR*)&sa, sizeof(sa));
 }
 
 denSocketAddress denSocketWindows::ResolveAddress(const std::string &address){
