@@ -45,6 +45,39 @@ class denServer;
 
 /**
  * \brief Network connection.
+ * 
+ * Allows clients to connect to a server speaking Drag[en]gine Network Protocol.
+ * 
+ * To use this class create a subclass overwriting one or more of the methods below.
+ * 
+ * To start connecting to the server call ConnectTo() with the IP address to connect to
+ * in the format "hostnameOrIP" or "hostnameOrIP:port". You can use a resolvable hostname
+ * or an IPv4. If the port is not specified the default port 3413 is used. You can use any
+ * port you you like. Connecting attempt fails if it takes longer than SetConnectTimeout
+ * seconds. The default timeout is 3 seconds.
+ * 
+ * If connecting to the server succeedes ConnectionEstablished() is called. Overwrite to
+ * request linking states and exchanging messages with the server. If connection timed
+ * out or another error occured ConnectionFailed() is called with the failure reason.
+ * Overwrite to handle connection failure.
+ * 
+ * You can close the connection by calling Disconnect(). This calls ConnectionClosed()
+ * which you can overwrite. This method is also called if the server closes the connection.
+ * 
+ * Overwrite CreateState() to create states requested by the server. States synchronize
+ * a fixed set of values between the server and the client. The client can have read-write
+ * or read-only access to the state. Create an instance of a subclass of denState to
+ * handle individual states. It is not necessary to create a subclass of denState if
+ * you intent to subclass denValue* instead.
+ * 
+ * Overwrite MessageReceived() to process messages send by the server.
+ * 
+ * Call Update() in regular intervals to receive and process incoming messages as well as
+ * updating states. DENetwork does not use internal threading giving you full control
+ * over threading.
+ * 
+ * To get logging implemnent a subclass of denLogger and set the logger instance using
+ * SetLogger(). You can share the logger instance across multiple servers and connections.
  */
 class denConnection{
 public:
@@ -127,15 +160,31 @@ public:
 	 * The message will be not delayed longer than the given amount of milliseconds.
 	 * The message is send unreliable and it is acceptable for the message to get
 	 * lost due to transmission failure.
+	 * 
+	 * Sending messages is not reliable. Messages can be potentially lost and you
+	 * will not be notified if this occurs. Use this method for messages where loosing
+	 * them is fine. This is typically the case for messages repeating in regular
+	 * intervals so missing one of them is not a problem.
+	 * 
+	 * \param[in] message Message to send. Message can contain any kind of byte sequence.
+	 *                    The most simply way to build messages is using denMessageWriter.
 	 */
-	void SendMessage(const denMessage::Ref &message, int maxDelay);
+	void SendMessage(const denMessage::Ref &message);
 	
-	/**	
+	/**
 	 * \brief Send reliable message to remote connection if connected.
 	 * 
 	 * The  message is append to already waiting reliable messages and send as
 	 * soon as possible. Reliable messages always arrive in the same order
 	 * they have been queued.
+	 * 
+	 * This messages is guaranteed to be delivered in the order they have been send.
+	 * Use this for messages which you can not afford to loose. This is typically the
+	 * case for events happening once like a player activating an item or opening
+	 * a door.
+	 * 
+	 * \param[in] message Message to send. Message can contain any kind of byte sequence.
+	 *                    The most simply way to build messages is using denMessageWriter.
 	 */
 	void SendReliableMessage(const denMessage::Ref &message);
 	
@@ -146,6 +195,14 @@ public:
 	 * The request is queued and carried out as soon as possible. The local state
 	 * is considered the master state and the remote state the slave state.
 	 * By default only the master state can apply changes.
+	 * 
+	 * \param[in] message Message to send. Message can contain any kind of byte sequence.
+	 *                    The most simply way to build messages is using denMessageWriter.
+	 * \param[in] state State to link.
+	 * \param[in] readOnly If true client receives a read-only link otherwise a read-write
+	 *                     link. Use true if the state to link is a server managed state
+	 *                     the client is only allowed to read. Use false if this is a state
+	 *                     the client has to change.
 	 */
 	void LinkState(const denMessage::Ref &message, const denState::Ref &state, bool readOnly);
 	
@@ -162,12 +219,22 @@ public:
 	/**
 	 * \brief Create socket.
 	 * 
-	 * Default implementation creates platform specific socket implementation.
+	 * Default implementation creates platform specific socket implementation which is a
+	 * UDP socket. If you have to accept clients using a different transportation method
+	 * overwrite method to create an instance of a subclass of denSocket providing the
+	 * required capabilities.
 	 */
 	virtual denSocket::Ref CreateSocket();
 	
 	/**
 	 * \brief Resolve address.
+	 * 
+	 * Address is in the format "hostnameOrIP" or "hostnameOrIP:port". You can use a
+	 * resolvable hostname or an IPv4. If the port is not specified the default port
+	 * 3413 is used.
+	 * 
+	 * If you overwrite CreateSocket() you have to also overwrite this method to resolve
+	 * address using the appropriate method.
 	 */
 	virtual denSocketAddress ResolveAddress(const std::string &address);
 	
@@ -179,6 +246,8 @@ public:
 	
 	/**
 	 * \brief Connection closed.
+	 * 
+	 * This is called if Disconnect() is called or the server closes the connection.
 	 */
 	virtual void ConnectionClosed();
 	
@@ -193,6 +262,18 @@ public:
 	
 	/**
 	 * \brief Host send state to link.
+	 * 
+	 * Overwrite to create states requested by the server. States synchronize a fixed set
+	 * of values between the server and the client. The client can have read-write or
+	 * read-only access to the state. Create an instance of a subclass of denState to handle
+	 * individual states. It is not necessary to create a subclass of denState if you intent
+	 * to subclass denValue* instead.
+	 * 
+	 * If you do not support a state requested by the server you can return nullptr.
+	 * In this case the state is not linked and state values are not synchronized.
+	 * You can not re-link a state later on if you rejected it here. If you need re-linking
+	 * a state make the server resend the link request. This will be a new state link.
+	 * 
 	 * \returns State or nullptr to reject.
 	 */
 	virtual denState::Ref CreateState(const denMessage::Ref &message, bool readOnly);

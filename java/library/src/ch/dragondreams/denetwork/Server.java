@@ -45,6 +45,25 @@ import ch.dragondreams.denetwork.utils.CloseableReentrantLock;
 
 /**
  * Network server.
+ * 
+ * Allows clients speaking Drag[en]gine Network Protocol to connect.
+ * 
+ * To use this class create a subclass and overwrite createConnection() and
+ * clientConnected(). The method createConnection() method creates a Connection
+ * instance for each connecting client. By overwriting this method you can
+ * create a subclass of Connection handling the client. Overwriting
+ * clientConnected() allows to communicate with a connecting client to link
+ * states and exchanging messages.
+ * 
+ * The default implementation connects by creating a UDP socket. If you have to
+ * accept clients using a different transportation method overwrite
+ * createSocket() to create a class instance implementing Endpoint interface
+ * providing the required capabilities. Usually this is not required.
+ * 
+ * To start listening call ListenOn with the IP address to listen on in the
+ * format "hostnameOrIP" or "hostnameOrIP:port". You can use a resolvable
+ * hostname or an IPv4. If the port is not specified the default port 3413 is
+ * used. You can use any port you you like.
  */
 public class Server implements Endpoint.Listener {
 	public static final String CLASS_NAME = Server.class.getCanonicalName();
@@ -88,6 +107,11 @@ public class Server implements Endpoint.Listener {
 
 	/**
 	 * Start listening on address for incoming connections.
+	 * 
+	 * @param[in] address Address is in the format "hostnameOrIP" or
+	 *            "hostnameOrIP:port". You can use a resolvable hostname or an IPv4.
+	 *            If the port is not specified the default port 3413 is used. You
+	 *            can use any port you you like.
 	 */
 	public void listenOn(String address) throws IOException {
 		if (listening) {
@@ -191,8 +215,11 @@ public class Server implements Endpoint.Listener {
 	}
 
 	/**
-	 * Create connection.
-	 *
+	 * Create connection for each connecting client.
+	 * 
+	 * Overwrite this method to create an instance of a custom subclass of
+	 * Connection handling the client.
+	 * 
 	 * Default implementation creates instance of Connection.
 	 */
 	public Connection createConnection() {
@@ -201,8 +228,11 @@ public class Server implements Endpoint.Listener {
 
 	/**
 	 * Create endpoint.
-	 *
-	 * Default implementation creates instance of SocketEndpoint.
+	 * 
+	 * Default implementation creates an instance of DatagramChannelEndpoint which
+	 * is a UDP socket. If you have to accept clients using a different
+	 * transportation method overwrite method to create an instance of a class
+	 * implementing Endpoint interface providing the required capabilities.
 	 */
 	public Endpoint createEndpoint() {
 		return new DatagramChannelEndpoint();
@@ -217,6 +247,13 @@ public class Server implements Endpoint.Listener {
 
 	/**
 	 * Resolve address.
+	 * 
+	 * Address is in the format "hostnameOrIP" or "hostnameOrIP:port". You can use a
+	 * resolvable hostname or an IPv4. If the port is not specified the default port
+	 * 3413 is used.
+	 * 
+	 * If you overwrite CreateSocket() you have to also overwrite this method to
+	 * resolve address using the appropriate method.
 	 */
 	public SocketAddress resolveAddress(String address) {
 		int delimiter = address.indexOf(':');
@@ -232,7 +269,10 @@ public class Server implements Endpoint.Listener {
 	}
 
 	/**
-	 * Client connected event. For overwriting by subclass.
+	 * Client connected.
+	 * 
+	 * Overwrite to communicate with a connecting client to link states and exchange
+	 * messages.
 	 */
 	public void onClientConnected(Connection connection) throws IOException {
 	}

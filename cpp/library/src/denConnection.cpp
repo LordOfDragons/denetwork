@@ -94,7 +94,7 @@ void denConnection::Disconnect(){
 	pDisconnect(true);
 }
 
-void denConnection::SendMessage(const denMessage::Ref &message, int maxDelay){
+void denConnection::SendMessage(const denMessage::Ref &message){
 	if(!message){
 		throw std::invalid_argument("message is nullptr");
 	}
