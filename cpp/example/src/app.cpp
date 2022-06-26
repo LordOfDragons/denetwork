@@ -209,15 +209,21 @@ void App::updateClient(float elapsed){
 void App::appLoop(){
 	auto start = std::chrono::steady_clock::now();
 	
+	timespec sleeper;
+	sleeper.tv_sec = 0;
+	sleeper.tv_nsec = 1000000;
+	
 	while(!quit){
 		const auto end = std::chrono::steady_clock::now();
+		const float elapsed = 1e-9f * std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 		start = end;
-		const float elapsed = 0.001f * std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 		
 		handleInput();
 		updateServer(elapsed);
 		updateClient(elapsed);
 		drawScreen();
+		
+		nanosleep(&sleeper, nullptr); // 1ms sleep
 	}
 }
 

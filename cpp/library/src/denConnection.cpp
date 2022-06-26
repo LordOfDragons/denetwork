@@ -34,6 +34,8 @@
 
 denConnection::denConnection() :
 pConnectionState(ConnectionState::disconnected),
+pConnectTimeout(3.0f),
+pSecondsSinceConnectTo(0.0f),
 pProtocol(denProtocol::Protocols::DENetworkProtocol),
 pNextLinkIdentifier(0),
 pReliableNumberSend(0),
@@ -47,8 +49,8 @@ denConnection::~denConnection() noexcept{
 	pDisconnect(false);
 }
 
-bool denConnection::GetConnected() const{
-	return pConnectionState == ConnectionState::connected;
+void denConnection::SetConnectTimeout(float timeout){
+	pConnectTimeout = std::max(timeout, 0.0f);
 }
 
 void denConnection::SetLogger(const denLogger::Ref &logger){
@@ -85,6 +87,7 @@ void denConnection::ConnectTo(const std::string &address){
 	pSocket->SendDatagram(connectRequest->Item(), pRealRemoteAddress);
 	
 	pConnectionState = ConnectionState::connecting;
+	pSecondsSinceConnectTo = 0.0f;
 }
 
 void denConnection::Disconnect(){
@@ -278,6 +281,9 @@ denSocketAddress denConnection::ResolveAddress(const std::string &address){
 void denConnection::ConnectionEstablished(){
 }
 
+void denConnection::ConnectionFailed(ConnectionFailedReason reason){
+}
+
 void denConnection::ConnectionClosed(){
 }
 
@@ -346,6 +352,7 @@ const denSocketAddress &address, denProtocol::Protocols protocol){
 	pRealRemoteAddress = address;
 	pRemoteAddress = address.ToString();
 	pConnectionState = ConnectionState::connected;
+	pSecondsSinceConnectTo = 0.0f;
 	pProtocol = protocol;
 	pParentServer = &server;
 	
@@ -409,6 +416,7 @@ void denConnection::pClearStates(){
 
 void denConnection::pCloseSocket(){
 	pConnectionState = ConnectionState::disconnected;
+	pSecondsSinceConnectTo = 0.0f;
 	pSocket.reset();
 }
 
@@ -482,22 +490,42 @@ void denConnection::pUpdateStates(){
 }
 
 void denConnection::pUpdateTimeouts(float elapsedTime){
-	// increase the timeouts on all send packages
-	Messages::const_iterator iter;
-	float timeout = 3.0f;
-	
-	for(iter = pReliableMessagesSend.cbegin(); iter != pReliableMessagesSend.cend(); iter++){
-		if((*iter)->Item().state != denRealMessage::State::send){
-			continue;
-		}
+	switch(pConnectionState){
+	case ConnectionState::connected:{
+		// increase the timeouts on all send packages
+		Messages::const_iterator iter;
+		float timeout = 3.0f;
 		
-		(*iter)->Item().secondsSinceSend += elapsedTime;
-		
-		if((*iter)->Item().secondsSinceSend > timeout){
-			// resend message
-			pSocket->SendDatagram((*iter)->Item().message->Item(), pRealRemoteAddress);
-			(*iter)->Item().secondsSinceSend = 0.0f;
+		for(iter = pReliableMessagesSend.cbegin(); iter != pReliableMessagesSend.cend(); iter++){
+			if((*iter)->Item().state != denRealMessage::State::send){
+				continue;
+			}
+			
+			(*iter)->Item().secondsSinceSend += elapsedTime;
+			
+			if((*iter)->Item().secondsSinceSend > timeout){
+				// resend message
+				pSocket->SendDatagram((*iter)->Item().message->Item(), pRealRemoteAddress);
+				(*iter)->Item().secondsSinceSend = 0.0f;
+			}
 		}
+		}break;
+		
+	case ConnectionState::connecting:
+		// increase connecting timeout
+		pSecondsSinceConnectTo += elapsedTime;
+		if(pSecondsSinceConnectTo > pConnectTimeout){
+			pConnectionState = ConnectionState::disconnected;
+			pSecondsSinceConnectTo = 0.0f;
+			if(pLogger){
+				pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection failed (timeout)");
+			}
+			ConnectionFailed(ConnectionFailedReason::timeout);
+		}
+		break;
+		
+	default:
+		break;
 	}
 }
 
@@ -566,6 +594,7 @@ void denConnection::pProcessConnectionAck(denMessageReader &reader){
 	case denProtocol::ConnectionAck::accepted:
 		pProtocol = (denProtocol::Protocols)reader.ReadUShort();
 		pConnectionState = ConnectionState::connected;
+		pSecondsSinceConnectTo = 0.0f;
 		if(pLogger){
 			pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection established");
 		}
@@ -573,13 +602,30 @@ void denConnection::pProcessConnectionAck(denMessageReader &reader){
 		break;
 		
 	case denProtocol::ConnectionAck::rejected:
+		pConnectionState = ConnectionState::disconnected;
+		pSecondsSinceConnectTo = 0.0f;
+		if(pLogger){
+			pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection failed (rejected)");
+		}
+		ConnectionFailed(ConnectionFailedReason::rejected);
+		break;
+		
 	case denProtocol::ConnectionAck::noCommonProtocol:
+		pConnectionState = ConnectionState::disconnected;
+		pSecondsSinceConnectTo = 0.0f;
+		if(pLogger){
+			pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection failed (no common protocol)");
+		}
+		ConnectionFailed(ConnectionFailedReason::noCommonProtocol);
+		break;
+		
 	default:
 		pConnectionState = ConnectionState::disconnected;
+		pSecondsSinceConnectTo = 0.0f;
 		if(pLogger){
-			pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection rejected");
+			pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection failed (invalid message)");
 		}
-		ConnectionClosed();
+		ConnectionFailed(ConnectionFailedReason::invalidMessage);
 	}
 }
 

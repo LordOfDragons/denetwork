@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
+import javax.swing.SwingUtilities;
+
 import ch.dragondreams.denetwork.Connection;
 import ch.dragondreams.denetwork.Server;
 import ch.dragondreams.denetwork.message.Message;
@@ -115,32 +117,36 @@ public class ExampleConnection extends Connection {
 	}
 
 	@Override
+	public void connectionFailed(ConnectionFailedReason reason) {
+		connectionClosed();
+	}
+	
+	@Override
 	public void connectionClosed() {
 		Server server = getParentServer();
-		if (server == null) {
-			windowMain.closeWindow();
-			return;
+		if (server != null) {
+			windowMain.disconnectClientState(this);
+			
+			for (Connection each : server.getConnections()) {
+				if (each == this) {
+					continue;
+				}
+	
+				Message message = new Message();
+				try (MessageWriter writer = new MessageWriter(message)) {
+					writer.writeByte(MessageCode.DROP_CLIENT.value);
+					writer.writeUShort(identifier);
+				}
+	
+				try {
+					each.sendReliableMessage(message);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
 		}
-
-		windowMain.disconnectClientState(this);
 		
-		for (Connection each : server.getConnections()) {
-			if (each == this) {
-				continue;
-			}
-
-			Message message = new Message();
-			try (MessageWriter writer = new MessageWriter(message)) {
-				writer.writeByte(MessageCode.DROP_CLIENT.value);
-				writer.writeUShort(identifier);
-			}
-
-			try {
-				each.sendReliableMessage(message);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
+		windowMain.disconnect();
 	}
 
 	@Override

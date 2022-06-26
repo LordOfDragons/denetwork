@@ -69,6 +69,10 @@ bool Connection::ready() const{
 void Connection::ConnectionEstablished(){
 }
 
+void Connection::ConnectionFailed(ConnectionFailedReason reason){
+	ConnectionClosed();
+}
+
 void Connection::ConnectionClosed(){
 	if(GetParentServer()){
 		const denServer::Connections &connections = GetParentServer()->GetConnections();

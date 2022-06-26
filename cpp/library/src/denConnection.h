@@ -67,6 +67,15 @@ public:
 		connected
 	};
 	
+	/** \brief Connection failed reason. */
+	enum class ConnectionFailedReason{
+		generic,
+		timeout,
+		rejected,
+		noCommonProtocol,
+		invalidMessage
+	};
+	
 	/** \brief Create connection. */
 	denConnection();
 	
@@ -79,8 +88,25 @@ public:
 	/** \brief Remote address. */
 	inline const std::string &GetRemoteAddress() const{ return pRemoteAddress; }
 	
+	/** \brief Timeout in seconds for ConnectTo call. */
+	inline float GetConnectTimeout() const{ return pConnectTimeout; }
+	
+	/** \brief Set timeout in seconds for ConnectTo call. */
+	void SetConnectTimeout( float timeout );
+	
+	/** \brief Connection state. */
+	inline ConnectionState GetConnectionState() const{ return pConnectionState; }
+	
 	/** \brief Connection to a remote host is established. */
-	bool GetConnected() const;
+	inline bool GetConnected() const{ return pConnectionState == ConnectionState::connected; }
+	
+	/**
+	 * \brief Seconds since ConnectTo() call.
+	 * 
+	 * Only valid while connection state is connecting. Connection attempts fails
+	 * if seconds since connect to exceeds connect timeout.
+	 */
+	inline float GetSecondsSinceConnectTo() const{ return pSecondsSinceConnectTo; }
 	
 	/** \brief Logger or null. */
 	inline const denLogger::Ref &GetLogger() const{ return pLogger; }
@@ -148,7 +174,12 @@ public:
 	/** \brief Connection established. */
 	virtual void ConnectionEstablished();
 	
-	/** \brief Connection closed. */
+	/** \brief Connection failed or timeout out. */
+	virtual void ConnectionFailed(ConnectionFailedReason reason);
+	
+	/**
+	 * \brief Connection closed.
+	 */
 	virtual void ConnectionClosed();
 	
 	/** \brief Long message is in progress of receiving. */
@@ -200,6 +231,8 @@ private:
 	denSocket::Ref pSocket;
 	denSocketAddress pRealRemoteAddress;
 	ConnectionState pConnectionState;
+	float pConnectTimeout;
+	float pSecondsSinceConnectTo;
 	
 	denProtocol::Protocols pProtocol;
 	StateLinks pStateLinks;

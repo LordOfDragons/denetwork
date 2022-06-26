@@ -63,6 +63,7 @@ public:
 	bool ready() const;
 	
 	void ConnectionEstablished() override;
+	void ConnectionFailed (ConnectionFailedReason reason) override;
 	void ConnectionClosed() override;
 	void MessageProgress(size_t bytesReceived) override;
 	void MessageReceived(const denMessage::Ref &message) override;

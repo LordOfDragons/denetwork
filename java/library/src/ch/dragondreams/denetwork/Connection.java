@@ -63,9 +63,16 @@ public class Connection implements Endpoint.Listener {
 	/**
 	 * State of the connection.
 	 */
-	enum ConnectionState {
+	public enum ConnectionState {
 		DISCONNECTED, CONNECTING, CONNECTED
 	}
+
+	/**
+	 * Connection failed reason.
+	 */
+	public enum ConnectionFailedReason {
+		GENERIC, TIMEOUT, REJECTED, NO_COMMON_PROTOCOL, INVALID_MESSAGE
+	};
 
 	private String localAddress = null;
 	private String remoteAddress = null;
@@ -73,6 +80,8 @@ public class Connection implements Endpoint.Listener {
 	private Endpoint endpoint = null;
 	private SocketAddress realRemoteAddress = null;
 	private ConnectionState connectionState = ConnectionState.DISCONNECTED;
+	private float connectTimeout = 3.0f;
+	private float secondsSinceConnectTo = 0.0f;
 
 	private Protocols protocol = Protocols.DENETWORK_PROTOCOL;
 	private LinkedList<StateLink> stateLinks = new LinkedList<>();
@@ -121,10 +130,7 @@ public class Connection implements Endpoint.Listener {
 	 * Dispose of connection.
 	 */
 	public void dispose() {
-		if (futureUpdateTask != null) {
-			futureUpdateTask.cancel(false);
-			futureUpdateTask = null;
-		}
+		stopUpdateTask();
 
 		try {
 			disconnect(false);
@@ -162,10 +168,41 @@ public class Connection implements Endpoint.Listener {
 	}
 
 	/**
+	 * Timeout in seconds for ConnectTo call.
+	 */
+	public float getConnectTimeout() {
+		return connectTimeout;
+	}
+
+	/**
+	 * Set timeout in seconds for ConnectTo call.
+	 */
+	public void setConnectTimeout(float timeout) {
+		connectTimeout = Math.max(timeout, 0.0f);
+	}
+
+	/**
+	 * Connection state.
+	 */
+	public ConnectionState getConnectionState() {
+		return connectionState;
+	}
+
+	/**
 	 * Connection to a remote host is established.
 	 */
 	public boolean getConnected() {
 		return connectionState == ConnectionState.CONNECTED;
+	}
+
+	/**
+	 * Seconds since ConnectTo() call.
+	 * 
+	 * Only valid while connection state is connecting. Connection attempts fails if
+	 * seconds since connect to exceeds connect timeout.
+	 */
+	public float getSecondsSinceConnectTo() {
+		return secondsSinceConnectTo;
 	}
 
 	/**
@@ -197,6 +234,8 @@ public class Connection implements Endpoint.Listener {
 			endpoint.sendDatagram(realRemoteAddress, connectRequest);
 
 			connectionState = ConnectionState.CONNECTING;
+			secondsSinceConnectTo = 0.0f;
+			startUpdateTask();
 
 		} catch (Exception e) {
 			disconnect();
@@ -431,6 +470,12 @@ public class Connection implements Endpoint.Listener {
 	}
 
 	/**
+	 * Connection failed or timeout out.
+	 */
+	public void connectionFailed(ConnectionFailedReason reason) {
+	}
+
+	/**
 	 * Connection closed. Called asynchronously. Callback for subclass.
 	 */
 	public void connectionClosed() throws IOException {
@@ -446,8 +491,7 @@ public class Connection implements Endpoint.Listener {
 	/**
 	 * Message received. Called asynchronously. Callback for subclass.
 	 *
-	 * @param message
-	 *            Received message. Object can be stored for later use.
+	 * @param message Received message. Object can be stored for later use.
 	 */
 	public void messageReceived(Message message) throws IOException {
 	}
@@ -544,9 +588,10 @@ public class Connection implements Endpoint.Listener {
 		realRemoteAddress = address;
 		remoteAddress = address.toString();
 		connectionState = ConnectionState.CONNECTED;
+		secondsSinceConnectTo = 0.0f;
 		this.protocol = protocol;
 		parentServer = server;
-		futureUpdateTask = scheduler.scheduleAtFixedRate(new UpdateStatesTask(), 0L, 5L, TimeUnit.MILLISECONDS);
+		startUpdateTask();
 		connectionEstablished();
 	}
 
@@ -565,10 +610,7 @@ public class Connection implements Endpoint.Listener {
 			endpoint.sendDatagram(realRemoteAddress, connectionClose);
 		}
 
-		if (futureUpdateTask != null) {
-			futureUpdateTask.cancel(false);
-			futureUpdateTask = null;
-		}
+		stopUpdateTask();
 
 		try (CloseableReentrantLock locked = lock.open()) {
 			clearStates();
@@ -607,7 +649,9 @@ public class Connection implements Endpoint.Listener {
 	}
 
 	private void closeEndpoint() {
+		stopUpdateTask();
 		connectionState = ConnectionState.DISCONNECTED;
+		secondsSinceConnectTo = 0.0f;
 		if (parentServer == null && endpoint != null) {
 			endpoint.dispose();
 		}
@@ -681,21 +725,40 @@ public class Connection implements Endpoint.Listener {
 	 * Synchronized by caller.
 	 */
 	private void updateTimeouts(float elapsedTime) throws IOException {
-		// increase the timeouts on all send packages
-		float timeout = 3.0f;
+		switch (connectionState) {
+		case CONNECTED: {
+			// increase the timeouts on all send packages
+			float timeout = 3.0f;
 
-		for (RealMessage each : reliableMessagesSend) {
-			if (each.state != RealMessage.State.SEND) {
-				continue;
+			for (RealMessage each : reliableMessagesSend) {
+				if (each.state != RealMessage.State.SEND) {
+					continue;
+				}
+
+				each.secondsSinceSend += elapsedTime;
+
+				if (each.secondsSinceSend > timeout) {
+					// resend message
+					endpoint.sendDatagram(realRemoteAddress, each.message);
+					each.secondsSinceSend = 0.0f;
+				}
 			}
+		}
+			break;
 
-			each.secondsSinceSend += elapsedTime;
-
-			if (each.secondsSinceSend > timeout) {
-				// resend message
-				endpoint.sendDatagram(realRemoteAddress, each.message);
-				each.secondsSinceSend = 0.0f;
+		case CONNECTING:
+			// increase connecting timeout
+			secondsSinceConnectTo += elapsedTime;
+			if (secondsSinceConnectTo > connectTimeout) {
+				connectionState = ConnectionState.DISCONNECTED;
+				secondsSinceConnectTo = 0.0f;
+				logger.info("Connection failed (timeout)");
+				connectionFailed(ConnectionFailedReason.TIMEOUT);
 			}
+			break;
+
+		default:
+			break;
 		}
 	}
 
@@ -769,17 +832,33 @@ public class Connection implements Endpoint.Listener {
 		case ACCEPTED:
 			protocol = Protocols.withValue(reader.readUShort());
 			connectionState = ConnectionState.CONNECTED;
+			secondsSinceConnectTo = 0.0f;
 			logger.info("Connection established");
-			futureUpdateTask = scheduler.scheduleAtFixedRate(new UpdateStatesTask(), 0L, 5L, TimeUnit.MILLISECONDS);
 			connectionEstablished();
 			break;
 
 		case REJECTED:
-		case NO_COMMON_PROTOCOL:
-		default:
+			stopUpdateTask();
 			connectionState = ConnectionState.DISCONNECTED;
-			logger.info("Connection rejected");
-			connectionClosed();
+			secondsSinceConnectTo = 0.0f;
+			logger.info("Connection failed (rejected)");
+			connectionFailed(ConnectionFailedReason.REJECTED);
+			break;
+
+		case NO_COMMON_PROTOCOL:
+			stopUpdateTask();
+			connectionState = ConnectionState.DISCONNECTED;
+			secondsSinceConnectTo = 0.0f;
+			logger.info("Connection failed (no common protocol)");
+			connectionFailed(ConnectionFailedReason.NO_COMMON_PROTOCOL);
+			break;
+
+		default:
+			stopUpdateTask();
+			connectionState = ConnectionState.DISCONNECTED;
+			secondsSinceConnectTo = 0.0f;
+			logger.info("Connection failed (invalid message)");
+			connectionFailed(ConnectionFailedReason.INVALID_MESSAGE);
 		}
 	}
 
@@ -1115,6 +1194,19 @@ public class Connection implements Endpoint.Listener {
 			if (++sendCount == reliableWindowSize) {
 				break;
 			}
+		}
+	}
+
+	private void startUpdateTask() {
+		if (futureUpdateTask == null) {
+			futureUpdateTask = scheduler.scheduleAtFixedRate(new UpdateStatesTask(), 0L, 5L, TimeUnit.MILLISECONDS);
+		}
+	}
+
+	private void stopUpdateTask() {
+		if (futureUpdateTask != null) {
+			futureUpdateTask.cancel(false);
+			futureUpdateTask = null;
 		}
 	}
 }

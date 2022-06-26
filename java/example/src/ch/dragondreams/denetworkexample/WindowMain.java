@@ -269,7 +269,7 @@ public class WindowMain extends JFrame {
 		buttonDisconnect.setEnabled(true);
 	}
 
-	private void disconnect() {
+	public void disconnect() {
 		for (OtherClientPanel each : otherClientPanel) {
 			panelOtherClientStates.remove(each);
 			each.dispose();
