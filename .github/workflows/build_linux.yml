@@ -40,17 +40,17 @@ jobs:
           mkdir Examples
           cp LICENSE Examples
           cp README.md Examples
-          mv cpp/example/build/denetworkcpp_example Examples
-          mv java/example/build/DENetworkExample-${{ inputs.releaseVersion }}.jar Examples
-          mv dragengine/example/distribute/DENetworkExample.delga Examples
+          cp -a cpp/example/build/denetworkcpp_example Examples
+          cp -a java/example/build/DENetworkExample-${{ inputs.releaseVersion }}.jar Examples
+          cp -a dragengine/example/distribute/DENetworkExample.delga Examples
           zip -r examples.zip Examples
         
       - name: Move Artifacts
         run: |
           mkdir artifacts
-          mv cpp/library/build/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip artifacts
-          mv java/library/build/denetworkjava-${{ inputs.releaseVersion }}.zip artifacts
-          mv examples.zip artifacts
+          cp -a cpp/library/build/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip artifacts
+          cp -a java/library/build/denetworkjava-${{ inputs.releaseVersion }}.zip artifacts
+          cp -a examples.zip artifacts
         
       - name: Store Archives
         uses: actions/upload-artifact@v3
