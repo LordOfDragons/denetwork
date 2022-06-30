@@ -41,7 +41,7 @@ jobs:
           cp LICENSE Examples
           cp README.md Examples
           mv cpp/example/build/denetworkcpp_example Examples
-          mv java/example/build/DENetworkExample-development.jar Examples
+          mv java/example/build/DENetworkExample-${{ inputs.releaseVersion }}.jar Examples
           mv dragengine/example/distribute/DENetworkExample.delga Examples
           zip -r examples.zip Examples
         
