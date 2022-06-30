@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version'
+        required: true
+        type: string
+        default: 'X.Y{.Z}'
+
+jobs:
+  build_linux:
+    uses: ./.github/workflows/build_linux.yml
+    with:
+      releaseVersion: ${{ github.event.inputs.version }}
+      artifactArchive: archives-linux
+  
+  build_windows:
+    uses: ./.github/workflows/build_windows.yml
+    with:
+      releaseVersion: ${{ github.event.inputs.version }}
+      artifactArchive: archives-windows
+  
+  upload:
+    needs: [build_linux, build_windows]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Get Linux Archives
+        uses: actions/download-artifact@v3
+        with:
+          name: archives-linux
+      
+      - name: Get Windows Archives
+        uses: actions/download-artifact@v3
+        with:
+          name: archives-windows
+      
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+      
+      - name: Upload Artifacts
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          allowUpdates: false
+          artifactErrorsFailBuild: true
+          draft: false
+          prerelease: false
+          commit: 'main'
+          tag: 'v${{ github.event.inputs.version }}'
+          name: 'Drag[en]gine Networking Release ${{ github.event.inputs.version }}'
+          body: |
+            Provides support to connect to Drag[en]gine Game Engine running on another host using the Drag[en]gine Network Protocol. Typical use case are:
+            - Provide game server for game clients to connect to 
+            - Connect to game sessions as client
+            See included README.md and examples.zip for use.
+          artifacts: >
+            denetworkcpp-unix-x64-${{ github.event.inputs.version }}.zip,
+            denetworkjava-${{ github.event.inputs.version }}.zip,
+            DENetworkSDK-${{ github.event.inputs.version }}.zip,
+            examples.zip
