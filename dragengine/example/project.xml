@@ -16,6 +16,6 @@
 		<windowSize x='800' y='600'/>
 		<excludePattern>/develop</excludePattern>
 		<excludePattern>/scripts/testing</excludePattern>
-		<delgaPath>distribute/example.delga</delgaPath>
+		<delgaPath>distribute/DENetworkExample.delga</delgaPath>
 	</profile>
 </project>

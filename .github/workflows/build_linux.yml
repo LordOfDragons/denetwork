@@ -27,12 +27,30 @@ jobs:
       
       - name: Build
         run: scons -j 14 version=${{ inputs.releaseVersion }} build archive
+      
+      - name: Distribute Example
+        id: distribute
+        uses: LordOfDragons/build-delga@v1
+        with:
+          projectFile: 'dragengine/example/example.degp'
+          profile: 'Release'
+        
+      - name: Archive Examples
+        run: |
+          mkdir Examples
+          cp LICENSE Examples
+          cp README.md Examples
+          mv cpp/example/build/denetworkcpp_example Examples
+          mv java/example/build/DENetworkExample-development.jar Examples
+          mv dragengine/example/distribute/DENetworkExample.delga Examples
+          zip -r examples.zip Examples
         
       - name: Move Artifacts
         run: |
           mkdir artifacts
           mv cpp/library/build/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip artifacts
           mv java/library/build/denetworkjava-${{ inputs.releaseVersion }}.zip artifacts
+          mv examples.zip artifacts
         
       - name: Store Archives
         uses: actions/upload-artifact@v3
@@ -41,4 +59,5 @@ jobs:
           path: |
             artifacts/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip
             artifacts/denetworkjava-${{ inputs.releaseVersion }}.zip
+            artifacts/examples.zip
           if-no-files-found: error
