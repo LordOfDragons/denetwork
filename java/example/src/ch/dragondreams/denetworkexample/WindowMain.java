@@ -275,7 +275,8 @@ public class WindowMain extends JFrame {
 			each.dispose();
 		}
 		otherClientPanel.clear();
-		panelOtherClientStates.validate();
+		validate();
+		repaint();
 
 		if (connection != null) {
 			connection.dispose();

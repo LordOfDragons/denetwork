@@ -1,0 +1,130 @@
+pin Dragengine.Gui.Models
+pin Dragengine.Networking
+pin Dragengine.Utils
+
+class ExampleServer implements ServerListener
+	class UpdateTimeState extends Timer
+		public var DefaultTextModel modelTime
+		
+		public func new(DefaultTextModel modelTime) super(1, true)
+			this.modelTime = modelTime
+		end
+		
+		public func void fire()
+			modelTime.setText(TimeDate.new().toString())
+		end
+	end
+	
+	class TimeChangedListener extends DefaultTextModelListener
+		public var NetworkState state
+		
+		public func new(NetworkState state)
+			this.state = state
+		end
+		
+		public func void textChanged(Gui.TextModel model)
+			state.setValueStringAt(0, model.getText())
+		end
+	end
+	
+	class BarChangedListener extends DefaultRangeModelListener
+		public var NetworkState state
+		
+		public func new(NetworkState state)
+			this.state = state
+		end
+		
+		public func void valueChanged(RangeModel model)
+			state.setValueIntAt(1, model.getValue())
+		end
+	end
+	
+	public var DefaultTextModel modelTime
+	public var DefaultRangeModel modelBar
+	public var Server server
+	public var NetworkState state
+	public var Array connections
+	public var UpdateTimeState pUpdateTimeState
+	
+	public func new()
+		connections = Array.new()
+		
+		state = NetworkState.new()
+		state.addValue(NetworkStateValueType.string, null)
+		state.addValue(NetworkStateValueType.integer, NetworkStateValueFormat.signedInteger16)
+		state.setValueIntAt(1, 30)
+		
+		modelTime = DefaultTextModel.new()
+		modelTime.addListener(TimeChangedListener.new(state))
+		
+		modelBar = DefaultRangeModel.new(0, 60, 15, 30, 1)
+		modelBar.addListener(BarChangedListener.new(state))
+		
+		server = Server.new()
+		server.setServerListener(this)
+		
+		pUpdateTimeState = UpdateTimeState.new(modelTime)
+	end
+	
+	public func void dispose()
+		pUpdateTimeState.giveUp()
+		pUpdateTimeState = null
+		
+		connections.forEach(block ExampleConnection each
+			each.dispose()
+		end)
+		connections.removeAll()
+		
+		state.setStateListener(null)
+		state = null
+		
+		server.setServerListener(null)
+		server.stopListening()
+		server = null
+		
+		connections = null
+	end
+	
+	public func void clientConnected(Connection connection)
+		var ExampleConnection excon = ExampleConnection.new(true, this)
+		excon.connection = connection
+		connection.setConnectionListener(excon)
+		connections.add(excon)
+		linkClient(excon)
+	end
+	
+	protected func void linkClient(ExampleConnection connection)
+		// link server state. read-only on client side
+		var NetworkMessage message = NetworkMessage.new()
+		var FileWriter writer = message.getWriter(false)
+		writer.writeByte(MessageCode.linkServerState)
+		connection.connection.linkState(message, state, true)
+		
+		// link all client states. this includes connecting client itself
+		connections.forEach(block ExampleConnection each
+			if each == connection
+				// connecting client gets read-write state of its own state
+				message = NetworkMessage.new()
+				writer = message.getWriter(false)
+				writer.writeByte(MessageCode.linkClientState)
+				connection.connection.linkState(message, connection.state, false)
+				GameApp.get().windowMain.connectClientState(connection)
+				
+			else
+				// all other client states are read-only to the connecting client
+				message = NetworkMessage.new()
+				writer = message.getWriter(false)
+				writer.writeByte(MessageCode.linkOtherClientState)
+				writer.writeUShort(each.identifier)
+				connection.connection.linkState(message, each.state, true)
+				
+				// and the connecting client state is also read-only to the others
+				message = NetworkMessage.new()
+				writer = message.getWriter(false)
+				writer.writeByte(MessageCode.linkOtherClientState)
+				writer.writeUShort(each.identifier)
+				each.connection.linkState(message, connection.state, true)
+			end
+		end)
+	end
+end

@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+	<profile>
+		<name>Release</name>
+		<description>Release profile created by Template. Excludes development files under /develop to produce a distribution ready DELGA file.</description>
+		<scriptDirectory>/scripts</scriptDirectory>
+		<gameObject>GameApp</gameObject>
+		<pathConfig>/config</pathConfig>
+		<pathCapture>/capture</pathCapture>
+		<identifier>f77808d1-3ea9-a83d-4f05-257152311b82</identifier>
+		<aliasIdentifier>example</aliasIdentifier>
+		<title>example</title>
+		<gameDescription>Drag[en]gine Example</gameDescription>
+		<creator/>
+		<website/>
+		<windowSize x='800' y='600'/>
+		<excludePattern>/develop</excludePattern>
+		<excludePattern>/scripts/testing</excludePattern>
+		<delgaPath>distribute/example.delga</delgaPath>
+	</profile>
+</project>

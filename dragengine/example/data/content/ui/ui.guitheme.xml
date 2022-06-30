@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='ISO-8859-1'?>
+<guiTheme extend='/shareddata/guithemes/modern/modern.guitheme.xml'>
+	<designer name='Label.FormLabel' extendNamed='Label'>
+		<string parameter='normal.alignment'>left,middle</string>
+	</designer>
+</guiTheme>

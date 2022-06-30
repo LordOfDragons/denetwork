@@ -1,0 +1,207 @@
+pin Dragengine.Gui.Models
+pin Dragengine.Networking
+
+class ExampleConnection implements ConnectionListener
+	class ServerNetworkState implements NetworkStateListener
+		public var NetworkState state
+		public var DefaultTextModel modelTime
+		public var DefaultRangeModel modelBar
+		
+		public func new(NetworkState state, DefaultTextModel modelTime, DefaultRangeModel modelBar)
+			this.state = state
+			this.modelTime = modelTime
+			this.modelBar = modelBar
+		end
+		
+		public func void stateValueChanged(int value)
+			if value == 0
+				modelTime.setText(state.getValueStringAt(0))
+				
+			elif value == 1
+				modelBar.setValue(state.getValueIntAt(1))
+			end
+		end
+	end
+	
+	class RemoteNetworkState implements NetworkStateListener
+		public var NetworkState state
+		public var DefaultRangeModel modelBar
+		
+		public func new(NetworkState state, DefaultRangeModel modelBar)
+			this.state = state
+			this.modelBar = modelBar
+		end
+		
+		public func void stateValueChanged(int value)
+			if value == 0
+				modelBar.setValue(state.getValueIntAt(0))
+			end
+		end
+	end
+	
+	class BarChangedListener extends DefaultRangeModelListener
+		public var NetworkState state
+		
+		public func new(NetworkState state)
+			this.state = state
+		end
+		
+		public func void valueChanged(RangeModel model)
+			state.setValueIntAt(0, model.getValue())
+		end
+	end
+	
+	class OtherClientState
+		public var int identifier
+		public var DefaultRangeModel modelBar
+		public var NetworkState state
+		
+		public func new(int identifier)
+			this.identifier = identifier
+			modelBar = DefaultRangeModel.new(0, 60, 15, 30, 1)
+		end
+		
+		public func void dispose()
+			state.setStateListener(null)
+			state = null
+			modelBar = null
+		end
+	end
+	
+	public static var int nextIdentifier = 1
+	
+	public var bool readOnly
+	public var int identifier
+	public var DefaultRangeModel modelRemoteBar
+	public var DefaultRangeModel modelLocalBar
+	public var NetworkState serverState
+	public var DefaultTextModel modelServerTime
+	public var DefaultRangeModel modelServerBar
+	public var Connection connection
+	public var NetworkState state
+	public var ExampleServer parentServer
+	public var Array otherClientStates
+	
+	public func new(bool readOnly, ExampleServer parentServer)
+		this.readOnly = readOnly
+		this.parentServer = parentServer
+		identifier = nextIdentifier++
+		otherClientStates = Array.new()
+		
+		if readOnly
+			modelRemoteBar = DefaultRangeModel.new(0, 60, 15, 30, 1)
+			
+			state = NetworkState.new()
+			state.addValue(NetworkStateValueType.integer, NetworkStateValueFormat.signedInteger16)
+			state.setValueIntAt(0, 30)
+			state.setStateListener(RemoteNetworkState.new(state, modelRemoteBar))
+			
+		else
+			modelLocalBar = DefaultRangeModel.new(0, 60, 15, 30, 1)
+		end
+	end
+	
+	public func void dispose()
+		if parentServer == null
+			GameApp.get().windowMain.disconnectClientServerState()
+		end
+		parentServer = null
+		state.setStateListener(null)
+		state = null
+		otherClientStates = null
+	end
+	
+	public func void connectionClosed()
+		GameApp.get().windowMain.disconnectClientState(this)
+		
+		if parentServer != null
+			parentServer.connections.removeIf(block ExampleConnection each
+				if each == this
+					return true
+				else
+					var NetworkMessage message = NetworkMessage.new()
+					var FileWriter writer = message.getWriter(false)
+					writer.writeByte(MessageCode.dropClient)
+					writer.writeUShort(identifier)
+					
+					try
+						each.connection.sendReliableMessage(message)
+					catch Exception e
+						e.printTrace()
+					end
+					return false
+				end
+			end)
+			
+		else
+			GameApp.get().windowMain.disconnect()
+		end
+	end
+	
+	public func void messageProgress(int bytesReceived)
+	end
+	
+	public func void messageReceived(NetworkMessage message)
+		var FileReader reader = message.getReader()
+		
+		select reader.readByte()
+		case MessageCode.dropClient
+			var int otherIdentifier = reader.readUShort()
+			otherClientStates.removeIf(block OtherClientState each
+				if each.identifier == otherIdentifier
+					GameApp.get().windowMain.disconnectClientState(each)
+					return true
+				end
+				return false
+			end)
+		end
+	end
+	
+	public func bool linkState(NetworkState state, NetworkMessage message)
+		var FileReader reader = message.getReader()
+		
+		select reader.readByte()
+		case MessageCode.linkServerState
+			// remote state for server state. read-only to us
+			modelServerTime = DefaultTextModel.new()
+			modelServerBar = DefaultRangeModel.new(0, 60, 15, 30, 1)
+			
+			state.addValue(NetworkStateValueType.string, null)
+			state.addValue(NetworkStateValueType.integer, NetworkStateValueFormat.signedInteger16)
+			state.setStateListener(ServerNetworkState.new(state, modelServerTime, modelServerBar))
+			serverState = state
+			
+			GameApp.get().windowMain.connectClientServerState()
+			return true
+			
+		case MessageCode.linkClientState
+			// local state as client state. read-write to us
+			this.state = state
+			state.addValue(NetworkStateValueType.integer, NetworkStateValueFormat.signedInteger16)
+			state.setValueIntAt(0, 30)
+			if readOnly
+				state.setStateListener(RemoteNetworkState.new(state, modelRemoteBar))
+				
+			else
+				modelLocalBar.addListener(BarChangedListener.new(state))
+			end
+			return true
+			
+		case MessageCode.linkOtherClientState 
+			// create other client state. read-only to us
+			var OtherClientState otherState = OtherClientState.new(reader.readUShort())
+			
+			state.addValue(NetworkStateValueType.integer, NetworkStateValueFormat.signedInteger16)
+			state.setValueIntAt(0, 30)
+			state.setStateListener(RemoteNetworkState.new(state, otherState.modelBar))
+			otherState.state = state
+			
+			otherClientStates.add(otherState)
+			GameApp.get().windowMain.connectClientState(otherState)
+			return true
+			
+		else
+			return false
+		end
+	end
+end

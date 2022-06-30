@@ -161,7 +161,7 @@ public class Connection implements Endpoint.Listener {
 	 */
 	public void dispose() {
 		stopUpdateTask();
-
+		
 		try {
 			disconnect(false);
 		} catch (IOException e) {
@@ -685,6 +685,9 @@ public class Connection implements Endpoint.Listener {
 		if (connectionState == ConnectionState.CONNECTED) {
 			logger.info("Disconnecting ");
 
+			updateStates();
+			sendPendingReliables();
+			
 			Message connectionClose = new Message();
 			try (MessageWriter writer = new MessageWriter(connectionClose)) {
 				writer.writeByte((byte) CommandCodes.CONNECTION_CLOSE.value);

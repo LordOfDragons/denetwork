@@ -1,0 +1,6 @@
+class MessageCode
+	static fixed public var int linkServerState = 1
+	static fixed public var int linkClientState = 2
+	static fixed public var int linkOtherClientState = 3
+	static fixed public var int dropClient = 4
+end

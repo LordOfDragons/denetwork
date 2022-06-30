@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<gameProject>
+	<name>example</name>
+	<description>Drag[en]gine Example</description>
+	<dataDirectory>data</dataDirectory>
+	<cacheDirectory>cache</cacheDirectory>
+	<baseGameDefinition>DragonScript Basic</baseGameDefinition>
+	<projectGameDefinition>example.degd</projectGameDefinition>
+	<scriptModule version='1.13'>DragonScript</scriptModule>
+</gameProject>

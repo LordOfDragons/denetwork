@@ -1,0 +1,351 @@
+pin Dragengine.Gui.Borders
+pin Dragengine.Gui.Layouts
+pin Dragengine.Gui.Models
+pin Dragengine.Gui.Events
+pin Dragengine.Utils
+pin Dragengine.Networking
+
+class WindowMain extends Window
+	class OtherClientPanel extends Panel
+		public var ExampleConnection.OtherClientState state
+		public var ExampleConnection ecstate
+		public var Slider sliderBar
+		
+		public func new(ExampleConnection.OtherClientState state)
+			this.state = state
+			
+			setLayout(FormLayout.new(true, 20, 0))
+			setDesignerSelector("Panel.Titled")
+			setTitle("Client {}:".format(Array.newWith(state.identifier)))
+			
+			addWidget(Label.new("Bar:", "Label.FormLabel"))
+			
+			sliderBar = Slider.new(Orientation.horizontal, state.modelBar)
+			sliderBar.setEnabled(false)
+			addWidget(sliderBar)
+		end
+		
+		public func new(ExampleConnection ecstate)
+			this.ecstate = ecstate
+			
+			setLayout(FormLayout.new(true, 20, 0))
+			setDesignerSelector("Panel.Titled")
+			setTitle("Client {}:".format(Array.newWith(ecstate.identifier)))
+			
+			addWidget(Label.new("Bar:", "Label.FormLabel"))
+			
+			sliderBar = Slider.new(Orientation.horizontal, ecstate.modelRemoteBar)
+			sliderBar.setEnabled(false)
+			addWidget(sliderBar)
+		end
+		
+		public func void dispose()
+			super.dispose()
+			sliderBar = null
+		end
+	end
+	
+	class LogToTextArea implements ConsoleListener
+		private var TextModel model
+		private var Array entries
+		
+		public func new(TextModel model)
+			this.model = model
+			entries = Array.new()
+		end
+		
+		public func void consoleCleared(Console console)
+			entries.removeAll()
+			updateModel()
+		end
+		
+		public func void messageAdded(Console console, ConsoleMessage message, bool removedTop)
+			entries.add(message.getMessage())
+			while entries.getCount() > 50
+				entries.removeFrom(0)
+			end
+			updateModel()
+		end
+		
+		private func void updateModel()
+			if entries.getCount() > 0
+				model.setText(entries.fold(block String last, String next
+					return last + "\n" + next
+				end) cast String)
+				
+			else
+				model.setText("")
+			end
+		end
+	end
+	
+	private var TextField textAddress
+	private var Button buttonListen
+	private var Button buttonConnect
+	private var Button buttonDisconnect
+	private var TextArea textLogs
+	
+	private var TextField textServerTime
+	private var Slider sliderServerBar
+	private var Panel panelOtherClientStates
+	
+	private var Slider sliderLocalBar
+	private var Array otherClientPanel
+	
+	private var ExampleServer server
+	private var ExampleConnection connection
+	
+	public func new(Desktop desktop)
+		otherClientPanel = Array.new()
+		
+		runWhileBlockingLayout(block
+			setDesignerSelector("WindowUndecorated")
+			createContent(this)
+			setSize(desktop.getSize())
+			setVisible(true)
+		end)
+		
+		desktop.addWindow(this)
+		centerWindow()
+		
+		GameApp.get().getConsole().addListener(LogToTextArea.new(textLogs.getModel()))
+	end
+	
+	public func void dispose()
+		if server != null
+			server.dispose()
+			server = null
+		end
+		if connection != null
+			connection.dispose()
+			connection = null
+		end
+		otherClientPanel = null
+		
+		textAddress = null
+		buttonListen = null
+		buttonConnect = null
+		buttonDisconnect = null
+		textLogs = null
+		textServerTime = null
+		sliderServerBar = null
+		panelOtherClientStates = null
+		sliderLocalBar = null
+		
+		super.dispose()
+	end
+	
+	private func void createContent(Container content)
+		content.setLayout(BorderLayout.new(5))
+		content.addWidget(createTopPanel(), BorderLayout.Area.top)
+		content.addWidget(createBottomPanel(), BorderLayout.Area.bottom)
+		content.addWidget(createContentPanel(), BorderLayout.Area.content)
+	end
+	
+	public func void onConnect()
+		if server != null or connection != null
+			WindowDialog.message(this, "Connect", "Already connected", null, null, null)
+		else
+			try
+				clientConnect()
+			catch Exception e
+				GameApp.get().getConsole().addError("Connect", e)
+				disconnect()
+				WindowDialog.message(this, "Connect", e.toString(), null, null, null)
+			end
+		end
+	end
+	
+	public func void onListen()
+		if server != null or connection != null
+			WindowDialog.message(this, "Listen", "Already connected", null, null, null)
+		else
+			try
+				serverListen()
+			catch Exception e
+				GameApp.get().getConsole().addError("Listen", e)
+				disconnect()
+				WindowDialog.message(this, "Listen", e.toString(), null, null, null)
+			end
+		end
+	end
+	
+	public func void onDisconnect()
+		disconnect()
+	end
+	
+	public func void connectClientServerState()
+		textServerTime.setModel(connection.modelServerTime)
+		sliderServerBar.setModel(connection.modelServerBar)
+	end
+	
+	public func void disconnectClientServerState()
+		textServerTime.setModel(DefaultTextModel.new())
+		sliderServerBar.setModel(DefaultRangeModel.new(0, 60, 15, 30, 1))
+	end
+	
+	public func void connectClientState(ExampleConnection.OtherClientState state)
+		var OtherClientPanel panel = OtherClientPanel.new(state)
+		panelOtherClientStates.addWidget(panel)
+		otherClientPanel.add(panel)
+	end
+	
+	public func void disconnectClientState(ExampleConnection.OtherClientState state)
+		var OtherClientPanel panel = otherClientPanel.find(block OtherClientPanel each
+			return each.state == state
+		end) cast OtherClientPanel
+		
+		if panel != null
+			panel.safeDispose()
+			otherClientPanel.remove(panel)
+		end
+	end
+	
+	public func void connectClientState(ExampleConnection state)
+		var OtherClientPanel panel = OtherClientPanel.new(state)
+		panelOtherClientStates.addWidget(panel)
+		otherClientPanel.add(panel)
+	end
+	
+	public func void disconnectClientState(ExampleConnection state)
+		var OtherClientPanel panel = otherClientPanel.find(block OtherClientPanel each
+			return each.ecstate == state
+		end) cast OtherClientPanel
+		
+		if panel != null
+			panel.safeDispose()
+			otherClientPanel.remove(panel)
+		end
+	end
+	
+	private func void serverListen()
+		server = ExampleServer.new()
+		server.server.listenOn(textAddress.getText())
+		
+		textServerTime.setModel(server.modelTime)
+		
+		sliderServerBar.setModel(server.modelBar)
+		sliderServerBar.setEnabled(true)
+		
+		buttonConnect.setEnabled(false)
+		buttonListen.setEnabled(false)
+		buttonDisconnect.setEnabled(true)
+	end
+	
+	private func void clientConnect()
+		connection = ExampleConnection.new(false, null)
+		connection.connection = Connection.new()
+		connection.connection.setConnectionListener(connection)
+		connection.connection.connectTo(textAddress.getText())
+		
+		sliderLocalBar.setModel(connection.modelLocalBar)
+		sliderLocalBar.setEnabled(true)
+		
+		buttonConnect.setEnabled(false)
+		buttonListen.setEnabled(false)
+		buttonDisconnect.setEnabled(true)
+	end
+	
+	public func void disconnect()
+		otherClientPanel.forEach(block OtherClientPanel each
+			each.safeDispose()
+		end)
+		otherClientPanel.removeAll()
+		
+		if connection != null
+			connection.dispose()
+			connection = null
+		end
+		if server != null
+			server.dispose()
+			server = null
+		end
+		
+		textServerTime.setModel(DefaultTextModel.new())
+		
+		sliderServerBar.setEnabled(false)
+		sliderServerBar.setModel(DefaultRangeModel.new(0, 60, 15, 30, 1))
+		
+		sliderLocalBar.setEnabled(false)
+		sliderLocalBar.setModel(DefaultRangeModel.new(0, 60, 15, 30, 1))
+		
+		buttonConnect.setEnabled(true)
+		buttonListen.setEnabled(true)
+		buttonDisconnect.setEnabled(false)
+	end
+	
+	private func Panel createTopPanel()
+		return Panel.new(FlowLayout.new(LayoutAxis.x, 5), block Panel p
+			p.addWidget(Label.new("Address:", "Label.FormLabel"))
+			
+			textAddress = TextField.new("localhost")
+			textAddress.setDisplayCharCount(20)
+			p.addWidget(textAddress)
+			
+			buttonConnect = Button.new("Connect", BlockActionListener.new(block ActionEvent event
+				onConnect()
+			end))
+			p.addWidget(buttonConnect)
+			
+			buttonListen = Button.new("Listen", BlockActionListener.new(block ActionEvent event
+				onListen()
+			end))
+			p.addWidget(buttonListen)
+			
+			buttonDisconnect = Button.new("Disconnect", BlockActionListener.new(block ActionEvent event
+				onDisconnect()
+			end))
+			buttonDisconnect.setEnabled(false)
+			p.addWidget(buttonDisconnect)
+		end)
+	end
+	
+	private func Panel createBottomPanel()
+		textLogs = TextArea.new()
+		textLogs.setRowCount(10)
+		textLogs.setReadOnly(true)
+		
+		return ScrollPanel.new(textLogs, ScrollPanel.Policy.hidden, ScrollPanel.Policy.visible)
+	end
+	
+	private func Panel createContentPanel()
+		return ScrollPanel.new(Panel.new(FlowLayout.new(LayoutAxis.y), block Panel p
+			p.addWidget(createContentPanelServer())
+			p.addWidget(createContentPanelLocal())
+			panelOtherClientStates = Panel.new(FlowLayout.new(LayoutAxis.y))
+			p.addWidget(panelOtherClientStates)
+		end), ScrollPanel.Policy.hidden, ScrollPanel.Policy.visible)
+	end
+	
+	private func Panel createContentPanelServer()
+		return Panel.new(FormLayout.new(true, 20, 0), block Panel p
+			p.setDesignerSelector("Panel.Titled")
+			p.setTitle("Server:")
+			
+			p.addWidget(Label.new("Time:", "Label.FormLabel"))
+			
+			textServerTime = TextField.new()
+			textServerTime.setDisplayCharCount(20)
+			textServerTime.setReadOnly(true)
+			p.addWidget(textServerTime)
+			
+			p.addWidget(Label.new("Bar:", "Label.FormLabel"))
+			sliderServerBar = Slider.new(Orientation.horizontal)
+			sliderServerBar.setEnabled(false)
+			p.addWidget(sliderServerBar)
+		end)
+	end
+	
+	private func Panel createContentPanelLocal()
+		return Panel.new(FormLayout.new(true, 20, 0), block Panel p
+			p.setDesignerSelector("Panel.Titled")
+			p.setTitle("Local:")
+			
+			p.addWidget(Label.new("Bar:", "Label.FormLabel"))
+			
+			sliderLocalBar = Slider.new(Orientation.horizontal)
+			sliderLocalBar.setEnabled(false)
+			p.addWidget(sliderLocalBar)
+		end)
+	end
+end

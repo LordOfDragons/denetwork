@@ -1,0 +1,33 @@
+pin Dragengine.Gui.Layouts
+pin Dragengine.Gui.Events
+pin Dragengine.Scenery
+pin Dragengine.Utils
+
+
+class GameApp extends BaseGameApp
+	public var WindowMain windowMain
+	
+	public func new()
+		pathDesktopGuiTheme = "/content/ui/ui.guitheme.xml"
+	end
+	
+	public func void initGame()
+		super.initGame()
+		launchApplication()
+	end
+	
+	public func void launchApplication()
+		InputSystem.setCaptureInputDevices(false)
+		getWindowGameWorld().setVisible(false)
+		windowMain = WindowMain.new(getDesktop())
+	end
+	
+	public func void cleanUp()
+		windowMain.safeDispose()
+		super.cleanUp()
+	end
+	
+	public static func GameApp get()
+		return getApp() cast GameApp
+	end
+end
