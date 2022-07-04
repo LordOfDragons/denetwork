@@ -633,8 +633,6 @@ void denConnection::pProcessConnectionClose(denMessageReader&){
 }
 
 void denConnection::pProcessMessage(denMessageReader &reader){
-	/*const int flags = */ reader.ReadByte();
-	
 	const denMessage::Ref message(denMessage::Pool().Get());
 	message->Item().SetLength(reader.GetLength() - reader.GetPosition());
 	reader.Read(message->Item());
