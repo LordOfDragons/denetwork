@@ -333,7 +333,7 @@ private:
 	void AcceptConnection(denServer &server, const denSocket::Ref &asocket,
 		const denSocketAddress &address, denProtocol::Protocols protocol);
 	
-	void pDisconnect(bool notify);
+	void pDisconnect(bool notify, bool remoteClosed);
 	void pClearStates();
 	void pCloseSocket();
 	void pRemoveConnectionFromParentServer();

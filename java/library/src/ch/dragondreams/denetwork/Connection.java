@@ -161,9 +161,9 @@ public class Connection implements Endpoint.Listener {
 	 */
 	public void dispose() {
 		stopUpdateTask();
-		
+
 		try {
-			disconnect(false);
+			disconnect(false, false);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -299,7 +299,7 @@ public class Connection implements Endpoint.Listener {
 	 * Disconnect from remote connection if connected.
 	 */
 	public void disconnect() throws IOException {
-		disconnect(true);
+		disconnect(true, false);
 	}
 
 	/**
@@ -677,22 +677,26 @@ public class Connection implements Endpoint.Listener {
 		connectionEstablished();
 	}
 
-	private void disconnect(boolean notify) throws IOException {
+	private void disconnect(boolean notify, boolean remoteClosed) throws IOException {
 		if (endpoint == null || connectionState == ConnectionState.DISCONNECTED) {
 			return;
 		}
 
 		if (connectionState == ConnectionState.CONNECTED) {
-			logger.info("Disconnecting ");
+			if (remoteClosed) {
+				logger.info("Remove closed connection");
+			} else {
+				logger.info("Disconnecting");
 
-			updateStates();
-			sendPendingReliables();
-			
-			Message connectionClose = new Message();
-			try (MessageWriter writer = new MessageWriter(connectionClose)) {
-				writer.writeByte((byte) CommandCodes.CONNECTION_CLOSE.value);
+				updateStates();
+				sendPendingReliables();
+
+				Message connectionClose = new Message();
+				try (MessageWriter writer = new MessageWriter(connectionClose)) {
+					writer.writeByte((byte) CommandCodes.CONNECTION_CLOSE.value);
+				}
+				endpoint.sendDatagram(realRemoteAddress, connectionClose);
 			}
-			endpoint.sendDatagram(realRemoteAddress, connectionClose);
 		}
 
 		try (CloseableReentrantLock locked = lock.open()) {
@@ -945,7 +949,7 @@ public class Connection implements Endpoint.Listener {
 	 * Synchronized by caller.
 	 */
 	private void processConnectionClose(MessageReader reader) throws IOException {
-		disconnect(true);
+		disconnect(true, true);
 	}
 
 	/**

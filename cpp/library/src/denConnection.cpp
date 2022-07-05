@@ -46,7 +46,7 @@ pParentServer(nullptr){
 
 denConnection::~denConnection() noexcept{
 	pParentServer = nullptr; // required to avoid potential segfault in denServer
-	pDisconnect(false);
+	pDisconnect(false, false);
 }
 
 void denConnection::SetConnectTimeout(float timeout){
@@ -91,7 +91,7 @@ void denConnection::ConnectTo(const std::string &address){
 }
 
 void denConnection::Disconnect(){
-	pDisconnect(true);
+	pDisconnect(true, false);
 }
 
 void denConnection::SendMessage(const denMessage::Ref &message){
@@ -360,22 +360,29 @@ const denSocketAddress &address, denProtocol::Protocols protocol){
 	ConnectionEstablished();
 }
 
-void denConnection::pDisconnect(bool notify){
+void denConnection::pDisconnect(bool notify, bool remoteClosed){
 	if(!pSocket || pConnectionState == ConnectionState::disconnected){
 		return;
 	}
 	
 	if(pConnectionState == ConnectionState::connected){
-		if(pLogger){
-			pLogger->Log(denLogger::LogSeverity::info, "Connection: Disconnecting");
+		if(remoteClosed){
+			if(pLogger){
+				pLogger->Log(denLogger::LogSeverity::info, "Connection: Remote closed connection");
+			}
+			
+		}else{
+			if(pLogger){
+				pLogger->Log(denLogger::LogSeverity::info, "Connection: Disconnecting");
+			}
+			
+			const denMessage::Ref connectionClose(denMessage::Pool().Get());
+			{
+			denMessageWriter writer(connectionClose->Item());
+			writer.WriteByte((uint8_t)denProtocol::CommandCodes::connectionClose);
+			}
+			pSocket->SendDatagram(connectionClose->Item(), pRealRemoteAddress);
 		}
-		
-		const denMessage::Ref connectionClose(denMessage::Pool().Get());
-		{
-		denMessageWriter writer(connectionClose->Item());
-		writer.WriteByte((uint8_t)denProtocol::CommandCodes::connectionClose);
-		}
-		pSocket->SendDatagram(connectionClose->Item(), pRealRemoteAddress);
 	}
 	
 	pClearStates();
@@ -629,7 +636,7 @@ void denConnection::pProcessConnectionAck(denMessageReader &reader){
 }
 
 void denConnection::pProcessConnectionClose(denMessageReader&){
-	pDisconnect(true);
+	pDisconnect(true, true);
 }
 
 void denConnection::pProcessMessage(denMessageReader &reader){
