@@ -389,6 +389,8 @@ void denConnection::pDisconnect(bool notify, bool remoteClosed){
 	
 	pReliableMessagesRecv.clear();
 	pReliableMessagesSend.clear();
+	pReliableNumberSend = 0;
+	pReliableNumberRecv = 0;
 	
 	pCloseSocket();
 	

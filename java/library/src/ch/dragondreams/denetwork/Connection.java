@@ -171,6 +171,8 @@ public class Connection implements Endpoint.Listener {
 		try (CloseableReentrantLock locked = lock.open()) {
 			reliableMessagesSend.clear();
 			reliableMessagesRecv.clear();
+			reliableNumberSend = 0;
+			reliableNumberRecv = 0;
 			modifiedStateLinks.clear();
 			stateLinks.clear();
 		}
@@ -703,6 +705,8 @@ public class Connection implements Endpoint.Listener {
 			clearStates();
 			reliableMessagesRecv.clear();
 			reliableMessagesSend.clear();
+			reliableNumberSend = 0;
+			reliableNumberRecv = 0;
 		}
 
 		closeEndpoint();
