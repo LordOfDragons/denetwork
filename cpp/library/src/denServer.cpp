@@ -88,6 +88,15 @@ void denServer::StopListening(){
 		throw std::invalid_argument("Not listening");
 	}
 	
+	{
+	const Connections closeCons(pConnections);
+	Connections::const_iterator iterCon;
+	for(iterCon = closeCons.cbegin(); iterCon != closeCons.cend(); iterCon++){
+		(*iterCon)->Disconnect();
+	}
+	pConnections.clear();
+	}
+	
 	pSocket.reset();
 	pListening = false;
 }

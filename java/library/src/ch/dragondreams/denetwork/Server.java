@@ -159,7 +159,7 @@ public class Server implements Endpoint.Listener {
 			throw new IllegalArgumentException("Not listening");
 		}
 
-		for (Connection each : connections) {
+		for (Connection each : new LinkedList<>(connections)) {
 			each.dispose();
 		}
 		connections.clear();
