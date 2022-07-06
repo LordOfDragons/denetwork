@@ -34,8 +34,12 @@
 
 denConnection::denConnection() :
 pConnectionState(ConnectionState::disconnected),
-pConnectTimeout(3.0f),
-pSecondsSinceConnectTo(0.0f),
+pConnectResendInterval( 1.0f ),
+pConnectTimeout( 5.0f ),
+pReliableResendInterval( 0.5f ),
+pReliableTimeout( 3.0f ),
+pElapsedConnectResend( 0.0f ),
+pElapsedConnectTimeout( 0.0f ),
 pProtocol(denProtocol::Protocols::DENetworkProtocol),
 pNextLinkIdentifier(0),
 pReliableNumberSend(0),
@@ -49,8 +53,20 @@ denConnection::~denConnection() noexcept{
 	pDisconnect(false, false);
 }
 
+void denConnection::SetConnectResendInterval(float interval){
+	pConnectResendInterval = std::max(interval, 0.01f);
+}
+
 void denConnection::SetConnectTimeout(float timeout){
-	pConnectTimeout = std::max(timeout, 0.0f);
+	pConnectTimeout = std::max(timeout, 0.01f);
+}
+
+void denConnection::SetReliableResendInterval(float interval){
+	pReliableResendInterval = std::max(interval, 0.01f);
+}
+
+void denConnection::SetReliableTimeout(float timeout){
+	pReliableTimeout = std::max(timeout, 0.01f);
 }
 
 void denConnection::SetLogger(const denLogger::Ref &logger){
@@ -87,7 +103,8 @@ void denConnection::ConnectTo(const std::string &address){
 	pSocket->SendDatagram(connectRequest->Item(), pRealRemoteAddress);
 	
 	pConnectionState = ConnectionState::connecting;
-	pSecondsSinceConnectTo = 0.0f;
+	pElapsedConnectResend = 0.0f;
+	pElapsedConnectTimeout = 0.0f;
 }
 
 void denConnection::Disconnect(){
@@ -146,7 +163,8 @@ void denConnection::SendReliableMessage(const denMessage::Ref &message){
 		pSocket->SendDatagram(realMessage->Item().message->Item(), pRealRemoteAddress);
 		
 		realMessage->Item().state = denRealMessage::State::send;
-		realMessage->Item().secondsSinceSend = 0.0f;
+		realMessage->Item().elapsedResend = 0.0f;
+		realMessage->Item().elapsedTimeout = 0.0f;
 	}
 }
 
@@ -222,7 +240,8 @@ void denConnection::LinkState(const denMessage::Ref &message, const denState::Re
 		pSocket->SendDatagram(realMessage->Item().message->Item(), pRealRemoteAddress);
 		
 		realMessage->Item().state = denRealMessage::State::send;
-		realMessage->Item().secondsSinceSend = 0.0f;
+		realMessage->Item().elapsedResend = 0.0f;
+		realMessage->Item().elapsedTimeout = 0.0f;
 	}
 	
 	(*iterLink)->SetLinkState(denStateLink::State::listening);
@@ -353,7 +372,8 @@ const denSocketAddress &address, denProtocol::Protocols protocol){
 	pRealRemoteAddress = address;
 	pRemoteAddress = address.ToString();
 	pConnectionState = ConnectionState::connected;
-	pSecondsSinceConnectTo = 0.0f;
+	pElapsedConnectResend = 0.0f;
+	pElapsedConnectTimeout = 0.0f;
 	pProtocol = protocol;
 	pParentServer = &server;
 	
@@ -426,7 +446,8 @@ void denConnection::pClearStates(){
 
 void denConnection::pCloseSocket(){
 	pConnectionState = ConnectionState::disconnected;
-	pSecondsSinceConnectTo = 0.0f;
+	pElapsedConnectResend = 0.0f;
+	pElapsedConnectTimeout = 0.0f;
 	pSocket.reset();
 }
 
@@ -505,32 +526,56 @@ void denConnection::pUpdateTimeouts(float elapsedTime){
 	case ConnectionState::connected:{
 		// increase the timeouts on all send packages
 		Messages::const_iterator iter;
-		float timeout = 3.0f;
 		
 		for(iter = pReliableMessagesSend.cbegin(); iter != pReliableMessagesSend.cend(); iter++){
 			if((*iter)->Item().state != denRealMessage::State::send){
 				continue;
 			}
 			
-			(*iter)->Item().secondsSinceSend += elapsedTime;
+			(*iter)->Item().elapsedTimeout += elapsedTime;
+			if((*iter)->Item().elapsedTimeout > pReliableTimeout){
+				if(pLogger){
+					pLogger->Log(denLogger::LogSeverity::error, "Connection: Reliable message timeout");
+				}
+				Disconnect();
+				return;
+			}
 			
-			if((*iter)->Item().secondsSinceSend > timeout){
-				// resend message
+			(*iter)->Item().elapsedResend += elapsedTime;
+			if((*iter)->Item().elapsedResend > pReliableResendInterval){
+				(*iter)->Item().elapsedResend = 0.0f;
 				pSocket->SendDatagram((*iter)->Item().message->Item(), pRealRemoteAddress);
-				(*iter)->Item().secondsSinceSend = 0.0f;
 			}
 		}
 		}break;
 		
 	case ConnectionState::connecting:
 		// increase connecting timeout
-		pSecondsSinceConnectTo += elapsedTime;
-		if(pSecondsSinceConnectTo > pConnectTimeout){
+		pElapsedConnectTimeout += elapsedTime;
+		if(pElapsedConnectTimeout > pConnectTimeout){
 			pCloseSocket();
 			if(pLogger){
 				pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection failed (timeout)");
 			}
 			ConnectionFailed(ConnectionFailedReason::timeout);
+			return;
+		}
+		
+		pElapsedConnectResend += elapsedTime;
+		if(pElapsedConnectResend > pConnectResendInterval){
+			if(pLogger){
+				pLogger->Log(denLogger::LogSeverity::debug, "Connection: Resend connect request");
+			}
+			pElapsedConnectResend = 0.0f;
+			
+			const denMessage::Ref connectRequest(denMessage::Pool().Get());
+			{
+			denMessageWriter writer(connectRequest->Item());
+			writer.WriteByte((uint8_t)denProtocol::CommandCodes::connectionRequest);
+			writer.WriteUShort( 1 ); // version
+			writer.WriteUShort((uint8_t)denProtocol::Protocols::DENetworkProtocol);
+			}
+			pSocket->SendDatagram(connectRequest->Item(), pRealRemoteAddress);
 		}
 		break;
 		
@@ -605,7 +650,8 @@ void denConnection::pProcessConnectionAck(denMessageReader &reader){
 	case denProtocol::ConnectionAck::accepted:
 		pProtocol = (denProtocol::Protocols)reader.ReadUShort();
 		pConnectionState = ConnectionState::connected;
-		pSecondsSinceConnectTo = 0.0f;
+		pElapsedConnectResend = 0.0f;
+		pElapsedConnectTimeout = 0.0f;
 		if(pLogger){
 			pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection established");
 		}
@@ -723,7 +769,10 @@ void denConnection::pProcessReliableAck(denMessageReader &reader){
 		break;
 		
 	case denProtocol::ReliableAck::failed:
-		message->Item().secondsSinceSend = 0.0f;
+		if(pLogger){
+			pLogger->Log(denLogger::LogSeverity::debug, "Connection: Reliable ACK failed, resend");
+		}
+		message->Item().elapsedResend = 0.0f;
 		pSocket->SendDatagram(message->Item().message->Item(), pRealRemoteAddress);
 		break;
 	}
@@ -945,7 +994,8 @@ void denConnection::pSendPendingReliables(){
 		pSocket->SendDatagram((*iter)->Item().message->Item(), pRealRemoteAddress);
 		
 		(*iter)->Item().state = denRealMessage::State::send;
-		(*iter)->Item().secondsSinceSend = 0.0f;
+		(*iter)->Item().elapsedResend = 0.0f;
+		(*iter)->Item().elapsedTimeout = 0.0f;
 		
 		if(++sendCount == pReliableWindowSize){
 			break;

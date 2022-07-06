@@ -53,7 +53,8 @@ public:
 	int number;
 	State state;
 	denProtocol::CommandCodes type;
-	float secondsSinceSend;
+	float elapsedResend;
+	float elapsedTimeout;
 	
 	/** \brief Pool. */
 	inline static denPool<denRealMessage> &Pool(){ return pPool; }

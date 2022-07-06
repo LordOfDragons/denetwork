@@ -29,5 +29,6 @@ message(denMessage::Pool().Get()),
 number(-1),
 state(State::pending),
 type(denProtocol::CommandCodes::reliableMessage),
-secondsSinceSend(0.0f){
+elapsedResend(0.0f),
+elapsedTimeout(0.0f ){
 }

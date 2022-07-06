@@ -110,8 +110,14 @@ public class Connection implements Endpoint.Listener {
 	private Endpoint endpoint = null;
 	private SocketAddress realRemoteAddress = null;
 	private ConnectionState connectionState = ConnectionState.DISCONNECTED;
-	private float connectTimeout = 3.0f;
-	private float secondsSinceConnectTo = 0.0f;
+
+	private float connectResendInterval = 1.0f;
+	private float connectTimeout = 5.0f;
+	private float reliableResendInterval = 0.5f;
+	private float reliableTimeout = 3.0f;
+	
+	private float elapsedConnectResend = 0.0f;
+	private float elapsedConnectTimeout = 0.0f;
 
 	private Protocols protocol = Protocols.DENETWORK_PROTOCOL;
 	private LinkedList<StateLink> stateLinks = new LinkedList<>();
@@ -198,19 +204,61 @@ public class Connection implements Endpoint.Listener {
 	public String getRemoteAddress() {
 		return remoteAddress;
 	}
-
+	
 	/**
-	 * Timeout in seconds for ConnectTo call.
+	 * Connect resent interval in seconds.
 	 */
-	public float getConnectTimeout() {
+	public float getConnectResendInterval() {
+		return connectResendInterval;
+	}
+	
+	/**
+	 * Connect resent interval in seconds.
+	 */
+	public void setConnectResendInterval(float interval){
+		connectResendInterval = Math.max(interval, 0.01f);
+	}
+	
+	/**
+	 * Connect timeout in seconds.
+	 */
+	public float getConnectTimeout(){
 		return connectTimeout;
 	}
 
 	/**
-	 * Set timeout in seconds for ConnectTo call.
+	 * Connect resent interval in seconds.
 	 */
-	public void setConnectTimeout(float timeout) {
-		connectTimeout = Math.max(timeout, 0.0f);
+	public void setConnectTimeout(float timeout){
+		connectTimeout = Math.max(timeout, 0.01f);
+	}
+	
+	/**
+	 * Reliable message resend interval in seconds.
+	 */
+	public float getReliableResendInterval() {
+		return reliableResendInterval;
+	}
+	
+	/**
+	 * Set reliable message resend interval in seconds.
+	 */
+	public void setReliableResendInterval(float interval){
+		reliableResendInterval = Math.max(interval, 0.01f);
+	}
+	
+	/**
+	 * Reliable message timeout in seconds.
+	 */
+	public float getReliableTimeout() {
+		return reliableTimeout;
+	}
+	
+	/**
+	 * Set reliable message timeout in seconds.
+	 */
+	public void setReliableTimeout(float timeout){
+		reliableTimeout = Math.max(timeout, 0.01f);
 	}
 
 	/**
@@ -225,16 +273,6 @@ public class Connection implements Endpoint.Listener {
 	 */
 	public boolean getConnected() {
 		return connectionState == ConnectionState.CONNECTED;
-	}
-
-	/**
-	 * Seconds since ConnectTo() call.
-	 * 
-	 * Only valid while connection state is connecting. Connection attempts fails if
-	 * seconds since connect to exceeds connect timeout.
-	 */
-	public float getSecondsSinceConnectTo() {
-		return secondsSinceConnectTo;
 	}
 
 	/**
@@ -266,7 +304,8 @@ public class Connection implements Endpoint.Listener {
 			endpoint.sendDatagram(realRemoteAddress, connectRequest);
 
 			connectionState = ConnectionState.CONNECTING;
-			secondsSinceConnectTo = 0.0f;
+			elapsedConnectResend = 0.0f;
+			elapsedConnectTimeout = 0.0f;
 			startUpdateTask();
 
 		} catch (Exception e) {
@@ -388,7 +427,8 @@ public class Connection implements Endpoint.Listener {
 				endpoint.sendDatagram(realRemoteAddress, realMessage.message);
 
 				realMessage.state = RealMessage.State.SEND;
-				realMessage.secondsSinceSend = 0.0f;
+				realMessage.elapsedResend = 0.0f;
+				realMessage.elapsedTimeout = 0.0f;
 			}
 		}
 	}
@@ -489,7 +529,8 @@ public class Connection implements Endpoint.Listener {
 				endpoint.sendDatagram(realRemoteAddress, realMessage.message);
 
 				realMessage.state = RealMessage.State.SEND;
-				realMessage.secondsSinceSend = 0.0f;
+				realMessage.elapsedResend = 0.0f;
+				realMessage.elapsedTimeout = 0.0f;
 			}
 
 			stateLink.setLinkState(StateLink.LinkState.LISTENING);
@@ -672,7 +713,8 @@ public class Connection implements Endpoint.Listener {
 		realRemoteAddress = address;
 		remoteAddress = address.toString();
 		connectionState = ConnectionState.CONNECTED;
-		secondsSinceConnectTo = 0.0f;
+		elapsedConnectResend = 0.0f;
+		elapsedConnectTimeout = 0.0f;
 		this.protocol = protocol;
 		parentServer = server;
 		startUpdateTask();
@@ -742,7 +784,8 @@ public class Connection implements Endpoint.Listener {
 	private void closeEndpoint() {
 		stopUpdateTask();
 		connectionState = ConnectionState.DISCONNECTED;
-		secondsSinceConnectTo = 0.0f;
+		elapsedConnectResend = 0.0f;
+		elapsedConnectTimeout = 0.0f;
 		if (parentServer == null && endpoint != null) {
 			endpoint.dispose();
 		}
@@ -820,32 +863,46 @@ public class Connection implements Endpoint.Listener {
 	private void updateTimeouts(float elapsedTime) throws IOException {
 		switch (connectionState) {
 		case CONNECTED: {
-			// increase the timeouts on all send packages
-			float timeout = 3.0f;
-
 			for (RealMessage each : reliableMessagesSend) {
 				if (each.state != RealMessage.State.SEND) {
 					continue;
 				}
 
-				each.secondsSinceSend += elapsedTime;
+				each.elapsedTimeout += elapsedTime;
+				if (each.elapsedTimeout > reliableTimeout) {
+					logger.severe("Reliable message timeout");
+					disconnect();
+					return;
+				}
 
-				if (each.secondsSinceSend > timeout) {
-					// resend message
+				each.elapsedResend += elapsedTime;
+				if (each.elapsedResend > reliableResendInterval) {
+					each.elapsedResend = 0.0f;
 					endpoint.sendDatagram(realRemoteAddress, each.message);
-					each.secondsSinceSend = 0.0f;
 				}
 			}
 		}
 			break;
 
 		case CONNECTING:
-			// increase connecting timeout
-			secondsSinceConnectTo += elapsedTime;
-			if (secondsSinceConnectTo > connectTimeout) {
+			elapsedConnectTimeout += elapsedTime;
+			if (elapsedConnectTimeout > connectTimeout) {
 				closeEndpoint();
 				logger.info("Connection failed (timeout)");
 				connectionFailed(ConnectionFailedReason.TIMEOUT);
+			}
+			
+			elapsedConnectResend += elapsedTime;
+			if (elapsedConnectResend > connectResendInterval) {
+				logger.finest("Resent connection request");
+				elapsedConnectResend = 0.0f;
+				Message connectRequest = new Message();
+				try (MessageWriter writer = new MessageWriter(connectRequest)) {
+					writer.writeByte((byte) CommandCodes.CONNECTION_REQUEST.value);
+					writer.writeUShort(1); // version
+					writer.writeUShort(Protocols.DENETWORK_PROTOCOL.value);
+				}
+				endpoint.sendDatagram(realRemoteAddress, connectRequest);
 			}
 			break;
 
@@ -925,7 +982,8 @@ public class Connection implements Endpoint.Listener {
 		case ACCEPTED:
 			protocol = Protocols.withValue(reader.readUShort());
 			connectionState = ConnectionState.CONNECTED;
-			secondsSinceConnectTo = 0.0f;
+			elapsedConnectResend = 0.0f;
+			elapsedConnectTimeout = 0.0f;
 			logger.info("Connection established");
 			connectionEstablished();
 			break;
@@ -1055,7 +1113,8 @@ public class Connection implements Endpoint.Listener {
 			break;
 
 		case FAILED:
-			message.secondsSinceSend = 0.0f;
+			logger.finest("Reliable ACK failed, resend");
+			message.elapsedResend = 0.0f;
 			endpoint.sendDatagram(realRemoteAddress, message.message);
 			break;
 		}
@@ -1305,7 +1364,8 @@ public class Connection implements Endpoint.Listener {
 			endpoint.sendDatagram(realRemoteAddress, each.message);
 
 			each.state = RealMessage.State.SEND;
-			each.secondsSinceSend = 0.0f;
+			each.elapsedResend = 0.0f;
+			each.elapsedTimeout = 0.0f;
 
 			if (++sendCount == reliableWindowSize) {
 				break;

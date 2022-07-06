@@ -121,25 +121,35 @@ public:
 	/** \brief Remote address. */
 	inline const std::string &GetRemoteAddress() const{ return pRemoteAddress; }
 	
-	/** \brief Timeout in seconds for ConnectTo call. */
+	/** \brief Connect resent interval in seconds. */
+	inline float GetConnectResendInterval() const{ return pConnectResendInterval; }
+	
+	/** \brief Set connect resent interval in seconds. */
+	void SetConnectResendInterval(float interval);
+	
+	/** \brief Connect timeout in seconds. */
 	inline float GetConnectTimeout() const{ return pConnectTimeout; }
 	
-	/** \brief Set timeout in seconds for ConnectTo call. */
-	void SetConnectTimeout( float timeout );
+	/** \brief Set Connect timeout in seconds. */
+	void SetConnectTimeout(float timeout);
+	
+	/** \brief Reliable message resend interval in seconds. */
+	inline float GetReliableResendInterval() const{ return pReliableResendInterval; }
+	
+	/** \brief Set reliable message resend interval in seconds. */
+	void SetReliableResendInterval(float interval);
+	
+	/** \brief Reliable message timeout in seconds. */
+	inline float GetReliableTimeout() const{ return pReliableTimeout; }
+	
+	/** \brief Set reliable message timeout in seconds. */
+	void SetReliableTimeout(float timeout);
 	
 	/** \brief Connection state. */
 	inline ConnectionState GetConnectionState() const{ return pConnectionState; }
 	
 	/** \brief Connection to a remote host is established. */
 	inline bool GetConnected() const{ return pConnectionState == ConnectionState::connected; }
-	
-	/**
-	 * \brief Seconds since ConnectTo() call.
-	 * 
-	 * Only valid while connection state is connecting. Connection attempts fails
-	 * if seconds since connect to exceeds connect timeout.
-	 */
-	inline float GetSecondsSinceConnectTo() const{ return pSecondsSinceConnectTo; }
 	
 	/** \brief Logger or null. */
 	inline const denLogger::Ref &GetLogger() const{ return pLogger; }
@@ -312,8 +322,14 @@ private:
 	denSocket::Ref pSocket;
 	denSocketAddress pRealRemoteAddress;
 	ConnectionState pConnectionState;
+	
+	float pConnectResendInterval;
 	float pConnectTimeout;
-	float pSecondsSinceConnectTo;
+	float pReliableResendInterval;
+	float pReliableTimeout;
+	
+	float pElapsedConnectResend;
+	float pElapsedConnectTimeout;
 	
 	denProtocol::Protocols pProtocol;
 	StateLinks pStateLinks;

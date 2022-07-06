@@ -31,7 +31,7 @@ import ch.dragondreams.denetwork.protocol.CommandCodes;
  * Internal use only.
  */
 public class RealMessage {
-	public enum State{
+	public enum State {
 		/**
 		 * Message is pending to be send.
 		 */
@@ -53,5 +53,6 @@ public class RealMessage {
 	public int number = -1;
 	public State state = State.PENDING;
 	public CommandCodes type = CommandCodes.RELIABLE_MESSAGE;
-	public float secondsSinceSend = 0.0f;
+	public float elapsedResend = 0.0f;
+	public float elapsedTimeout = 0.0f;
 }
