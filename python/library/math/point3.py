@@ -27,13 +27,14 @@
 from typing import Optional
 
 
-class Point2:
+class Point3:
 
-    """Immutable integer 2 component point."""
+    """Immutable integer 3 component point."""
 
-    def __init__(self: 'Point2',
+    def __init__(self: 'Point3',
                  x: Optional[int] = 0,
-                 y: Optional[int] = 0) -> None:
+                 y: Optional[int] = 0,
+                 z: Optional[int] = 0) -> None:
         """Create point."""
 
         self.x = x
@@ -42,169 +43,172 @@ class Point2:
         self.y = y
         """Y component."""
 
-    def __eq__(self: 'Point2', other: 'Point2') -> bool:
+        self.z = z
+        """Z component."""
+
+    def __eq__(self: 'Point3', other: 'Point3') -> bool:
         """Equals.
 
         Parameters:
-        other (Point2): Object to compare against.
+        other (Point3): Object to compare against.
 
         Return:
         bool: Result
 
         """
-        if isinstance(other, Point2):
-            return (self.x, self.y) == (other.x, other.y)
+        if isinstance(other, Point3):
+            return (self.x, self.y, self.z) == (other.x, other.y, self.z)
         return NotImplemented
 
-    def __ne__(self: 'Point2',  other: 'Point2') -> bool:
+    def __ne__(self: 'Point3',  other: 'Point3') -> bool:
         """Not equal.
 
         Parameters:
-        other (Point2): Point to compare against.
+        other (Point3): Point to compare against.
 
         Return:
         bool: Result.
 
         """
-        return (self.x, self.y) != (other.x, other.y)
+        return (self.x, self.y, self.z) != (other.x, other.y, self.z)
 
-    def __lt__(self: 'Point2',  other: 'Point2') -> bool:
+    def __lt__(self: 'Point3',  other: 'Point3') -> bool:
         """Less than.
 
         Parameters:
-        other (Point2): Point to compare against.
+        other (Point3): Point to compare against.
 
         Return:
         bool: Result.
 
         """
-        return self.x < other.x and self.y < other.y
+        return self.x < other.x and self.y < other.y and self.z < other.z
 
-    def __le__(self: 'Point2', other: 'Point2') -> bool:
+    def __le__(self: 'Point3', other: 'Point3') -> bool:
         """Less than or equal.
 
         Parameters:
-        other (Point2): Point to compare against.
+        other (Point3): Point to compare against.
 
         Return:
         bool: Result.
 
         """
-        return self.x <= other.x and self.y <= other.y
+        return self.x <= other.x and self.y <= other.y and self.z <= other.z
 
-    def __gt__(self: 'Point2', other: 'Point2') -> bool:
+    def __gt__(self: 'Point3', other: 'Point3') -> bool:
         """Greater than.
 
         Parameters:
-        other (Point2): Point to compare against.
+        other (Point3): Point to compare against.
 
         Return:
         bool: Result.
 
         """
-        return self.x > other.x and self.y > other.y
+        return self.x > other.x and self.y > other.y and self.z > other.z
 
-    def __ge__(self: 'Point2', other: 'Point2') -> bool:
+    def __ge__(self: 'Point3', other: 'Point3') -> bool:
         """Greater than or equal.
 
         Parameters:
-        other (Point2): Point to compare against.
+        other (Point3): Point to compare against.
 
         Return:
         bool: Result.
 
         """
-        return self.x >= other.x and self.y >= other.y
+        return self.x >= other.x and self.y >= other.y and self.z >= other.z
 
-    def __add__(self: 'Point2', other: 'Point2') -> 'Point2':
+    def __add__(self: 'Point3', other: 'Point3') -> 'Point3':
         """Add.
 
         Parameters:
-        other (Point2): Point to add.
+        other (Point3): Point to add.
 
         Return:
-        Point2: Result.
+        Point3: Result.
 
         """
-        return Point2(self.x + other.x, self.y + other.y)
+        return Point3(self.x + other.x, self.y + other.y, self.z + other.z)
 
-    def __sub__(self: 'Point2', other: 'Point2') -> 'Point2':
+    def __sub__(self: 'Point3', other: 'Point3') -> 'Point3':
         """Subtract.
 
         Parameters:
-        other (Point2): Point to subtract.
+        other (Point3): Point to subtract.
 
         Return:
-        Point2: Result.
+        Point3: Result.
 
         """
-        return Point2(self.x - other.x, self.y - other.y)
+        return Point3(self.x - other.x, self.y - other.y, self.z - other.z)
 
-    def __mul__(self: 'Point2', scale: float) -> 'Point2':
+    def __mul__(self: 'Point3', scale: float) -> 'Point3':
         """Multiply.
 
         Parameters:
         scale (float): Scale factor.
 
         Return:
-        Point2: Result.
+        Point3: Result.
 
         """
-        return Point2(self.x * scale, self.y * scale)
+        return Point3(self.x * scale, self.y * scale, self.z * scale)
 
-    def __div__(self: 'Point2', divisor: float) -> 'Point2':
+    def __div__(self: 'Point3', divisor: float) -> 'Point3':
         """Multiply.
 
         Parameters:
         divisor (float): Division factor.
 
         Return:
-        Point2: Result.
+        Point3: Result.
 
         """
-        return Point2(self.x / divisor, self.y / divisor)
+        return Point3(self.x / divisor, self.y / divisor, self.z / divisor)
 
-    def __neg__(self: 'Point2') -> 'Point2':
+    def __neg__(self: 'Point3') -> 'Point3':
         """Negate.
 
         Return:
-        Point2: Result.
+        Point3: Result.
 
         """
-        return Point2(-self.x, -self.y)
+        return Point3(-self.x, -self.y, -self.z)
 
-    def __hash__(self: 'Point2') -> int:
+    def __hash__(self: 'Point3') -> int:
         """Hash.
 
         Return:
         int: Hash
 
         """
-        return hash((self.x, self.y))
+        return hash((self.x, self.y, self.z))
 
-    def __repr__(self: 'Point2') -> str:
+    def __repr__(self: 'Point3') -> str:
         """Representing string (object information).
 
         Return:
         str: String
 
         """
-        return 'Point2({0},{1})'.format(self.x, self.y)
+        return 'Point3({0},{1},{2})'.format(self.x, self.y, self.z)
 
-    def __str__(self: 'Point2') -> str:
+    def __str__(self: 'Point3') -> str:
         """Readable string.
 
         Return:
         str: String
 
         """
-        return 'Point2({0},{1})'.format(self.x, self.y)
+        return 'Point3({0},{1},{2})'.format(self.x, self.y, self.z)
 
-    def __getitem__(self: 'Point2', key: int) -> int:
+    def __getitem__(self: 'Point3', key: int) -> int:
         """Get component.
 
         Parameters:
-        key (int): Index of component to return (0=x, 1=y).
+        key (int): Index of component to return (0=x, 1=y, 2=z).
 
         Return:
         int: Component value
@@ -214,14 +218,16 @@ class Point2:
             return self.x
         elif key == 1:
             return self.y
+        elif key == 2:
+            return self.z
         else:
             raise KeyError()
 
-    def __setitem__(self: 'Point2', key: int,  value: int) -> None:
+    def __setitem__(self: 'Point3', key: int,  value: int) -> None:
         """Set component.
 
         Parameters:
-        key (int): Index of component to modify (0=x, 1=y).
+        key (int): Index of component to modify (0=x, 1=y, 2=z).
         value (int): Value to set.
 
         """
@@ -229,5 +235,7 @@ class Point2:
             self.x = value
         elif key == 1:
             self.y = value
+        elif key == 2:
+            self.z = value
         else:
             raise KeyError()

@@ -38,3 +38,7 @@ print('{0}'.format(dnl.math.HalfFloat.half_to_float(v)))
 print(dnl.math.Point2(8, 5))
 print(dnl.math.Point2())
 print(dnl.math.Point2(5, 2) < dnl.math.Point2(1, 1) + dnl.math.Point2(6, 2))
+
+print(dnl.math.Point3(8, 5,  7))
+print(dnl.math.Point3())
+print(dnl.math.Point3(5, 2, 3) < dnl.math.Point3(1, 1, 2) + dnl.math.Point3(6, 2, 2))

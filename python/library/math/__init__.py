@@ -26,3 +26,4 @@
 
 from .half_float import HalfFloat
 from .point2 import Point2
+from .point3 import Point3
