@@ -42,3 +42,11 @@ print(dnl.math.Point2(5, 2) < dnl.math.Point2(1, 1) + dnl.math.Point2(6, 2))
 print(dnl.math.Point3(8, 5,  7))
 print(dnl.math.Point3())
 print(dnl.math.Point3(5, 2, 3) < dnl.math.Point3(1, 1, 2) + dnl.math.Point3(6, 2, 2))
+
+print(dnl.math.Vector2(8, 5))
+print(dnl.math.Vector2())
+print(dnl.math.Vector2(5, 2) < dnl.math.Vector2(1, 1) + dnl.math.Vector2(6, 2))
+
+print(dnl.math.Vector3(8, 5,  7))
+print(dnl.math.Vector3())
+print(dnl.math.Vector3(5, 2, 3) < dnl.math.Vector3(1, 1, 2) + dnl.math.Vector3(6, 2, 2))
