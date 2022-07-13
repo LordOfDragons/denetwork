@@ -29,3 +29,4 @@ from .point2 import Point2
 from .point3 import Point3
 from .vector2 import Vector2
 from .vector3 import Vector3
+from .quaternion import Quaternion

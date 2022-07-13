@@ -28,15 +28,16 @@ from typing import Optional
 from math import fabs
 
 
-class Vector3:
+class Quaternion:
 
-    """Immutable integer 3 component vector."""
+    """Immutable integer 4 component quaternion."""
 
-    def __init__(self: 'Vector3',
+    def __init__(self: 'Quaternion',
                  x: Optional[float] = 0.0,
                  y: Optional[float] = 0.0,
-                 z: Optional[float] = 0.0) -> None:
-        """Create vector."""
+                 z: Optional[float] = 0.0,
+                 w: Optional[float] = 1.0) -> None:
+        """Create quaternion."""
 
         self.x = x
         """X component."""
@@ -47,13 +48,16 @@ class Vector3:
         self.z = z
         """Z component."""
 
-    def equals(self: 'Vector3',
-               other: 'Vector3',
+        self.w = w
+        """W component."""
+
+    def equals(self: 'Quaternion',
+               other: 'Quaternion',
                threshold: float = 1e-15) -> bool:
         """Equals.
 
         Parameters:
-        other (Vector3): Object to compare against.
+        other (Quaternion): Object to compare against.
         threshold (float): Equality threshold
 
         Return:
@@ -62,15 +66,16 @@ class Vector3:
         """
         return (fabs(self.x - other.x) <= threshold
                 and fabs(self.y - other.y) <= threshold
-                and fabs(self.z - other.z) <= threshold)
+                and fabs(self.z - other.z) <= threshold
+                and fabs(self.w - other.w) <= threshold)
 
-    def differs(self: 'Vector3',
-                other: 'Vector3',
+    def differs(self: 'Quaternion',
+                other: 'Quaternion',
                 threshold: float = 1e-15) -> bool:
         """Equals.
 
         Parameters:
-        other (Vector3): Object to compare against.
+        other (Quaternion): Object to compare against.
         threshold (float): Equality threshold
 
         Return:
@@ -79,27 +84,28 @@ class Vector3:
         """
         return (fabs(self.x - other.x) > threshold
                 or fabs(self.y - other.y) > threshold
-                or fabs(self.z - other.z) > threshold)
+                or fabs(self.z - other.z) > threshold
+                or fabs(self.w - other.w) > threshold)
 
-    def __eq__(self: 'Vector3', other: 'Vector3') -> bool:
+    def __eq__(self: 'Quaternion', other: 'Quaternion') -> bool:
         """Equals.
 
         Parameters:
-        other (Vector3): Object to compare against.
+        other (Quaternion): Object to compare against.
 
         Return:
         bool: Result
 
         """
-        if isinstance(other, Vector3):
+        if isinstance(other, Quaternion):
             return self.equals(other,  1e-15)
         return NotImplemented
 
-    def __ne__(self: 'Vector3',  other: 'Vector3') -> bool:
+    def __ne__(self: 'Quaternion',  other: 'Quaternion') -> bool:
         """Not equal.
 
         Parameters:
-        other (Vector3): vector to compare against.
+        other (Quaternion): quaternion to compare against.
 
         Return:
         bool: Result.
@@ -107,153 +113,163 @@ class Vector3:
         """
         return self.differs(other,  1e-15)
 
-    def __lt__(self: 'Vector3',  other: 'Vector3') -> bool:
+    def __lt__(self: 'Quaternion',  other: 'Quaternion') -> bool:
         """Less than.
 
         Parameters:
-        other (Vector3): vector to compare against.
+        other (Quaternion): quaternion to compare against.
 
         Return:
         bool: Result.
 
         """
-        return self.x < other.x and self.y < other.y and self.z < other.z
+        return (self.x < other.x and self.y < other.y
+                and self.z < other.z and self.w < other.w)
 
-    def __le__(self: 'Vector3', other: 'Vector3') -> bool:
+    def __le__(self: 'Quaternion', other: 'Quaternion') -> bool:
         """Less than or equal.
 
         Parameters:
-        other (Vector3): vector to compare against.
+        other (Quaternion): quaternion to compare against.
 
         Return:
         bool: Result.
 
         """
-        return self.x <= other.x and self.y <= other.y and self.z <= other.z
+        return (self.x <= other.x and self.y <= other.y
+                and self.z <= other.z and self.w <= other.w)
 
-    def __gt__(self: 'Vector3', other: 'Vector3') -> bool:
+    def __gt__(self: 'Quaternion', other: 'Quaternion') -> bool:
         """Greater than.
 
         Parameters:
-        other (Vector3): vector to compare against.
+        other (Quaternion): quaternion to compare against.
 
         Return:
         bool: Result.
 
         """
-        return self.x > other.x and self.y > other.y and self.z > other.z
+        return (self.x > other.x and self.y > other.y
+                and self.z > other.z and self.w > other.w)
 
-    def __ge__(self: 'Vector3', other: 'Vector3') -> bool:
+    def __ge__(self: 'Quaternion', other: 'Quaternion') -> bool:
         """Greater than or equal.
 
         Parameters:
-        other (Vector3): vector to compare against.
+        other (Quaternion): quaternion to compare against.
 
         Return:
         bool: Result.
 
         """
-        return self.x >= other.x and self.y >= other.y and self.z >= other.z
+        return (self.x >= other.x and self.y >= other.y
+                and self.z >= other.z and self.w >= other.w)
 
-    def __abs__(self: 'Vector3') -> 'Vector3':
+    def __abs__(self: 'Quaternion') -> 'Quaternion':
         """Absolute.
 
         Return:
-        Vector3: Result.
+        Quaternion: Result.
 
         """
-        return Vector3(fabs(self.x), fabs(self.y), fabs(self.z))
+        return Quaternion(fabs(self.x), fabs(self.y),
+                          fabs(self.z), fabs(self.w))
 
-    def __add__(self: 'Vector3', other: 'Vector3') -> 'Vector3':
+    def __add__(self: 'Quaternion', other: 'Quaternion') -> 'Quaternion':
         """Add.
 
         Parameters:
-        other (Vector3): vector to add.
+        other (Quaternion): quaternion to add.
 
         Return:
-        Vector3: Result.
+        Quaternion: Result.
 
         """
-        return Vector3(self.x + other.x, self.y + other.y, self.z + other.z)
+        return Quaternion(self.x + other.x, self.y + other.y,
+                          self.z + other.z, self.w + other.w)
 
-    def __sub__(self: 'Vector3', other: 'Vector3') -> 'Vector3':
+    def __sub__(self: 'Quaternion', other: 'Quaternion') -> 'Quaternion':
         """Subtract.
 
         Parameters:
-        other (Vector3): vector to subtract.
+        other (Quaternion): quaternion to subtract.
 
         Return:
-        Vector3: Result.
+        Quaternion: Result.
 
         """
-        return Vector3(self.x - other.x, self.y - other.y, self.z - other.z)
+        return Quaternion(self.x - other.x, self.y - other.y,
+                          self.z - other.z, self.w - other.w)
 
-    def __mul__(self: 'Vector3', scale: float) -> 'Vector3':
+    def __mul__(self: 'Quaternion', scale: float) -> 'Quaternion':
         """Multiply.
 
         Parameters:
         scale (float): Scale factor.
 
         Return:
-        Vector3: Result.
+        Quaternion: Result.
 
         """
-        return Vector3(self.x * scale, self.y * scale, self.z * scale)
+        return Quaternion(self.x * scale, self.y * scale,
+                          self.z * scale, self.w * scale)
 
-    def __div__(self: 'Vector3', divisor: float) -> 'Vector3':
+    def __div__(self: 'Quaternion', divisor: float) -> 'Quaternion':
         """Multiply.
 
         Parameters:
         divisor (float): Division factor.
 
         Return:
-        Vector3: Result.
+        Quaternion: Result.
 
         """
-        return Vector3(self.x / divisor, self.y / divisor, self.z / divisor)
+        return Quaternion(self.x / divisor, self.y / divisor,
+                          self.z / divisor, self.w / divisor)
 
-    def __neg__(self: 'Vector3') -> 'Vector3':
+    def __neg__(self: 'Quaternion') -> 'Quaternion':
         """Negate.
 
         Return:
-        Vector3: Result.
+        Quaternion: Result.
 
         """
-        return Vector3(-self.x, -self.y, -self.z)
+        return Quaternion(-self.x, -self.y, -self.z, -self.w)
 
-    def __hash__(self: 'Vector3') -> int:
+    def __hash__(self: 'Quaternion') -> int:
         """Hash.
 
         Return:
         int: Hash
 
         """
-        return hash((self.x, self.y, self.z))
+        return hash((self.x, self.y, self.z, self.w))
 
-    def __repr__(self: 'Vector3') -> str:
+    def __repr__(self: 'Quaternion') -> str:
         """Representing string (object information).
 
         Return:
         str: String
 
         """
-        return 'Vector3({0},{1},{2})'.format(self.x, self.y, self.z)
+        return 'Quaternion({0},{1},{2},{3})'.format(
+               self.x, self.y, self.z, self.w)
 
-    def __str__(self: 'Vector3') -> str:
+    def __str__(self: 'Quaternion') -> str:
         """Readable string.
 
         Return:
         str: String
 
         """
-        return 'Vector3({0:.3g},{1:.3g},{2:.3g})'.format(
-               self.x, self.y, self.z)
+        return 'Quaternion({0:.3g},{1:.3g},{2:.3g},{3:.3g})'.format(
+               self.x, self.y, self.z, self.w)
 
-    def __getitem__(self: 'Vector3', key: int) -> float:
+    def __getitem__(self: 'Quaternion', key: int) -> float:
         """Get component.
 
         Parameters:
-        key (int): Index of component to return (0=x, 1=y, 2=z).
+        key (int): Index of component to return (0=x, 1=y, 2=z, 3=w).
 
         Return:
         float: Component value
@@ -265,14 +281,16 @@ class Vector3:
             return self.y
         elif key == 2:
             return self.z
+        elif key == 3:
+            return self.w
         else:
             raise KeyError()
 
-    def __setitem__(self: 'Vector3', key: int,  value: float) -> None:
+    def __setitem__(self: 'Quaternion', key: int,  value: float) -> None:
         """Set component.
 
         Parameters:
-        key (int): Index of component to modify (0=x, 1=y, 2=z).
+        key (int): Index of component to modify (0=x, 1=y, 2=z, 3=w).
         value (float): Value to set.
 
         """
@@ -282,5 +300,7 @@ class Vector3:
             self.y = value
         elif key == 2:
             self.z = value
+        elif key == 3:
+            self.w = value
         else:
             raise KeyError()
