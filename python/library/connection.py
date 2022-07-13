@@ -71,6 +71,6 @@ class Connection:
 
     """
 
-    def __init__(self) -> None:
+    def __init__(self: 'Connection') -> None:
         """Create connection."""
         print('Create Connection')

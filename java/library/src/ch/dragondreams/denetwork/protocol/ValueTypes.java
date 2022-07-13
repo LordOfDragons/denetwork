@@ -84,7 +84,7 @@ public enum ValueTypes {
 	FLOAT64(10),
 
 	/**
-	 * string zero terminated.
+	 * string.
 	 */
 	STRING(11),
 

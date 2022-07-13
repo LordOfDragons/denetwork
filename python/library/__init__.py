@@ -25,3 +25,4 @@
 """@package Drag[en]gine Network Library Python Module."""
 
 from .connection import Connection
+from . import math

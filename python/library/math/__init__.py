@@ -22,19 +22,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""@package Drag[en]gine Network Library Example."""
+"""@package Drag[en]gine Network Library Python Module."""
 
-# Import Drag[en]gine Network Library python module. It is recommended
-# to use an alias name for the imported module to simplify usage
-import DENetworkLibrary as dnl
-
-print('Example Project')
-
-c = dnl.Connection()
-v = dnl.math.HalfFloat.float_to_half(8.5)
-print('0x{0:x}'.format(v))
-print('{0}'.format(dnl.math.HalfFloat.half_to_float(v)))
-
-print(dnl.math.Point2(8, 5))
-print(dnl.math.Point2())
-print(dnl.math.Point2(5, 2) < dnl.math.Point2(1, 1) + dnl.math.Point2(6, 2))
+from .half_float import HalfFloat
+from .point2 import Point2
