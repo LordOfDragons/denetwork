@@ -26,7 +26,7 @@
 
 #include "../config.h"
 
-#ifdef OS_UNIX
+#if defined OS_UNIX || defined OS_BEOS
 
 #include "denSocket.h"
 

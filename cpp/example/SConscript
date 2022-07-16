@@ -15,9 +15,11 @@ applyEnvVars.append('LDFLAGS')
 
 # Haiku: The PATH found by SCons are wrong in many ways causing binaries to be not found.
 #        Replace them with sane values. This is not a 'good' solution but should work.
-if sys.platform == 'haiku1':
-	import os
+if env['TARGET_PLATFORM'] == 'beos':
 	env['ENV']['PATH'] = os.environ['PATH']
+
+if env['TARGET_PLATFORM'] == 'beos':
+	env.Append(LIBS = ['root', 'be', 'network'])
 
 # set global construction variables
 for x in applyEnvVars:

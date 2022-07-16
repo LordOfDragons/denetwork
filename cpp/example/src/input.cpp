@@ -47,6 +47,10 @@ void Input::nonblock(bool enable){
 	tcsetattr(STDIN_FILENO, TCSANOW, &ttystate);
 }
 
+#ifndef __suseconds_t
+#define __suseconds_t suseconds_t
+#endif
+
 bool Input::kbhit(int timeoutms){
 	struct timeval tv;
 	fd_set fds;

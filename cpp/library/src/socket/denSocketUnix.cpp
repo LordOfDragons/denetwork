@@ -24,7 +24,7 @@
 
 #include "denSocketUnix.h"
 
-#ifdef OS_UNIX
+#if defined OS_UNIX || defined OS_BEOS
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,6 +41,10 @@
 #include <sys/poll.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+
+#ifdef OS_BEOS
+#include <sys/sockio.h>
+#endif
 
 #include "denSocketUnix.h"
 #include "../denConnection.h"

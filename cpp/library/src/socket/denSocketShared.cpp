@@ -29,7 +29,7 @@
 namespace denSocketShared{
 
 denSocket::Ref CreateSocket(){
-#ifdef OS_UNIX
+#if defined OS_UNIX || defined OS_BEOS
 	return std::make_shared<denSocketUnix>();
 #elif defined OS_W32
 	return std::make_shared<denSocketWindows>();
@@ -39,7 +39,7 @@ denSocket::Ref CreateSocket(){
 }
 
 denSocketAddress ResolveAddress(const std::string &address){
-#ifdef OS_UNIX
+#if defined OS_UNIX || defined OS_BEOS
 	return denSocketUnix::ResolveAddress(address);
 #elif defined OS_W32
 	return denSocketWindows::ResolveAddress(address);
@@ -50,7 +50,7 @@ denSocketAddress ResolveAddress(const std::string &address){
 
 
 std::vector<std::string> FindPublicAddresses(){
-#ifdef OS_UNIX
+#if defined OS_UNIX || defined OS_BEOS
 	return denSocketUnix::FindPublicAddresses();
 #elif defined OS_W32
 	return denSocketWindows::FindPublicAddresses();
