@@ -15,7 +15,7 @@ applyEnvVars.append('LDFLAGS')
 
 # Haiku: The PATH found by SCons are wrong in many ways causing binaries to be not found.
 #        Replace them with sane values. This is not a 'good' solution but should work.
-if sys.platform == 'haiku1':
+if env['TARGET_PLATFORM'] == 'beos':
 	import os
 	env['ENV']['PATH'] = os.environ['PATH']
 
@@ -106,6 +106,11 @@ env.Append(CPPFLAGS = env['SANITIZE_FLAGS'])
 env.Append(LINKFLAGS = env['SANITIZE_FLAGS'])
 
 # library
+platformName = 'unix'
+
+if env['TARGET_PLATFORM'] == 'beos':
+	platformName = 'beos'
+
 envLibrary = env.Clone()
 
 targetLibrary = globalEnv.targetManager.TargetLibrary('DENetwork Library')
@@ -127,8 +132,8 @@ targetLibrary.installCutDirs(envLibrary, 'denetwork-{}/include/denetwork'.format
 targetLibrary.install.extend(envLibrary.Install('denetwork-{}/lib'.format(versionString), library))
 targetLibrary.aliasInstall(envLibrary, 'denetworkcpp')
 
-targetLibrary.archiveCutDirs(envLibrary, 'denetworkcpp-unix-x64-{}/include/denetwork'.format(versionString), headers, 1)
-targetLibrary.archiveLibrary(envLibrary, 'denetworkcpp-unix-x64-{}/lib'.format(versionString), library)
+targetLibrary.archiveCutDirs(envLibrary, 'denetworkcpp-{}-x64-{}/include/denetwork'.format(platformName, versionString), headers, 1)
+targetLibrary.archiveLibrary(envLibrary, 'denetworkcpp-{}-x64-{}/lib'.format(platformName, versionString), library)
 
 targetLibrary.addParametersBuildCPP(envLibrary, library,
 	'denetwork-{}/include'.format(versionString), linkStatic=True)
@@ -138,10 +143,10 @@ targetArchive = globalEnv.targetManager.TargetArchive('DENetworkCPP Archive')
 globalEnv.targetManager.add('denetworkcpp_archive', targetArchive)
 
 archiveFiles = {}
-archiveFiles['denetworkcpp-unix-x64-{}/LICENSE'.format(versionString)] = envLibrary.File('#LICENSE')
-archiveFiles['denetworkcpp-unix-x64-{}/README.md'.format(versionString)] = envLibrary.File('#README.md')
+archiveFiles['denetworkcpp-{}-x64-{}/LICENSE'.format(platformName,  versionString)] = envLibrary.File('#LICENSE')
+archiveFiles['denetworkcpp-{}-x64-{}/README.md'.format(platformName, versionString)] = envLibrary.File('#README.md')
 
-targetArchive.archiveFiles(envLibrary, 'denetworkcpp-unix-x64-{}'.format(versionString),
+targetArchive.archiveFiles(envLibrary, 'denetworkcpp-{}-x64-{}'.format(platformName, versionString),
 	{**targetLibrary.archiveFiles, **archiveFiles},
 	format=globalEnv.targetManager.TargetArchive.formatZip)
 targetArchive.aliasArchive(envLibrary, 'denetworkcpp_archive')
