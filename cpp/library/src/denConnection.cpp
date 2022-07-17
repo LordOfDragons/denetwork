@@ -78,8 +78,17 @@ void denConnection::ConnectTo(const std::string &address){
 		throw std::invalid_argument("already connected");
 	}
 	
+	const denSocketAddress realRemoteAddress(ResolveAddress(address));
+	
 	pSocket = CreateSocket();
-	pSocket->SetAddress(denSocketAddress::IPv4Any());
+	
+	if(realRemoteAddress.type == denSocketAddress::Type::ipv6){
+		pSocket->SetAddress(denSocketAddress::IPv6Any());
+		
+	}else{
+		pSocket->SetAddress(denSocketAddress::IPv4Any());
+	}
+	
 	pSocket->Bind();
 	
 	pLocalAddress = pSocket->GetAddress().ToString();
@@ -91,7 +100,7 @@ void denConnection::ConnectTo(const std::string &address){
 	writer.WriteUShort( 1 ); // version
 	writer.WriteUShort((uint8_t)denProtocol::Protocols::DENetworkProtocol);
 	}
-	pRealRemoteAddress = ResolveAddress(address);
+	pRealRemoteAddress = realRemoteAddress;
 	pRemoteAddress = address;
 	
 	if(pLogger){

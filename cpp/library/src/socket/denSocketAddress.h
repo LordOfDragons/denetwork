@@ -57,11 +57,24 @@ public:
 	 */
 	static denSocketAddress IPv4(uint8_t values[4], uint16_t port);
 	
+	/**
+	 * \brief Create IPv6 address.
+	 * 
+	 * The values represent the address values with 0 being the left most value.
+	 */
+	static denSocketAddress IPv6(uint8_t values[16], uint16_t port);
+	
 	/** \brief Create IPv4 any address. */
 	static denSocketAddress IPv4Any();
 	
+	/** \brief Create IPv6 any address. */
+	static denSocketAddress IPv6Any();
+	
 	/** \brief Create IPv4 loopback address. */
 	static denSocketAddress IPv4Loopback(uint16_t port = 3413);
+	
+	/** \brief Create IPv6 loopback address. */
+	static denSocketAddress IPv6Loopback(uint16_t port = 3413);
 	
 	/** \brief String representation of address. */
 	std::string ToString() const;
@@ -76,7 +89,7 @@ public:
 	Type type;
 	
 	/** \brief Address components. */
-	uint8_t values[4];
+	uint8_t values[16];
 	
 	/** \brief Count of components. */
 	int valueCount;

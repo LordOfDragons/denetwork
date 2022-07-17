@@ -68,6 +68,25 @@ bool App::init(int argc, char *argv[]){
 }
 
 void App::run(){
+	/*
+	server = std::make_shared<Server>(*this, logger);
+	const std::vector<std::string> list(server->FindPublicAddresses());
+	std::vector<std::string>::const_iterator iter;
+	for(iter=list.cbegin(); iter!=list.cend(); iter++){
+		std::cout << *iter << std::endl;
+	}
+	std::cout << server->ResolveAddress(list.front()).ToString() << std::endl;
+	std::cout << server->ResolveAddress("0123:4567:89ab:cdef:0123:4567:89ab:cdef").ToString() << std::endl;
+	std::cout << server->ResolveAddress("0123:4567:0:0:0123:4567:0:0").ToString() << std::endl;
+	std::cout << server->ResolveAddress("0:0:0:cdef:0123:4567:0:0").ToString() << std::endl;
+	std::cout << server->ResolveAddress("0123:4567:89ab:cdef:0123:0:0:0").ToString() << std::endl;
+	std::cout << server->ResolveAddress("0:0:0:0:0:0:0:1").ToString() << std::endl;
+	std::cout << server->ResolveAddress("2:3:4:5:6:7:8:1").ToString() << std::endl;
+	std::cout << server->ResolveAddress("dragondreams.ch").ToString() << std::endl;
+	std::cout << server->ResolveAddress("localhost").ToString() << std::endl;
+	return;
+	*/
+	
 	initScreen();
 	
 	if(!paramListen.empty()){

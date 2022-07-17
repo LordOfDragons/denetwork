@@ -38,7 +38,9 @@ pListening(false){
 }
 
 denServer::~denServer() noexcept{
-	StopListening();
+	if(pListening){
+		StopListening();
+	}
 }
 
 void denServer::ListenOn(const std::string &address){

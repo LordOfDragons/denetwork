@@ -44,6 +44,9 @@
 
 #ifdef OS_BEOS
 #include <sys/sockio.h>
+
+#else
+#include <ifaddrs.h>
 #endif
 
 #include "denSocketUnix.h"
@@ -51,12 +54,7 @@
 #include "../denServer.h"
 
 denSocketUnix::denSocketUnix() :
-pSocket(-1)
-{
-	pSocket = socket(PF_INET, SOCK_DGRAM, 0);
-	if(pSocket == -1){
-		throw std::invalid_argument("socket failed");
-	}
+pSocket(-1){
 }
 
 denSocketUnix::~denSocketUnix() noexcept{
@@ -66,25 +64,73 @@ denSocketUnix::~denSocketUnix() noexcept{
 }
 
 void denSocketUnix::Bind(){
-	struct sockaddr_in sa;
-	memset(&sa, 0, sizeof(sa));
-	sa.sin_family = AF_INET;
-	SocketFromAddress(pAddress, sa);
-	
-	if(bind(pSocket, (struct sockaddr *)&sa, sizeof(sockaddr))){
-		throw std::invalid_argument("bind failed");
+	if(pSocket != -1){
+		throw std::runtime_error("socket already bound");
 	}
 	
-	socklen_t slen = sizeof(sockaddr);
-	if(getsockname(pSocket, (struct sockaddr *)&sa, &slen)){
-		throw std::invalid_argument("getsockname failed");
+	if(pAddress.type == denSocketAddress::Type::ipv6){
+		pSocket = socket(PF_INET6, SOCK_DGRAM, 0);
+		if(pSocket == -1){
+			const int error = errno;
+			std::stringstream s;
+			s << "socket failed: " << strerror(error) << " (" << error << ")";
+			throw std::runtime_error(s.str());
+		}
+		
+		struct sockaddr_in6 sa;
+		memset(&sa, 0, sizeof(sa));
+		SocketFromAddress(pAddress, sa);
+		
+		sa.sin6_scope_id = pScopeIdFor(sa); // required for local links or it fails to bind
+		
+		if(bind(pSocket, (struct sockaddr *)&sa, sizeof(sa))){
+			const int error = errno;
+			std::stringstream s;
+			s << "bind failed: " << strerror(error) << " (" << error << ")";
+			throw std::runtime_error(s.str());
+		}
+		
+		socklen_t slen = sizeof(sa);
+		if(getsockname(pSocket, (struct sockaddr *)&sa, &slen)){
+			const int error = errno;
+			std::stringstream s;
+			s << "getsockname failed: " << strerror(error) << " (" << error << ")";
+			throw std::runtime_error(s.str());
+		}
+		pAddress = AddressFromSocket(sa);
+		
+	}else{
+		pSocket = socket(PF_INET, SOCK_DGRAM, 0);
+		if(pSocket == -1){
+			const int error = errno;
+			std::stringstream s;
+			s << "socket failed: " << strerror(error) << " (" << error << ")";
+			throw std::runtime_error(s.str());
+		}
+		
+		struct sockaddr_in sa;
+		memset(&sa, 0, sizeof(sa));
+		SocketFromAddress(pAddress, sa);
+		
+		if(bind(pSocket, (struct sockaddr *)&sa, sizeof(sa))){
+			const int error = errno;
+			std::stringstream s;
+			s << "bind failed: " << strerror(error) << " (" << error << ")";
+			throw std::runtime_error(s.str());
+		}
+		
+		socklen_t slen = sizeof(sa);
+		if(getsockname(pSocket, (struct sockaddr *)&sa, &slen)){
+			const int error = errno;
+			std::stringstream s;
+			s << "getsockname failed: " << strerror(error) << " (" << error << ")";
+			throw std::runtime_error(s.str());
+		}
+		pAddress = AddressFromSocket(sa);
 	}
-	pAddress = AddressFromSocket(sa);
 }
 
 denMessage::Ref denSocketUnix::ReceiveDatagram(denSocketAddress &address){
-	socklen_t slen = sizeof(sockaddr);
-	struct sockaddr_in sa;
 	struct pollfd ufd;
 	
 	ufd.fd = pSocket;
@@ -97,76 +143,324 @@ denMessage::Ref denSocketUnix::ReceiveDatagram(denSocketAddress &address){
 			data.assign(dataLen, 0);
 		}
 		
-		const int result = recvfrom(pSocket, (char*)data.c_str(), dataLen, 0, (struct sockaddr *)&sa, &slen);
-		
-		if(result == -1){
-			const int error = errno;
-			std::stringstream s;
-			s << "recvfrom failed: error " << error;
-			throw std::runtime_error(s.str());
+		if(pAddress.type == denSocketAddress::Type::ipv6){
+			struct sockaddr_in6 sa;
+			socklen_t slen = sizeof(sa);
+			const int result = recvfrom(pSocket, (char*)data.c_str(), dataLen, 0, (struct sockaddr *)&sa, &slen);
+			
+			if(result == -1){
+				const int error = errno;
+				std::stringstream s;
+				s << "recvfrom failed: " << strerror(error) << " (" << error << ")";
+				throw std::runtime_error(s.str());
+			}
+			
+			if(result > 0){
+				address = AddressFromSocket(sa);
+				message->Item().SetLength(result);
+				return message;
+			} // connection closed returns 0 length
+			
+		}else{
+			struct sockaddr_in sa;
+			socklen_t slen = sizeof(sa);
+			const int result = recvfrom(pSocket, (char*)data.c_str(), dataLen, 0, (struct sockaddr *)&sa, &slen);
+			
+			if(result == -1){
+				const int error = errno;
+				std::stringstream s;
+				s << "recvfrom failed: " << strerror(error) << " (" << error << ")";
+				throw std::runtime_error(s.str());
+			}
+			
+			if(result > 0){
+				address = AddressFromSocket(sa);
+				message->Item().SetLength(result);
+				return message;
+			} // connection closed returns 0 length
 		}
-		
-		if(result > 0){
-			address = AddressFromSocket(sa);
-			message->Item().SetLength(result);
-			return message;
-		} // connection closed returns 0 length
 	}
 	
 	return nullptr;
 }
 
 void denSocketUnix::SendDatagram(const denMessage &message, const denSocketAddress &address){
-	struct sockaddr_in sa;
-	memset(&sa, 0, sizeof(sa));
-    sa.sin_family = AF_INET;
-	SocketFromAddress(address, sa);
-	
-	sendto(pSocket, (char*)message.GetData().c_str(), message.GetLength(), 0, (struct sockaddr *)&sa, sizeof(sockaddr));
+	if(pAddress.type == denSocketAddress::Type::ipv6){
+		struct sockaddr_in6 sa;
+		memset(&sa, 0, sizeof(sa));
+		sa.sin6_family = AF_INET6;
+		SocketFromAddress(address, sa);
+		
+		sendto(pSocket, (char*)message.GetData().c_str(),
+			message.GetLength(), 0, (struct sockaddr *)&sa, sizeof(sa));
+		
+	}else{
+		struct sockaddr_in sa;
+		memset(&sa, 0, sizeof(sa));
+		sa.sin_family = AF_INET;
+		SocketFromAddress(address, sa);
+		
+		sendto(pSocket, (char*)message.GetData().c_str(),
+			message.GetLength(), 0, (struct sockaddr *)&sa, sizeof(sa));
+	}
 }
 
 denSocketAddress denSocketUnix::ResolveAddress(const std::string &address){
-	const std::string::size_type delimiter = address.find(':');
-	struct hostent *he = nullptr;
-	uint16_t port = 3413;
+	if(address.empty()){
+		throw std::invalid_argument("address is empty");
+	}
 	
-	// get address and port if present
+	addrinfo hints;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_protocol = IPPROTO_UDP;
+	hints.ai_flags = AI_NUMERICSERV | AI_ADDRCONFIG;
+	
+	const std::string::size_type delimiter = address.rfind(':');
+	std::string::size_type portBegin = std::string::npos;
+	std::string node;
+	
 	if(delimiter != std::string::npos){
-		port = (uint16_t)strtol(&address[delimiter + 1], nullptr, 10);
-		he = gethostbyname(address.substr(0, delimiter).c_str());
+		if(address[0] == '['){
+			// "[IPv6]:port"
+			if(address[delimiter - 1] != ']'){
+				throw std::invalid_argument("address invalid");
+			}
+			
+			node = address.substr(1, delimiter - 2);
+			portBegin = delimiter + 1;
+			
+			hints.ai_family = AF_INET6;
+			hints.ai_flags |= AI_NUMERICHOST;
+			
+		}else if(address.find(':') != delimiter){
+			// "IPv6"
+			node = address;
+			
+			hints.ai_family = AF_INET6;
+			hints.ai_flags |= AI_NUMERICHOST;
+			
+		}else{
+			// "IPv4:port" or "hostname:port"
+			node = address.substr(0, delimiter);
+			portBegin = delimiter + 1;
+			
+			hints.ai_family = AF_UNSPEC;
+		}
 		
 	}else{
-		he = gethostbyname(address.c_str());
+		// "IPv4" or "hostname"
+		node = address.substr(0, delimiter);
+		
+		hints.ai_family = AF_UNSPEC;
 	}
 	
-	if(! he){
-		throw std::invalid_argument("address");
+	uint16_t port = 3413;
+	
+	if(portBegin != std::string::npos){
+		char *end;
+		port = (uint16_t)strtol(&address[portBegin], &end, 10);
+		if(*end){
+			throw std::invalid_argument("address invalid");
+		}
 	}
 	
-	// set address and port
-	denSocketAddress socketAddress;
-	socketAddress.type = denSocketAddress::Type::ipv4;
+	addrinfo *result;
+	if(getaddrinfo(node.c_str(), nullptr, &hints, &result)){
+		throw std::invalid_argument("address invalid");
+	}
 	
-	const uint32_t sockAddr = ntohl(((struct in_addr *)he->h_addr)->s_addr);
-	socketAddress.values[0] = (uint8_t)((sockAddr >> 24) & 0xff);
-	socketAddress.values[1] = (uint8_t)((sockAddr >> 16) & 0xff);
-	socketAddress.values[2] = (uint8_t)((sockAddr >> 8) & 0xff);
-	socketAddress.values[3] = (uint8_t)(sockAddr & 0xff);
-	socketAddress.valueCount = 4;
-	socketAddress.port = port;
-	return socketAddress;
+	try{
+		// there can be more than one address but we use the first one. using AI_ADDRCONFIG
+		// should give us IPv6 if the host system has an IPv6 address otherwise IPv4.
+		// should this be a problem we have to do this differently.
+		// 
+		// according to documentation the first returned address should be used since the
+		// lookup function has internal sorting logic returning the preferred address first
+		const addrinfo &rai = result[0];
+		
+		// set address and port
+		denSocketAddress socketAddress;
+		socketAddress.port = port;
+		
+		if(rai.ai_family == AF_INET6){
+			socketAddress.type = denSocketAddress::Type::ipv6;
+			
+			const uint32_t * const sain = ((sockaddr_in6 *)rai.ai_addr)->sin6_addr.s6_addr32;
+			const uint32_t sa32[4] = {ntohl(sain[0]), ntohl(sain[1]), ntohl(sain[2]), ntohl(sain[3])};
+			
+			int i;
+			for(i=0; i<16; i+=4){
+				const uint32_t &in = sa32[i/4];
+				socketAddress.values[i] = (uint8_t)((in >> 24) & 0xff);
+				socketAddress.values[i+1] = (uint8_t)((in >> 16) & 0xff);
+				socketAddress.values[i+2] = (uint8_t)((in >> 8) & 0xff);
+				socketAddress.values[i+3] = (uint8_t)(in & 0xff);
+			}
+			
+			socketAddress.valueCount = 16;
+			
+		}else if(rai.ai_family == AF_INET){
+			socketAddress.type = denSocketAddress::Type::ipv4;
+			
+			const uint32_t sockAddr = ntohl(((sockaddr_in *)rai.ai_addr)->sin_addr.s_addr);
+			socketAddress.values[0] = (uint8_t)((sockAddr >> 24) & 0xff);
+			socketAddress.values[1] = (uint8_t)((sockAddr >> 16) & 0xff);
+			socketAddress.values[2] = (uint8_t)((sockAddr >> 8) & 0xff);
+			socketAddress.values[3] = (uint8_t)(sockAddr & 0xff);
+			socketAddress.valueCount = 4;
+			
+		}else{
+			throw std::invalid_argument("address invalid");
+		}
+		
+		freeaddrinfo(result);
+		
+		return socketAddress;
+		
+	}catch(...){
+		freeaddrinfo(result);
+		throw;
+	}
+}
+
+std::vector<std::string> denSocketUnix::FindPublicAddresses(){
+	std::vector<std::string> list;
+	
+#ifdef OS_BEOS
+	// find IPv4 address
+	const int sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if(sock != -1){
+		try{
+			struct ifreq ifr;
+			int ifindex = 1;
+			memset(&ifr, 0, sizeof(ifr));
+			char bufferIP[INET_ADDRSTRLEN];
+			
+			while(true){
+				#ifdef OS_BEOS
+				ifr.ifr_index = ifindex++;
+				#else
+				ifr.ifr_ifindex = ifindex++;
+				#endif
+				if(ioctl(sock, SIOCGIFNAME, &ifr)){
+					break;
+				}
+				
+				if(ioctl(sock, SIOCGIFADDR, &ifr)){
+					continue; // something failed, ignore the interface
+				}
+				const in_addr &saddr = ((sockaddr_in &)ifr.ifr_addr).sin_addr;
+				
+				if(!inet_ntop(AF_INET, &saddr, bufferIP, INET_ADDRSTRLEN)){
+					continue;
+				}
+				
+				if(strcmp(bufferIP, "127.0.0.1") == 0){
+					continue; // ignore localhost
+				}
+				
+				list.push_back(bufferIP);
+				// ifr.ifr_name  => device name
+			}
+			close(sock);
+			
+		}catch(...){
+			close(sock);
+			throw;
+		}
+	}
+	
+#else
+	ifaddrs *ifaddr, *ifiter;
+	char bufferIPv6[INET6_ADDRSTRLEN];
+	char bufferIPv4[INET_ADDRSTRLEN];
+	
+	if(getifaddrs(&ifaddr) == -1){
+		throw std::runtime_error("getifaddrs");
+	}
+	
+	try{
+		// find first IPv6 address
+		for(ifiter=ifaddr; ifiter; ifiter=ifiter->ifa_next){
+			if(!ifiter->ifa_addr || ifiter->ifa_addr->sa_family != AF_INET6){
+				continue;
+			}
+			
+			const in6_addr &saddr = ((sockaddr_in6 *)ifiter->ifa_addr)->sin6_addr;
+			if(!inet_ntop(AF_INET6, &saddr, bufferIPv6, INET6_ADDRSTRLEN)){
+				continue;
+			}
+			
+			if(strcmp(bufferIPv6, "::1") == 0){
+				continue; // ignore localhost
+			}
+			
+			list.push_back(bufferIPv6);
+		}
+		
+		// then find IPv4 address
+		for(ifiter=ifaddr; ifiter; ifiter=ifiter->ifa_next){
+			if(!ifiter->ifa_addr || ifiter->ifa_addr->sa_family != AF_INET){
+				continue;
+			}
+			
+			const in_addr &saddr = ((sockaddr_in *)ifiter->ifa_addr)->sin_addr;
+			if(!inet_ntop(AF_INET, &saddr, bufferIPv4, INET_ADDRSTRLEN)){
+				continue;
+			}
+			
+			if(strcmp(bufferIPv4, "127.0.0.1") == 0){
+				continue; // ignore localhost
+			}
+			
+			list.push_back(bufferIPv4);
+		}
+		
+		freeifaddrs(ifaddr);
+		
+	}catch(...){
+		freeifaddrs(ifaddr);
+		throw;
+	}
+#endif
+	
+	return list;
 }
 
 denSocketAddress denSocketUnix::AddressFromSocket(const struct sockaddr_in &address) const{
-	const uint32_t sockAddr = ntohl(address.sin_addr.s_addr);
 	denSocketAddress socketAddress;
 	socketAddress.type = denSocketAddress::Type::ipv4;
+	
+	const uint32_t sockAddr = ntohl(address.sin_addr.s_addr);
 	socketAddress.values[0] = (uint8_t)((sockAddr >> 24) & 0xff);
 	socketAddress.values[1] = (uint8_t)((sockAddr >> 16) & 0xff);
 	socketAddress.values[2] = (uint8_t)((sockAddr >> 8) & 0xff);
 	socketAddress.values[3] = (uint8_t)(sockAddr & 0xff);
+	
 	socketAddress.valueCount = 4;
 	socketAddress.port = ntohs(address.sin_port);
+	return socketAddress;
+}
+
+denSocketAddress denSocketUnix::AddressFromSocket(const struct sockaddr_in6 &address) const{
+	denSocketAddress socketAddress;
+	socketAddress.type = denSocketAddress::Type::ipv6;
+	
+	const uint32_t * const sain = address.sin6_addr.s6_addr32;
+	const uint32_t sa32[4] = {ntohl(sain[0]), ntohl(sain[1]), ntohl(sain[2]), ntohl(sain[3])};
+	
+	int i;
+	for(i=0; i<16; i+=4){
+		const uint32_t &in = sa32[i/4];
+		socketAddress.values[i] = (uint8_t)((in >> 24) & 0xff);
+		socketAddress.values[i+1] = (uint8_t)((in >> 16) & 0xff);
+		socketAddress.values[i+2] = (uint8_t)((in >> 8) & 0xff);
+		socketAddress.values[i+3] = (uint8_t)(in & 0xff);
+	}
+	
+	socketAddress.valueCount = 16;
+	socketAddress.port = ntohs(address.sin6_port);
 	return socketAddress;
 }
 
@@ -174,6 +468,8 @@ void denSocketUnix::SocketFromAddress(const denSocketAddress &socketAddress, str
 	if(socketAddress.type != denSocketAddress::Type::ipv4){
 		throw std::invalid_argument("type != ipv4");
 	}
+	
+	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = htonl((socketAddress.values[0] << 24)
 		+ (socketAddress.values[1] << 16)
 		+ (socketAddress.values[2] << 8)
@@ -181,54 +477,54 @@ void denSocketUnix::SocketFromAddress(const denSocketAddress &socketAddress, str
 	address.sin_port = htons(socketAddress.port);
 }
 
-std::vector<std::string> denSocketUnix::FindPublicAddresses(){
-	std::vector<std::string> list;
-	
-	const int sock = socket(AF_INET, SOCK_DGRAM, 0);
-	if(sock == -1){
-		throw std::invalid_argument("Failed creating socket");
+void denSocketUnix::SocketFromAddress( const denSocketAddress &socketAddress, struct sockaddr_in6 &address ){
+	if(socketAddress.type != denSocketAddress::Type::ipv6){
+		throw std::invalid_argument("type != ipv6");
 	}
 	
+	int i;
+	for(i=0; i<16; i+=4){
+		address.sin6_addr.s6_addr32[i/4] = htonl((socketAddress.values[i] << 24)
+			+ (socketAddress.values[i+1] << 16)
+			+ (socketAddress.values[i+2] << 8)
+			+ socketAddress.values[i+3]);
+	}
+	
+	address.sin6_family = AF_INET6;
+	address.sin6_port = htons(socketAddress.port);
+}
+
+uint32_t denSocketUnix::pScopeIdFor(const sockaddr_in6 &address){
+	ifaddrs *ifaddr, *ifiter;
+	
+	if(getifaddrs(&ifaddr) == -1){
+		throw std::runtime_error("getifaddrs");
+	}
+	
+	uint32_t scope = 0;
+	
 	try{
-		struct ifreq ifr;
-		int ifindex = 1;
-		memset(&ifr, 0, sizeof(ifr));
-		char bufferIP[17];
-		
-		while(true){
-			#ifdef OS_BEOS
-			ifr.ifr_index = ifindex++;
-			#else
-			ifr.ifr_ifindex = ifindex++;
-			#endif
-			if(ioctl(sock, SIOCGIFNAME, &ifr)){
-				break;
-			}
-			
-			if(ioctl(sock, SIOCGIFADDR, &ifr)){
-				continue; // something failed, ignore the interface
-			}
-			const struct in_addr saddr = ((struct sockaddr_in &)ifr.ifr_addr).sin_addr;
-			
-			if(!inet_ntop(AF_INET, &saddr, bufferIP, 16)){
+		for(ifiter=ifaddr; ifiter; ifiter=ifiter->ifa_next){
+			if(!ifiter->ifa_addr || ifiter->ifa_addr->sa_family != AF_INET6){
 				continue;
 			}
 			
-			if(strcmp(bufferIP, "127.0.0.1") == 0){
-				continue; // ignore localhost
-			}
+			const sockaddr_in6 &ifa = *(const sockaddr_in6 *)ifiter->ifa_addr;
 			
-			list.push_back(bufferIP);
-			// ifr.ifr_name  => device name
+			if(memcmp(&ifa.sin6_addr, &address.sin6_addr, sizeof(address.sin6_addr)) == 0){
+				scope = ((sockaddr_in6 *)ifiter->ifa_addr)->sin6_scope_id;
+				break;
+			}
 		}
-		close(sock);
+		
+		freeifaddrs(ifaddr);
 		
 	}catch(...){
-		close(sock);
+		freeifaddrs(ifaddr);
 		throw;
 	}
 	
-	return list;
+	return scope;
 }
 
 #endif

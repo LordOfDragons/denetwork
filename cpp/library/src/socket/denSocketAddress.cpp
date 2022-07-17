@@ -27,6 +27,7 @@
 #include <memory.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <iomanip>
 #include <sstream>
 #include <stdexcept>
 
@@ -49,11 +50,17 @@ port(address.port)
 denSocketAddress denSocketAddress::IPv4(uint8_t values[4], uint16_t port){
 	denSocketAddress address;
 	address.type = Type::ipv4;
-	address.values[0] = values[0];
-	address.values[1] = values[1];
-	address.values[2] = values[2];
-	address.values[3] = values[3];
+	memcpy(&address.values, values, 4);
 	address.valueCount = 4;
+	address.port = port;
+	return address;
+}
+
+denSocketAddress denSocketAddress::IPv6(uint8_t values[16], uint16_t port){
+	denSocketAddress address;
+	address.type = Type::ipv6;
+	memcpy(&address.values, values, 15);
+	address.valueCount = 16;
 	address.port = port;
 	return address;
 }
@@ -61,8 +68,15 @@ denSocketAddress denSocketAddress::IPv4(uint8_t values[4], uint16_t port){
 denSocketAddress denSocketAddress::IPv4Any(){
 	denSocketAddress address;
 	address.type = Type::ipv4;
-	memset(&address.values, 0, sizeof(address.values));
 	address.valueCount = 4;
+	address.port = 0;
+	return address;
+}
+
+denSocketAddress denSocketAddress::IPv6Any(){
+	denSocketAddress address;
+	address.type = Type::ipv6;
+	address.valueCount = 16;
 	address.port = 0;
 	return address;
 }
@@ -70,23 +84,87 @@ denSocketAddress denSocketAddress::IPv4Any(){
 denSocketAddress denSocketAddress::IPv4Loopback(uint16_t port){
 	denSocketAddress address;
 	address.type = Type::ipv4;
-	memset(&address.values, 0, sizeof(address.values));
 	address.values[0] = 127;
+	address.values[1] = 0;
+	address.values[2] = 0;
 	address.values[3] = 1;
 	address.valueCount = 4;
 	address.port = port;
 	return address;
 }
 
+denSocketAddress denSocketAddress::IPv6Loopback(uint16_t port){
+	denSocketAddress address;
+	address.type = Type::ipv6;
+	address.values[15] = 1;
+	address.valueCount = 16;
+	address.port = port;
+	return address;
+}
+
 std::string denSocketAddress::ToString() const{
-	if(type == Type::ipv4){
-		std::stringstream s;
-		s << (int)values[0] << "." << (int)values[1] << "." << (int)values[2] << "." << (int)values[3] << ":" << (int)port;
-		return s.str();
+	bool groupingZeros = false;
+	bool canGroupZeros = true;
+	std::stringstream s;
+	int i;
+	
+	switch(type){
+	case Type::ipv4:
+		s << (int)values[0] << "." << (int)values[1] << "."
+			<< (int)values[2] << "." << (int)values[3] << ":" << (int)port;
+		break;
 		
-	}else{
-		return "?";
+	case Type::ipv6:
+		s << "[";
+		
+		for(i=0; i<8; i++){
+			const int a = values[i * 2];
+			const int b = values[i * 2 + 1];
+			
+			// groups of 0 can be truncated but only once
+			if(!a && !b){
+				if(groupingZeros){
+					continue;
+					
+				}else if(canGroupZeros){
+					s << ":";
+					groupingZeros = true;
+					continue;
+				}
+				
+			}else if(groupingZeros){
+				groupingZeros = false;
+				canGroupZeros = false;
+			}
+			
+			// leading zeros can be truncated
+			if(i > 0){
+				s << ":";
+			}
+			
+			if(a > 15){
+				s << std::hex << std::setfill('0') << std::setw(2) << a << b;
+				
+			}else if(a > 0){
+				s << std::hex << std::setfill('0') << std::setw(0) << a << std::setw(2) << b;
+				
+			}else{ // a == 0 and b > 0
+				s << std::hex << std::setfill('0') << std::setw(0) << b;
+			}
+		}
+		
+		if(groupingZeros){
+			s << ":";
+		}
+		
+		s << "]:" << std::dec << std::setw(0) << (int)port;
+		break;
+		
+	default:
+		s << "?";
 	}
+	
+	return s.str();
 }
 
 denSocketAddress &denSocketAddress::operator=(const denSocketAddress &address){

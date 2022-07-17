@@ -65,10 +65,14 @@ public:
 	static std::vector<std::string> FindPublicAddresses();
 	
 protected:
-	denSocketAddress AddressFromSocket(const struct sockaddr_in &address) const;
-	static void SocketFromAddress(const denSocketAddress &socketAddress, struct sockaddr_in &address);
+	denSocketAddress AddressFromSocket(const sockaddr_in &address) const;
+	denSocketAddress AddressFromSocket(const sockaddr_in6 &address) const;
+	static void SocketFromAddress(const denSocketAddress &socketAddress, sockaddr_in &address);
+	static void SocketFromAddress(const denSocketAddress &socketAddress, sockaddr_in6 &address);
 	
 private:
+	static uint32_t pScopeIdFor(const sockaddr_in6 &address);
+	
 	int pSocket;
 };
 
