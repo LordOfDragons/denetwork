@@ -25,6 +25,7 @@
 package ch.dragondreams.denetwork.endpoint;
 
 import java.io.IOException;
+import java.net.Inet6Address;
 import java.net.InetSocketAddress;
 import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
@@ -164,7 +165,12 @@ public class DatagramChannelEndpoint implements Endpoint {
 				address = new InetSocketAddress(0);
 			}
 
-			channel = DatagramChannel.open(StandardProtocolFamily.INET);
+			InetSocketAddress isaddr = (InetSocketAddress) address;
+			if (isaddr.getAddress() instanceof Inet6Address) {
+				channel = DatagramChannel.open(StandardProtocolFamily.INET6);
+			} else {
+				channel = DatagramChannel.open(StandardProtocolFamily.INET);
+			}
 			channel.bind(address);
 
 			this.address = address;
@@ -231,12 +237,83 @@ public class DatagramChannelEndpoint implements Endpoint {
 		while (networkInterfaceEnumeration.hasMoreElements()) {
 			for (InterfaceAddress interfaceAddress : networkInterfaceEnumeration.nextElement()
 					.getInterfaceAddresses()) {
-				if (interfaceAddress.getAddress().isSiteLocalAddress()) {
+				if (interfaceAddress.getAddress().isSiteLocalAddress()
+						|| interfaceAddress.getAddress().isLinkLocalAddress()) {
 					addresses.add(interfaceAddress.getAddress().getHostAddress());
 				}
 			}
 		}
 
 		return addresses;
+	}
+
+	/**
+	 * Get list of all IP address.
+	 */
+	public static List<String> getAllAddresses() throws IOException {
+		List<String> addresses = new ArrayList<>();
+
+		Enumeration<NetworkInterface> networkInterfaceEnumeration = NetworkInterface.getNetworkInterfaces();
+		while (networkInterfaceEnumeration.hasMoreElements()) {
+			for (InterfaceAddress interfaceAddress : networkInterfaceEnumeration.nextElement()
+					.getInterfaceAddresses()) {
+				addresses.add(interfaceAddress.getAddress().getHostAddress());
+			}
+		}
+
+		return addresses;
+	}
+
+	/**
+	 * Resolve address.
+	 * 
+	 * Address is in the format "hostnameOrIP" or "hostnameOrIP:port". You can use a
+	 * resolvable hostname or an IPv4. If the port is not specified the default port
+	 * 3413 is used.
+	 * 
+	 * If you overwrite CreateSocket() you have to also overwrite this method to
+	 * resolve address using the appropriate method.
+	 */
+	public static SocketAddress resolveAddress(String address) {
+		if (address.isEmpty()) {
+			throw new IllegalArgumentException("address is empty");
+		}
+
+		int delimiter = address.lastIndexOf(':');
+		int portBegin = -1;
+		String host;
+
+		if (delimiter != -1) {
+			if (address.charAt(0) == '[') {
+				// "[IPv6]:port"
+				if (address.charAt(delimiter - 1) != ']') {
+					throw new IllegalArgumentException("address invalid");
+				}
+
+				host = address.substring(1, delimiter - 1);
+				portBegin = delimiter + 1;
+
+			} else if (address.indexOf(':') != delimiter) {
+				// "IPv6"
+				host = address;
+
+			} else {
+				// "IPv4:port" or "hostname:port"
+				host = address.substring(0, delimiter);
+				portBegin = delimiter + 1;
+			}
+
+		} else {
+			// "IPv4" or "hostname"
+			host = address;
+		}
+
+		int port = 3413;
+
+		if (portBegin != -1) {
+			port = Integer.parseInt(address.substring(portBegin));
+		}
+
+		return new InetSocketAddress(host, port);
 	}
 }

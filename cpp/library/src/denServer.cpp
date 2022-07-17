@@ -38,9 +38,7 @@ pListening(false){
 }
 
 denServer::~denServer() noexcept{
-	if(pListening){
-		StopListening();
-	}
+	StopListening();
 }
 
 void denServer::ListenOn(const std::string &address){
@@ -87,7 +85,7 @@ void denServer::ListenOn(const std::string &address){
 
 void denServer::StopListening(){
 	if(!pListening){
-		throw std::invalid_argument("Not listening");
+		return;
 	}
 	
 	{
@@ -179,6 +177,10 @@ denSocketAddress denServer::ResolveAddress(const std::string &address){
 
 std::vector<std::string> denServer::FindPublicAddresses(){
 	return denSocketShared::FindPublicAddresses();
+}
+
+std::vector<std::string> denServer::FindAllAddresses(){
+	return denSocketShared::FindAllAddresses();
 }
 
 void denServer::SetLogger(const denLogger::Ref &logger){

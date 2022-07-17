@@ -25,7 +25,6 @@
 package ch.dragondreams.denetwork;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -156,7 +155,7 @@ public class Server implements Endpoint.Listener {
 	 */
 	public void stopListening() {
 		if (!listening) {
-			throw new IllegalArgumentException("Not listening");
+			return;
 		}
 
 		for (Connection each : new LinkedList<>(connections)) {
@@ -256,16 +255,7 @@ public class Server implements Endpoint.Listener {
 	 * resolve address using the appropriate method.
 	 */
 	public SocketAddress resolveAddress(String address) {
-		int delimiter = address.indexOf(':');
-		int port = 3413;
-
-		// get address and port if present
-		if (delimiter != -1) {
-			port = Integer.parseInt(address.substring(delimiter + 1));
-			address = address.substring(0, delimiter);
-		}
-
-		return new InetSocketAddress(address, port);
+		return DatagramChannelEndpoint.resolveAddress(address);
 	}
 
 	/**

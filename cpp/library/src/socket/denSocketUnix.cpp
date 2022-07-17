@@ -250,7 +250,7 @@ denSocketAddress denSocketUnix::ResolveAddress(const std::string &address){
 		
 	}else{
 		// "IPv4" or "hostname"
-		node = address.substr(0, delimiter);
+		node = address;
 		
 		hints.ai_family = AF_UNSPEC;
 	}
@@ -325,107 +325,11 @@ denSocketAddress denSocketUnix::ResolveAddress(const std::string &address){
 }
 
 std::vector<std::string> denSocketUnix::FindPublicAddresses(){
-	std::vector<std::string> list;
-	
-#ifdef OS_BEOS
-	// find IPv4 address
-	const int sock = socket(AF_INET, SOCK_DGRAM, 0);
-	if(sock != -1){
-		try{
-			struct ifreq ifr;
-			int ifindex = 1;
-			memset(&ifr, 0, sizeof(ifr));
-			char bufferIP[INET_ADDRSTRLEN];
-			
-			while(true){
-				#ifdef OS_BEOS
-				ifr.ifr_index = ifindex++;
-				#else
-				ifr.ifr_ifindex = ifindex++;
-				#endif
-				if(ioctl(sock, SIOCGIFNAME, &ifr)){
-					break;
-				}
-				
-				if(ioctl(sock, SIOCGIFADDR, &ifr)){
-					continue; // something failed, ignore the interface
-				}
-				const in_addr &saddr = ((sockaddr_in &)ifr.ifr_addr).sin_addr;
-				
-				if(!inet_ntop(AF_INET, &saddr, bufferIP, INET_ADDRSTRLEN)){
-					continue;
-				}
-				
-				if(strcmp(bufferIP, "127.0.0.1") == 0){
-					continue; // ignore localhost
-				}
-				
-				list.push_back(bufferIP);
-				// ifr.ifr_name  => device name
-			}
-			close(sock);
-			
-		}catch(...){
-			close(sock);
-			throw;
-		}
-	}
-	
-#else
-	ifaddrs *ifaddr, *ifiter;
-	char bufferIPv6[INET6_ADDRSTRLEN];
-	char bufferIPv4[INET_ADDRSTRLEN];
-	
-	if(getifaddrs(&ifaddr) == -1){
-		throw std::runtime_error("getifaddrs");
-	}
-	
-	try{
-		// find first IPv6 address
-		for(ifiter=ifaddr; ifiter; ifiter=ifiter->ifa_next){
-			if(!ifiter->ifa_addr || ifiter->ifa_addr->sa_family != AF_INET6){
-				continue;
-			}
-			
-			const in6_addr &saddr = ((sockaddr_in6 *)ifiter->ifa_addr)->sin6_addr;
-			if(!inet_ntop(AF_INET6, &saddr, bufferIPv6, INET6_ADDRSTRLEN)){
-				continue;
-			}
-			
-			if(strcmp(bufferIPv6, "::1") == 0){
-				continue; // ignore localhost
-			}
-			
-			list.push_back(bufferIPv6);
-		}
-		
-		// then find IPv4 address
-		for(ifiter=ifaddr; ifiter; ifiter=ifiter->ifa_next){
-			if(!ifiter->ifa_addr || ifiter->ifa_addr->sa_family != AF_INET){
-				continue;
-			}
-			
-			const in_addr &saddr = ((sockaddr_in *)ifiter->ifa_addr)->sin_addr;
-			if(!inet_ntop(AF_INET, &saddr, bufferIPv4, INET_ADDRSTRLEN)){
-				continue;
-			}
-			
-			if(strcmp(bufferIPv4, "127.0.0.1") == 0){
-				continue; // ignore localhost
-			}
-			
-			list.push_back(bufferIPv4);
-		}
-		
-		freeifaddrs(ifaddr);
-		
-	}catch(...){
-		freeifaddrs(ifaddr);
-		throw;
-	}
-#endif
-	
-	return list;
+	return pFindAddresses(true);
+}
+
+std::vector<std::string> denSocketUnix::FindAllAddresses(){
+	return pFindAddresses(false);
 }
 
 denSocketAddress denSocketUnix::AddressFromSocket(const struct sockaddr_in &address) const{
@@ -494,6 +398,110 @@ void denSocketUnix::SocketFromAddress( const denSocketAddress &socketAddress, st
 	address.sin6_port = htons(socketAddress.port);
 }
 
+std::vector<std::string> denSocketUnix::pFindAddresses(bool onlyPublic){
+	std::vector<std::string> list;
+	
+#ifdef OS_BEOS
+	// find IPv4 address
+	const int sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if(sock != -1){
+		try{
+			struct ifreq ifr;
+			int ifindex = 1;
+			memset(&ifr, 0, sizeof(ifr));
+			char bufferIP[INET_ADDRSTRLEN];
+			
+			while(true){
+				#ifdef OS_BEOS
+				ifr.ifr_index = ifindex++;
+				#else
+				ifr.ifr_ifindex = ifindex++;
+				#endif
+				if(ioctl(sock, SIOCGIFNAME, &ifr)){
+					break;
+				}
+				
+				if(ioctl(sock, SIOCGIFADDR, &ifr)){
+					continue; // something failed, ignore the interface
+				}
+				const in_addr &saddr = ((sockaddr_in &)ifr.ifr_addr).sin_addr;
+				
+				if(!inet_ntop(AF_INET, &saddr, bufferIP, INET_ADDRSTRLEN)){
+					continue;
+				}
+				
+				if(onlyPublic && strcmp(bufferIP, "127.0.0.1") == 0){
+					continue;
+				}
+				
+				list.push_back(bufferIP);
+				// ifr.ifr_name  => device name
+			}
+			close(sock);
+			
+		}catch(...){
+			close(sock);
+			throw;
+		}
+	}
+	
+#else
+	ifaddrs *ifaddr, *ifiter;
+	char bufferIPv6[INET6_ADDRSTRLEN];
+	char bufferIPv4[INET_ADDRSTRLEN];
+	
+	if(getifaddrs(&ifaddr) == -1){
+		throw std::runtime_error("getifaddrs");
+	}
+	
+	try{
+		// find first IPv6 address
+		for(ifiter=ifaddr; ifiter; ifiter=ifiter->ifa_next){
+			if(!ifiter->ifa_addr || ifiter->ifa_addr->sa_family != AF_INET6){
+				continue;
+			}
+			
+			const in6_addr &saddr = ((sockaddr_in6 *)ifiter->ifa_addr)->sin6_addr;
+			if(!inet_ntop(AF_INET6, &saddr, bufferIPv6, INET6_ADDRSTRLEN)){
+				continue;
+			}
+			
+			if(onlyPublic && (ifiter->ifa_flags & IFF_LOOPBACK) != 0){
+				continue;
+			}
+			
+			list.push_back(bufferIPv6);
+		}
+		
+		// then find IPv4 address
+		for(ifiter=ifaddr; ifiter; ifiter=ifiter->ifa_next){
+			if(!ifiter->ifa_addr || ifiter->ifa_addr->sa_family != AF_INET){
+				continue;
+			}
+			
+			const in_addr &saddr = ((sockaddr_in *)ifiter->ifa_addr)->sin_addr;
+			if(!inet_ntop(AF_INET, &saddr, bufferIPv4, INET_ADDRSTRLEN)){
+				continue;
+			}
+			
+			if(onlyPublic && (ifiter->ifa_flags & IFF_LOOPBACK) != 0){
+				continue;
+			}
+			
+			list.push_back(bufferIPv4);
+		}
+		
+		freeifaddrs(ifaddr);
+		
+	}catch(...){
+		freeifaddrs(ifaddr);
+		throw;
+	}
+#endif
+	
+	return list;
+}
+
 uint32_t denSocketUnix::pScopeIdFor(const sockaddr_in6 &address){
 	ifaddrs *ifaddr, *ifiter;
 	
@@ -526,5 +534,6 @@ uint32_t denSocketUnix::pScopeIdFor(const sockaddr_in6 &address){
 	
 	return scope;
 }
+
 
 #endif

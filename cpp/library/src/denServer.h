@@ -141,6 +141,9 @@ public:
 	/** \brief Find public addresses. */
 	virtual std::vector<std::string> FindPublicAddresses();
 	
+	/** \brief Find all addresses. */
+	virtual std::vector<std::string> FindAllAddresses();
+	
 	/** \brief Logger or nullptr. */
 	inline const denLogger::Ref &GetLogger() const{ return pLogger; }
 	

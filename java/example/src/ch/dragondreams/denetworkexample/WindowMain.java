@@ -21,7 +21,9 @@ import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultBoundedRangeModel;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -35,6 +37,7 @@ import javax.swing.SwingConstants;
 import javax.swing.text.DefaultCaret;
 import javax.swing.text.PlainDocument;
 
+import ch.dragondreams.denetwork.endpoint.DatagramChannelEndpoint;
 import ch.dragondreams.denetworkexample.ExampleConnection.OtherClientState;
 
 public class WindowMain extends JFrame {
@@ -98,7 +101,8 @@ public class WindowMain extends JFrame {
 		}
 	}
 
-	private JTextField textAddress;
+	private DefaultComboBoxModel<String> modelAddress = new DefaultComboBoxModel<>();
+	private JComboBox<String> comboAddress;
 	private JButton buttonListen;
 	private JButton buttonConnect;
 	private JButton buttonDisconnect;
@@ -162,6 +166,8 @@ public class WindowMain extends JFrame {
 
 		LogToTextArea logHandler = new LogToTextArea();
 		Logger.getLogger("ch.dragondreams").addHandler(logHandler);
+
+		updateModelAddress();
 
 		logger.exiting(CLASS_NAME, "<constructor>");
 	}
@@ -245,7 +251,7 @@ public class WindowMain extends JFrame {
 
 	private void serverListen() throws IOException {
 		server = new ExampleServer(this);
-		server.listenOn(textAddress.getText());
+		server.listenOn(comboAddress.getEditor().getItem().toString());
 
 		textServerTime.setDocument(server.getValueTime().model);
 
@@ -259,7 +265,7 @@ public class WindowMain extends JFrame {
 
 	private void clientConnect() throws IOException {
 		connection = new ExampleConnection(this, false);
-		connection.connectTo(textAddress.getText());
+		connection.connectTo(comboAddress.getEditor().getItem().toString());
 
 		sliderLocalBar.setModel(connection.getLocalValueBar().model);
 		sliderLocalBar.setEnabled(true);
@@ -312,9 +318,10 @@ public class WindowMain extends JFrame {
 
 		panel.add(new JLabel("Address:", SwingConstants.LEFT));
 
-		textAddress = new JTextField("localhost");
-		textAddress.setColumns(20);
-		panel.add(textAddress);
+		comboAddress = new JComboBox<>(modelAddress);
+		comboAddress.setPrototypeDisplayValue("[XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX]:XXXX");
+		comboAddress.setEditable(true);
+		panel.add(comboAddress);
 
 		buttonConnect = new JButton(new AbstractAction("Connect") {
 			private static final long serialVersionUID = -6567362516427880981L;
@@ -467,5 +474,12 @@ public class WindowMain extends JFrame {
 
 	private void onDisconnect() {
 		disconnect();
+	}
+
+	private void updateModelAddress() throws IOException {
+		modelAddress.removeAllElements();
+		for (String each : DatagramChannelEndpoint.getAllAddresses()) {
+			modelAddress.addElement(each);
+		}
 	}
 }

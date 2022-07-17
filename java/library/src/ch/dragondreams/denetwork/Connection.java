@@ -25,6 +25,8 @@
 package ch.dragondreams.denetwork;
 
 import java.io.IOException;
+import java.net.Inet6Address;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayDeque;
@@ -285,9 +287,17 @@ public class Connection implements Endpoint.Listener {
 		}
 
 		try (CloseableReentrantLock locked = lock.open()) {
+			InetSocketAddress resolved = (InetSocketAddress) resolveAddress(address);
+			
 			endpoint = createEndpoint();
-			endpoint.open(null, this);
-
+			
+			if (resolved.getAddress() instanceof Inet6Address) {
+				endpoint.open(new InetSocketAddress("::", 0), this);
+				
+			}else {
+				endpoint.open(new InetSocketAddress("0.0.0.0", 0), this);
+			}
+			
 			localAddress = endpoint.getAddress().toString();
 
 			Message connectRequest = new Message();
@@ -296,7 +306,7 @@ public class Connection implements Endpoint.Listener {
 				writer.writeUShort(1); // version
 				writer.writeUShort(Protocols.DENETWORK_PROTOCOL.value);
 			}
-			realRemoteAddress = resolveAddress(address);
+			realRemoteAddress = resolved;
 			remoteAddress = address;
 
 			logger.info(String.format("Connection: Connecting to %s", realRemoteAddress.toString()));
@@ -327,13 +337,7 @@ public class Connection implements Endpoint.Listener {
 	 * resolve address using the appropriate method.
 	 */
 	public SocketAddress resolveAddress(String address) {
-		int delimiter = address.indexOf(':');
-		int port = 3413;
-		if (delimiter != -1) {
-			port = Integer.parseInt(address.substring(delimiter + 1));
-			address = address.substring(0, delimiter);
-		}
-		return new InetSocketAddress(address, port);
+		return DatagramChannelEndpoint.resolveAddress(address);
 	}
 
 	/**

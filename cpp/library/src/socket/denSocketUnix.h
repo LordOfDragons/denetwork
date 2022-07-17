@@ -64,11 +64,15 @@ public:
 	/** \brief Find public addresses. */
 	static std::vector<std::string> FindPublicAddresses();
 	
+	/** \brief Find all addresses. */
+	static std::vector<std::string> FindAllAddresses();
+	
 protected:
 	denSocketAddress AddressFromSocket(const sockaddr_in &address) const;
 	denSocketAddress AddressFromSocket(const sockaddr_in6 &address) const;
 	static void SocketFromAddress(const denSocketAddress &socketAddress, sockaddr_in &address);
 	static void SocketFromAddress(const denSocketAddress &socketAddress, sockaddr_in6 &address);
+	static std::vector<std::string> pFindAddresses(bool onlyPublic);
 	
 private:
 	static uint32_t pScopeIdFor(const sockaddr_in6 &address);

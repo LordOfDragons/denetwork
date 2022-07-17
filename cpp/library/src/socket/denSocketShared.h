@@ -37,4 +37,7 @@ namespace denSocketShared{
 	
 	/** \brief Find public addresses. */
 	std::vector<std::string> FindPublicAddresses();
+	
+	/** \brief Find all addresses. */
+	std::vector<std::string> FindAllAddresses();
 }

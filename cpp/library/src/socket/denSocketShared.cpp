@@ -48,12 +48,21 @@ denSocketAddress ResolveAddress(const std::string &address){
 #endif
 }
 
-
 std::vector<std::string> FindPublicAddresses(){
 #if defined OS_UNIX || defined OS_BEOS
 	return denSocketUnix::FindPublicAddresses();
 #elif defined OS_W32
 	return denSocketWindows::FindPublicAddresses();
+#else
+	throw std::invalid_argument("Unsupported platform");
+#endif
+}
+
+std::vector<std::string> FindAllAddresses(){
+#if defined OS_UNIX || defined OS_BEOS
+	return denSocketUnix::FindAllAddresses();
+#elif defined OS_W32
+	return denSocketWindows::FindAllAddresses();
 #else
 	throw std::invalid_argument("Unsupported platform");
 #endif
