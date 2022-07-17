@@ -26,8 +26,10 @@
 
 #ifdef OS_W32
 
+#include <WinSock2.h>
+#include <ws2ipdef.h>
+
 #include <Windows.h>
-#include <winsock.h>
 
 #include "denSocket.h"
 
@@ -61,11 +63,23 @@ public:
 	static std::vector<std::string> FindPublicAddresses();
 	
 protected:
-	denSocketAddress AddressFromSocket(const struct sockaddr_in &address) const;
-	static void SocketFromAddress(const denSocketAddress &socketAddress, struct sockaddr_in &address);
+	denSocketAddress AddressFromSocket(const sockaddr_in &address) const;
+	denSocketAddress AddressFromSocket(const sockaddr_in6 &address) const;
+	static void SocketFromAddress(const denSocketAddress &socketAddress, sockaddr_in &address);
+	static void SocketFromAddress(const denSocketAddress &socketAddress, sockaddr_in6 &address);
 	
 private:
-	int pSocket;
+	static uint32_t pScopeIdFor(const sockaddr_in6 &address);
+	static void pThrowErrno(const char *message);
+	static void pThrowWSAError(const char *message);
+	static void pWSAStartup();
+	static void pWSACleanup();
+	
+private:
+	SOCKET pSocket;
+	bool pWSAStarted;
+
+	static int pWSAStartedCount;
 };
 
 #endif

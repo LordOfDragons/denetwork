@@ -33,17 +33,17 @@
 #include <iomanip>
 
 #include <Iphlpapi.h>
+#include <WS2tcpip.h>
 
 #include "../denConnection.h"
 #include "../denServer.h"
 
 denSocketWindows::denSocketWindows() :
-pSocket(-1)
+pSocket(-1),
+pWSAStarted(false)
 {
-	pSocket = (int)socket(PF_INET, SOCK_DGRAM, 0);
-	if(pSocket == -1){
-		throw std::invalid_argument("socket failed");
-	}
+	pWSAStartup();
+	pWSAStarted = true;
 }
 
 denSocketWindows::~denSocketWindows() noexcept{
@@ -54,23 +54,60 @@ denSocketWindows::~denSocketWindows() noexcept{
 		close(pSocket);
 		#endif
 	}
+
+	if(pWSAStarted){
+		pWSACleanup();
+	}
 }
 
 void denSocketWindows::Bind(){
-	struct sockaddr_in sa;
-	memset(&sa, 0, sizeof(sa));
-	sa.sin_family = AF_INET;
-	SocketFromAddress(pAddress, sa);
-	
-	if(bind(pSocket, (SOCKADDR*)&sa, sizeof(sa))){
-		throw std::invalid_argument("bind failed");
+	if(pSocket != -1){
+		throw std::runtime_error("socket already bound");
 	}
 	
-	int slen = sizeof(sa);
-	if(getsockname(pSocket, (SOCKADDR*)&sa, &slen)){
-		throw std::invalid_argument("getsockname failed");
+	if(pAddress.type == denSocketAddress::Type::ipv6){
+		pSocket = socket(PF_INET6, SOCK_DGRAM, 0);
+		if(pSocket == -1){
+			pThrowWSAError("socket failed");
+		}
+		
+		sockaddr_in6 sa;
+		memset(&sa, 0, sizeof(sa));
+		SocketFromAddress(pAddress, sa);
+		
+		sa.sin6_scope_id = pScopeIdFor(sa); // required for local links or it fails to bind
+		
+		if(bind(pSocket, (SOCKADDR*)&sa, sizeof(sa))){
+			pThrowWSAError("bind failed");
+		}
+		
+		int slen = sizeof(sa);
+		if(getsockname(pSocket, (SOCKADDR*)&sa, &slen)){
+			pThrowWSAError("getsockname failed");
+		}
+		pAddress = AddressFromSocket(sa);
+
+	}else{
+		pSocket = (int)socket(PF_INET, SOCK_DGRAM, 0);
+		if(pSocket == -1){
+			pThrowWSAError("socket failed");
+		}
+
+		sockaddr_in sa;
+		memset(&sa, 0, sizeof(sa));
+		sa.sin_family = AF_INET;
+		SocketFromAddress(pAddress, sa);
+	
+		if(bind(pSocket, (SOCKADDR*)&sa, sizeof(sa))){
+			pThrowWSAError("bind failed");
+		}
+	
+		int slen = sizeof(sa);
+		if(getsockname(pSocket, (SOCKADDR*)&sa, &slen)){
+			pThrowWSAError("getsockname failed");
+		}
+		pAddress = AddressFromSocket(sa);
 	}
-	pAddress = AddressFromSocket(sa);
 }
 
 denMessage::Ref denSocketWindows::ReceiveDatagram(denSocketAddress &address){
@@ -90,66 +127,273 @@ denMessage::Ref denSocketWindows::ReceiveDatagram(denSocketAddress &address){
 			data.assign(dataLen, 0);
 		}
 		
-		struct sockaddr_in sa;
-		int slen = sizeof(sa);
-		const int result = recvfrom(pSocket, (char*)data.c_str(), (int)dataLen, 0, (SOCKADDR*)&sa, &slen);
+		if(pAddress.type == denSocketAddress::Type::ipv6){
+			sockaddr_in6 sa;
+			int slen = sizeof(sa);
+			const int result = recvfrom(pSocket, (char*)data.c_str(), (int)dataLen, 0, (SOCKADDR*)&sa, &slen);
 		
-		if(result == SOCKET_ERROR){
-			const int error = WSAGetLastError();
-			std::stringstream s;
-			s << "recvfrom failed: error " << error;
-			throw std::runtime_error(s.str());
-		}
+			if(result == SOCKET_ERROR){
+				pThrowWSAError("recvfrom failed");
+			}
 
-		if(result > 0){
-			address = AddressFromSocket(sa);
-			message->Item().SetLength(result);
-			return message;
-		} // connection closed returns 0 length
+			if(result > 0){
+				address = AddressFromSocket(sa);
+				message->Item().SetLength(result);
+				return message;
+			} // connection closed returns 0 length
+
+		}else{
+			sockaddr_in sa;
+			int slen = sizeof(sa);
+			const int result = recvfrom(pSocket, (char*)data.c_str(), (int)dataLen, 0, (SOCKADDR*)&sa, &slen);
+		
+			if(result == SOCKET_ERROR){
+				pThrowWSAError("recvfrom failed");
+			}
+
+			if(result > 0){
+				address = AddressFromSocket(sa);
+				message->Item().SetLength(result);
+				return message;
+			} // connection closed returns 0 length
+		}
 	}
 	
 	return nullptr;
 }
 
 void denSocketWindows::SendDatagram(const denMessage &message, const denSocketAddress &address){
-	struct sockaddr_in sa;
-	memset(&sa, 0, sizeof(sa));
-    sa.sin_family = AF_INET;
-	SocketFromAddress(address, sa);
+	if(pAddress.type == denSocketAddress::Type::ipv6){
+		sockaddr_in6 sa;
+		memset(&sa, 0, sizeof(sa));
+		sa.sin6_family = AF_INET6;
+		SocketFromAddress(address, sa);
+		
+		sendto(pSocket, (char*)message.GetData().c_str(), (int)message.GetLength(), 0, (SOCKADDR*)&sa, sizeof(sa));
+
+	}else{
+		sockaddr_in sa;
+		memset(&sa, 0, sizeof(sa));
+		sa.sin_family = AF_INET;
+		SocketFromAddress(address, sa);
 	
-	sendto(pSocket, (char*)message.GetData().c_str(), (int)message.GetLength(), 0, (SOCKADDR*)&sa, sizeof(sa));
+		sendto(pSocket, (char*)message.GetData().c_str(), (int)message.GetLength(), 0, (SOCKADDR*)&sa, sizeof(sa));
+	}
 }
 
 denSocketAddress denSocketWindows::ResolveAddress(const std::string &address){
-	const std::string::size_type delimiter = address.find(':');
-	struct hostent *he = nullptr;
-	uint16_t port = 3413;
+	if(address.empty()){
+		throw std::invalid_argument("address is empty");
+	}
 	
-	// get address and port if present
+	addrinfo hints;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_protocol = IPPROTO_UDP;
+	hints.ai_flags = AI_NUMERICSERV | AI_ADDRCONFIG;
+	
+	const std::string::size_type delimiter = address.rfind(':');
+	std::string::size_type portBegin = std::string::npos;
+	std::string node;
+	
 	if(delimiter != std::string::npos){
-		port = (uint16_t)strtol(&address[delimiter + 1], nullptr, 10);
-		he = gethostbyname(address.substr(0, delimiter).c_str());
+		if(address[0] == '['){
+			// "[IPv6]:port"
+			if(address[delimiter - 1] != ']'){
+				throw std::invalid_argument("address invalid");
+			}
+			
+			node = address.substr(1, delimiter - 2);
+			portBegin = delimiter + 1;
+			
+			hints.ai_family = AF_INET6;
+			hints.ai_flags |= AI_NUMERICHOST;
+			
+		}else if(address.find(':') != delimiter){
+			// "IPv6"
+			node = address;
+			
+			hints.ai_family = AF_INET6;
+			hints.ai_flags |= AI_NUMERICHOST;
+			
+		}else{
+			// "IPv4:port" or "hostname:port"
+			node = address.substr(0, delimiter);
+			portBegin = delimiter + 1;
+			
+			hints.ai_family = AF_UNSPEC;
+		}
 		
 	}else{
-		he = gethostbyname(address.c_str());
+		// "IPv4" or "hostname"
+		node = address.substr(0, delimiter);
+		
+		hints.ai_family = AF_UNSPEC;
 	}
 	
-	if(! he){
-		throw std::invalid_argument("address");
+	uint16_t port = 3413;
+	
+	if(portBegin != std::string::npos){
+		char *end;
+		port = (uint16_t)strtol(&address[portBegin], &end, 10);
+		if(*end){
+			throw std::invalid_argument("address invalid");
+		}
 	}
 	
-	// set address and port
-	denSocketAddress socketAddress;
-	socketAddress.type = denSocketAddress::Type::ipv4;
+	addrinfo *result = NULL;
+	if(getaddrinfo(node.c_str(), NULL, &hints, &result)){
+		pThrowWSAError("getaddrinfo");
+	}
+
+	try{
+		// there can be more than one address but we use the first one. using AI_ADDRCONFIG
+		// should give us IPv6 if the host system has an IPv6 address otherwise IPv4.
+		// should this be a problem we have to do this differently.
+		// 
+		// according to documentation the first returned address should be used since the
+		// lookup function has internal sorting logic returning the preferred address first
+		const addrinfo &rai = result[0];
+		
+		// set address and port
+		denSocketAddress socketAddress;
+		socketAddress.port = port;
+		
+		if(rai.ai_family == AF_INET6){
+			socketAddress.type = denSocketAddress::Type::ipv6;
+			
+			const USHORT * const sain = ((sockaddr_in6*)rai.ai_addr)->sin6_addr.u.Word;
+			const uint16_t sa16[8] = {ntohs(sain[0]), ntohs(sain[1]), ntohs(sain[2]), ntohs(sain[3]),
+				ntohs(sain[4]), ntohs(sain[5]), ntohs(sain[6]), ntohs(sain[7])};
+			
+			int i;
+			for(i=0; i<16; i+=2){
+				const uint16_t &in = sa16[i/2];
+				socketAddress.values[i] = (uint8_t)((in >> 8) & 0xff);
+				socketAddress.values[i+1] = (uint8_t)(in & 0xff);
+			}
+			
+			socketAddress.valueCount = 16;
+			
+		}else if(rai.ai_family == AF_INET){
+			socketAddress.type = denSocketAddress::Type::ipv4;
+			
+			const uint32_t sockAddr = ntohl(((sockaddr_in *)rai.ai_addr)->sin_addr.s_addr);
+			socketAddress.values[0] = (uint8_t)((sockAddr >> 24) & 0xff);
+			socketAddress.values[1] = (uint8_t)((sockAddr >> 16) & 0xff);
+			socketAddress.values[2] = (uint8_t)((sockAddr >> 8) & 0xff);
+			socketAddress.values[3] = (uint8_t)(sockAddr & 0xff);
+			socketAddress.valueCount = 4;
+			
+		}else{
+			throw std::invalid_argument("address invalid");
+		}
+		
+		freeaddrinfo(result);
+		
+		return socketAddress;
+		
+	}catch(...){
+		freeaddrinfo(result);
+		throw;
+	}
+}
+
+std::vector<std::string> denSocketWindows::FindPublicAddresses(){
+	pWSAStartup();
+	try{
+		std::vector<std::string> list;
 	
-	const uint32_t sockAddr = ntohl(((struct in_addr *)he->h_addr)->s_addr);
-	socketAddress.values[0] = (uint8_t)((sockAddr >> 24) & 0xff);
-	socketAddress.values[1] = (uint8_t)((sockAddr >> 16) & 0xff);
-	socketAddress.values[2] = (uint8_t)((sockAddr >> 8) & 0xff);
-	socketAddress.values[3] = (uint8_t)(sockAddr & 0xff);
-	socketAddress.valueCount = 4;
-	socketAddress.port = port;
-	return socketAddress;
+		// get size and allocate buffer
+		PIP_ADAPTER_ADDRESSES addresses = (IP_ADAPTER_ADDRESSES*)HeapAlloc(GetProcessHeap(), 0, 15000);
+		if (addresses == NULL) {
+			throw std::invalid_argument("HeapAlloc returned nullptr");
+		}
+	
+		ULONG flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST
+			| GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_INCLUDE_PREFIX;
+
+		// get the data. this stupid way to do it is actually recommended by microsoft
+		ULONG outBufLen = 15000;
+		ULONG iterations = 0;
+		DWORD dwRetVal = NO_ERROR;
+
+		do{
+			addresses = (IP_ADAPTER_ADDRESSES*)HeapAlloc(GetProcessHeap(), 0, outBufLen);
+			if(addresses == NULL){
+				throw std::invalid_argument("HeapAlloc failed");
+			}
+
+			dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, addresses, &outBufLen);
+			if(dwRetVal == ERROR_BUFFER_OVERFLOW){
+				HeapFree(GetProcessHeap(), 0, addresses);
+				addresses = NULL;
+
+			}else{
+				break;
+			}
+
+			iterations++;
+		}while(dwRetVal == ERROR_BUFFER_OVERFLOW && iterations < 3);
+
+		if(dwRetVal != NO_ERROR){
+			HeapFree(GetProcessHeap(), 0, addresses);
+			throw std::invalid_argument("GetAdaptersAddresses failed");
+		}
+
+		// evaluate the result
+		try{
+			// find IPv6 address
+			PIP_ADAPTER_ADDRESSES curAddress = addresses;
+			while(curAddress){
+				PIP_ADAPTER_UNICAST_ADDRESS ua = curAddress->FirstUnicastAddress;
+				while(ua){
+					if(ua->Address.lpSockaddr->sa_family == AF_INET6){
+						sockaddr_in6 * const si = (sockaddr_in6*)(ua->Address.lpSockaddr);
+						char ip[INET6_ADDRSTRLEN];
+						memset(ip, 0, sizeof(ip));
+						if(inet_ntop(AF_INET6, &si->sin6_addr, ip, sizeof(ip)) && strcmp(ip, "::1") != 0){
+							list.push_back(ip);
+						}
+					}
+					ua = ua->Next;
+				}
+			
+				curAddress = curAddress->Next;
+			}
+
+			// find IPv8 address
+			curAddress = addresses;
+			while(curAddress){
+				PIP_ADAPTER_UNICAST_ADDRESS ua = curAddress->FirstUnicastAddress;
+				while(ua){
+					if(ua->Address.lpSockaddr->sa_family == AF_INET){
+						sockaddr_in * const si = (sockaddr_in*)(ua->Address.lpSockaddr);
+						char ip[INET_ADDRSTRLEN];
+						memset(ip, 0, sizeof(ip));
+						if(inet_ntop(AF_INET, &si->sin_addr, ip, sizeof(ip)) && strcmp(ip, "127.0.0.1") != 0){
+							list.push_back(ip);
+						}
+					}
+					ua = ua->Next;
+				}
+			
+				curAddress = curAddress->Next;
+			}
+		
+			HeapFree(GetProcessHeap(), 0, addresses);
+		
+		}catch(...){
+			HeapFree(GetProcessHeap(), 0, addresses);
+			throw;
+		}
+	
+		return list;
+
+	}catch(...){
+		pWSACleanup();
+		throw;
+	}
 }
 
 denSocketAddress denSocketWindows::AddressFromSocket(const struct sockaddr_in &address) const{
@@ -165,6 +409,26 @@ denSocketAddress denSocketWindows::AddressFromSocket(const struct sockaddr_in &a
 	return socketAddress;
 }
 
+denSocketAddress denSocketWindows::AddressFromSocket(const sockaddr_in6 &address) const{
+	denSocketAddress socketAddress;
+	socketAddress.type = denSocketAddress::Type::ipv6;
+	
+	const USHORT * const sain = address.sin6_addr.u.Word;
+	const uint16_t sa16[8] = {ntohs(sain[0]), ntohs(sain[1]), ntohs(sain[2]), ntohs(sain[3]),
+		ntohs(sain[4]), ntohs(sain[5]), ntohs(sain[6]), ntohs(sain[7])};
+			
+	int i;
+	for(i=0; i<16; i+=2){
+		const uint16_t &in = sa16[i/2];
+		socketAddress.values[i] = (uint8_t)((in >> 8) & 0xff);
+		socketAddress.values[i+1] = (uint8_t)(in & 0xff);
+	}
+	
+	socketAddress.valueCount = 16;
+	socketAddress.port = ntohs(address.sin6_port);
+	return socketAddress;
+}
+
 void denSocketWindows::SocketFromAddress(const denSocketAddress &socketAddress, struct sockaddr_in &address){
 	if(socketAddress.type != denSocketAddress::Type::ipv4){
 		throw std::invalid_argument("type != ipv4");
@@ -176,69 +440,143 @@ void denSocketWindows::SocketFromAddress(const denSocketAddress &socketAddress, 
 	address.sin_port = htons(socketAddress.port);
 }
 
-std::vector<std::string> denSocketWindows::FindPublicAddresses(){
-	std::vector<std::string> list;
-	
-	// get size and allocate buffer
-	PIP_ADAPTER_INFO pAdapterInfo = (IP_ADAPTER_INFO*)HeapAlloc(GetProcessHeap(), 0, sizeof(IP_ADAPTER_INFO));
-	if(!pAdapterInfo){
-		throw std::invalid_argument("HeapAlloc returned nullptr");
+void denSocketWindows::SocketFromAddress(const denSocketAddress &socketAddress, sockaddr_in6 &address){
+	if(socketAddress.type != denSocketAddress::Type::ipv6){
+		throw std::invalid_argument("type != ipv6");
 	}
 	
+	int i;
+	for(i=0; i<16; i+=2){
+		address.sin6_addr.u.Word[i/2] = htons((socketAddress.values[i] << 8) + socketAddress.values[i+1]);
+	}
+	
+	address.sin6_family = AF_INET6;
+	address.sin6_port = htons(socketAddress.port);
+}
+
+uint32_t denSocketWindows::pScopeIdFor(const sockaddr_in6& address){
+	// get size and allocate buffer
+	PIP_ADAPTER_ADDRESSES addresses = (IP_ADAPTER_ADDRESSES*)HeapAlloc(GetProcessHeap(), 0, 15000);
+    if (addresses == NULL) {
+        throw std::invalid_argument("HeapAlloc returned nullptr");
+    }
+	
+	ULONG flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST
+		| GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_INCLUDE_PREFIX;
+
+	// get the data. this stupid way to do it is actually recommended by microsoft
+	ULONG outBufLen = 15000;
+	ULONG iterations = 0;
+	DWORD dwRetVal = NO_ERROR;
+
+    do{
+        addresses = (IP_ADAPTER_ADDRESSES*)HeapAlloc(GetProcessHeap(), 0, outBufLen);
+        if(addresses == NULL){
+			throw std::invalid_argument("HeapAlloc failed");
+        }
+
+        dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, addresses, &outBufLen);
+        if(dwRetVal == ERROR_BUFFER_OVERFLOW){
+            HeapFree(GetProcessHeap(), 0, addresses);
+            addresses = NULL;
+
+        }else{
+            break;
+        }
+
+        iterations++;
+    }while(dwRetVal == ERROR_BUFFER_OVERFLOW && iterations < 3);
+
+	if(dwRetVal != NO_ERROR){
+		HeapFree(GetProcessHeap(), 0, addresses);
+		throw std::invalid_argument("GetAdaptersAddresses failed");
+	}
+
+	// evaluate the result
+	uint32_t scope = 0;
+	bool found = false;
+
 	try{
-		ULONG ulOutBufLen = sizeof(IP_ADAPTER_INFO);
-		if(GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == ERROR_BUFFER_OVERFLOW){
-			HeapFree(GetProcessHeap(), 0, pAdapterInfo);
-			pAdapterInfo = (IP_ADAPTER_INFO*)HeapAlloc(GetProcessHeap(), 0, ulOutBufLen);
-			if(!pAdapterInfo){
-				throw std::invalid_argument("HeapAlloc returned nullptr");
+		PIP_ADAPTER_ADDRESSES curAddress = addresses;
+        while(curAddress && !found){
+			PIP_ADAPTER_UNICAST_ADDRESS ua = curAddress->FirstUnicastAddress;
+			while(ua && !found){
+				if(ua->Address.lpSockaddr->sa_family == AF_INET6){
+					const sockaddr_in6 * const si = (sockaddr_in6*)(ua->Address.lpSockaddr);
+					
+					if(memcmp(&si->sin6_addr, &address.sin6_addr, sizeof(address.sin6_addr)) == 0){
+						scope = si->sin6_scope_id;
+						found = true;
+						break;
+					}
+				}
+				ua = ua->Next;
 			}
+			
+			curAddress = curAddress->Next;
 		}
 		
-		if(GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) != NO_ERROR){
-			throw std::invalid_argument("GetAdaptersInfo failed");
-		}
-		
-		// evaluate
-		PIP_ADAPTER_INFO pAdapter = pAdapterInfo;
-		while(pAdapter){
-			// NOTE: IP_ADDR_STRING is a linked list and can potentially contain more than one address
-			
-			const unsigned long ulAddr = inet_addr(pAdapter->IpAddressList.IpAddress.String);
-			if(ulAddr == INADDR_NONE || ulAddr == 0 /*0.0.0.0*/){
-				pAdapter = pAdapter->Next;
-				continue;
-			}
-			
-			const unsigned long ulNetMask = inet_addr(pAdapter->IpAddressList.IpMask.String);
-			if(ulNetMask == INADDR_NONE || ulNetMask == 0 /*0.0.0.0*/){
-				pAdapter = pAdapter->Next;
-				continue;
-			}
-			
-			if(strcmp(pAdapter->IpAddressList.IpAddress.String, "127.0.0.1") == 0){
-				pAdapter = pAdapter->Next;
-				continue; // ignore localhost
-			}
-			
-			list.push_back(pAdapter->IpAddressList.IpAddress.String);
-			// pAdapter->AdapterName  => device name
-			// (uint32_t)ulAddr   => address in in_addr format
-			// (uint32_t)ulNetMask   => netmask in in_addr format
-			
-			pAdapter = pAdapter->Next;
-		}
-		
-		HeapFree(GetProcessHeap(), 0, pAdapterInfo);
+		HeapFree(GetProcessHeap(), 0, addresses);
 		
 	}catch(...){
-		if(pAdapterInfo){
-			HeapFree(GetProcessHeap(), 0, pAdapterInfo);
-		}
+		HeapFree(GetProcessHeap(), 0, addresses);
 		throw;
 	}
-	
-	return list;
+
+	return scope;
 }
+
+void denSocketWindows::pThrowErrno(const char *message){
+	const int error = errno;
+	std::stringstream s;
+	char errbuf[100];
+	memset(errbuf, 0, sizeof(errbuf));
+	strerror_s(errbuf, sizeof(errbuf), errno);
+	s << message << ": " << errbuf << " (" << error << ")";
+	throw std::runtime_error(s.str());
+}
+
+void denSocketWindows::pThrowWSAError(const char *message){
+	const int error = WSAGetLastError();
+	std::stringstream s;
+	char *errbuf = NULL;
+	FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 
+		NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&errbuf, 0, NULL);
+	s << message << ": " << errbuf << " (" << error << ")";
+	LocalFree(errbuf);
+	throw std::runtime_error(s.str());
+}
+
+void denSocketWindows::pWSAStartup(){
+	pWSAStartedCount++;
+
+	if(pWSAStartedCount++ != 1){
+		return;
+	}
+
+	WSADATA wsaData;
+	if(WSAStartup(MAKEWORD(2, 2), &wsaData)){
+		throw std::invalid_argument("WSAStartup failed");
+	}
+
+	if(LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2){
+		pWSACleanup();
+		throw std::invalid_argument("WSAStartup succeeded but returned unsupported version");
+	}
+}
+
+void denSocketWindows::pWSACleanup(){
+	if(pWSAStartedCount == 0){
+		return;
+	}
+
+	pWSAStartedCount--;
+
+	if(pWSAStartedCount == 0){
+		WSACleanup();
+	}
+}
+
+int denSocketWindows::pWSAStartedCount = 0;
 
 #endif
