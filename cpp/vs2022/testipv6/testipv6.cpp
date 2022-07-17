@@ -8,11 +8,22 @@ int main()
 {
 	try{
 		denServer::Ref server(std::make_shared<denServer>());
-		const std::vector<std::string> list(server->FindPublicAddresses());
+
+		std::cout << "*** any address ***" << std::endl;
+		std::vector<std::string> list(server->FindAllAddresses());
 		std::vector<std::string>::const_iterator iter;
 		for(iter=list.cbegin(); iter!=list.cend(); iter++){
 			std::cout << *iter << std::endl;
 		}
+	
+		std::cout << "*** public address ***" << std::endl;
+		list = server->FindPublicAddresses();
+		for(iter=list.cbegin(); iter!=list.cend(); iter++){
+			std::cout << *iter << std::endl;
+		}
+	
+		std::cout << "*** tostring test ***" << std::endl;
+
 		std::cout << server->ResolveAddress(list.front()).ToString() << std::endl;
 		std::cout << server->ResolveAddress("0123:4567:89ab:cdef:0123:4567:89ab:cdef").ToString() << std::endl;
 		std::cout << server->ResolveAddress("0123:4567:0:0:0123:4567:0:0").ToString() << std::endl;
