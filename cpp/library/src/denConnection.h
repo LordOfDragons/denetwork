@@ -354,7 +354,7 @@ private:
 	void pCloseSocket();
 	void pRemoveConnectionFromParentServer();
 	void pUpdateStates();
-	void pUpdateTimeouts(float elapsedTime);
+	bool pUpdateTimeouts(float elapsedTime);
 	void pInvalidateState(const denState::Ref &state);
 	void pAddModifiedStateLink(denStateLink *link);
 	void pProcessQueuedMessages();

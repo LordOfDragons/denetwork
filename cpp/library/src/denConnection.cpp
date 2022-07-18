@@ -287,8 +287,9 @@ void denConnection::Update(float elapsedTime){
 	}
 	
 	try{
-		pUpdateTimeouts(elapsedTime);
-		pUpdateStates();
+		if( pUpdateTimeouts(elapsedTime) ){
+			pUpdateStates();
+		}
 		
 	}catch(const std::exception &e){
 		if(pLogger){
@@ -530,7 +531,7 @@ void denConnection::pUpdateStates(){
 	pSocket->SendDatagram(updateMessage->Item(), pRealRemoteAddress);
 }
 
-void denConnection::pUpdateTimeouts(float elapsedTime){
+bool denConnection::pUpdateTimeouts(float elapsedTime){
 	switch(pConnectionState){
 	case ConnectionState::connected:{
 		// increase the timeouts on all send packages
@@ -547,7 +548,7 @@ void denConnection::pUpdateTimeouts(float elapsedTime){
 					pLogger->Log(denLogger::LogSeverity::error, "Connection: Reliable message timeout");
 				}
 				Disconnect();
-				return;
+				return false;
 			}
 			
 			(*iter)->Item().elapsedResend += elapsedTime;
@@ -556,7 +557,8 @@ void denConnection::pUpdateTimeouts(float elapsedTime){
 				pSocket->SendDatagram((*iter)->Item().message->Item(), pRealRemoteAddress);
 			}
 		}
-		}break;
+		}
+		return true;
 		
 	case ConnectionState::connecting:
 		// increase connecting timeout
@@ -567,7 +569,7 @@ void denConnection::pUpdateTimeouts(float elapsedTime){
 				pLogger->Log(denLogger::LogSeverity::info, "Connection: Connection failed (timeout)");
 			}
 			ConnectionFailed(ConnectionFailedReason::timeout);
-			return;
+			return false;
 		}
 		
 		pElapsedConnectResend += elapsedTime;
@@ -586,10 +588,10 @@ void denConnection::pUpdateTimeouts(float elapsedTime){
 			}
 			pSocket->SendDatagram(connectRequest->Item(), pRealRemoteAddress);
 		}
-		break;
+		return true;
 		
 	default:
-		break;
+		return true;
 	}
 }
 
