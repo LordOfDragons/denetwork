@@ -104,10 +104,12 @@ class ExampleConnection implements ConnectionListener
 	public func void dispose()
 		if parentServer == null
 			GameApp.get().windowMain.disconnectClientServerState()
+			parentServer = null
 		end
-		parentServer = null
-		state.setStateListener(null)
-		state = null
+		if state != null
+			state.setStateListener(null)
+			state = null
+		end
 		otherClientStates = null
 	end
 	
