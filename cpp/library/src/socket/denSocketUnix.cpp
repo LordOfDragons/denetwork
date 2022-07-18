@@ -41,12 +41,10 @@
 #include <sys/poll.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+#include <ifaddrs.h>
 
 #ifdef OS_BEOS
 #include <sys/sockio.h>
-
-#else
-#include <ifaddrs.h>
 #endif
 
 #include "denSocketUnix.h"
@@ -224,7 +222,7 @@ denSocketAddress denSocketUnix::ResolveAddress(const std::string &address){
 		if(address[0] == '['){
 			// "[IPv6]:port"
 			if(address[delimiter - 1] != ']'){
-				throw std::invalid_argument("address invalid");
+				throw std::invalid_argument("address invalid: missing ']'");
 			}
 			
 			node = address.substr(1, delimiter - 2);
@@ -261,13 +259,16 @@ denSocketAddress denSocketUnix::ResolveAddress(const std::string &address){
 		char *end;
 		port = (uint16_t)strtol(&address[portBegin], &end, 10);
 		if(*end){
-			throw std::invalid_argument("address invalid");
+			throw std::invalid_argument("address invalid: port not numeric");
 		}
 	}
 	
 	addrinfo *result;
-	if(getaddrinfo(node.c_str(), nullptr, &hints, &result)){
-		throw std::invalid_argument("address invalid");
+	int retcode = getaddrinfo(node.c_str(), nullptr, &hints, &result);
+	if(retcode != 0){
+		std::stringstream s;
+		s << "address invalid: getaddrinfo: " << gai_strerror(retcode) << " (" << retcode << ")";
+		throw std::runtime_error(s.str());
 	}
 	
 	try{
@@ -311,7 +312,7 @@ denSocketAddress denSocketUnix::ResolveAddress(const std::string &address){
 			socketAddress.valueCount = 4;
 			
 		}else{
-			throw std::invalid_argument("address invalid");
+			throw std::invalid_argument("address invalid: scope resolve wrong family");
 		}
 		
 		freeaddrinfo(result);
@@ -401,57 +402,15 @@ void denSocketUnix::SocketFromAddress( const denSocketAddress &socketAddress, st
 std::vector<std::string> denSocketUnix::pFindAddresses(bool onlyPublic){
 	std::vector<std::string> list;
 	
-#ifdef OS_BEOS
-	// find IPv4 address
-	const int sock = socket(AF_INET, SOCK_DGRAM, 0);
-	if(sock != -1){
-		try{
-			struct ifreq ifr;
-			int ifindex = 1;
-			memset(&ifr, 0, sizeof(ifr));
-			char bufferIP[INET_ADDRSTRLEN];
-			
-			while(true){
-				#ifdef OS_BEOS
-				ifr.ifr_index = ifindex++;
-				#else
-				ifr.ifr_ifindex = ifindex++;
-				#endif
-				if(ioctl(sock, SIOCGIFNAME, &ifr)){
-					break;
-				}
-				
-				if(ioctl(sock, SIOCGIFADDR, &ifr)){
-					continue; // something failed, ignore the interface
-				}
-				const in_addr &saddr = ((sockaddr_in &)ifr.ifr_addr).sin_addr;
-				
-				if(!inet_ntop(AF_INET, &saddr, bufferIP, INET_ADDRSTRLEN)){
-					continue;
-				}
-				
-				if(onlyPublic && strcmp(bufferIP, "127.0.0.1") == 0){
-					continue;
-				}
-				
-				list.push_back(bufferIP);
-				// ifr.ifr_name  => device name
-			}
-			close(sock);
-			
-		}catch(...){
-			close(sock);
-			throw;
-		}
-	}
-	
-#else
 	ifaddrs *ifaddr, *ifiter;
 	char bufferIPv6[INET6_ADDRSTRLEN];
 	char bufferIPv4[INET_ADDRSTRLEN];
 	
 	if(getifaddrs(&ifaddr) == -1){
-		throw std::runtime_error("getifaddrs");
+		const int error = errno;
+		std::stringstream s;
+		s << "getifaddrs failed: " << strerror(error) << " (" << error << ")";
+		throw std::runtime_error(s.str());
 	}
 	
 	try{
@@ -497,7 +456,6 @@ std::vector<std::string> denSocketUnix::pFindAddresses(bool onlyPublic){
 		freeifaddrs(ifaddr);
 		throw;
 	}
-#endif
 	
 	return list;
 }
@@ -506,7 +464,10 @@ uint32_t denSocketUnix::pScopeIdFor(const sockaddr_in6 &address){
 	ifaddrs *ifaddr, *ifiter;
 	
 	if(getifaddrs(&ifaddr) == -1){
-		throw std::runtime_error("getifaddrs");
+		const int error = errno;
+		std::stringstream s;
+		s << "getifaddrs failed: " << strerror(error) << " (" << error << ")";
+		throw std::runtime_error(s.str());
 	}
 	
 	uint32_t scope = 0;
