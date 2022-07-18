@@ -142,15 +142,7 @@ std::string denSocketAddress::ToString() const{
 				s << ":";
 			}
 			
-			if(a > 15){
-				s << std::hex << std::setfill('0') << std::setw(2) << a << b;
-				
-			}else if(a > 0){
-				s << std::hex << std::setfill('0') << std::setw(0) << a << std::setw(2) << b;
-				
-			}else{ // a == 0 and b > 0
-				s << std::hex << std::setfill('0') << std::setw(0) << b;
-			}
+			s << std::hex << ( int )( ( a << 8 ) | b );
 		}
 		
 		if(groupingZeros){
