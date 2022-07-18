@@ -186,7 +186,6 @@ void denSocketUnix::SendDatagram(const denMessage &message, const denSocketAddre
 	if(pAddress.type == denSocketAddress::Type::ipv6){
 		struct sockaddr_in6 sa;
 		memset(&sa, 0, sizeof(sa));
-		sa.sin6_family = AF_INET6;
 		SocketFromAddress(address, sa);
 		
 		sendto(pSocket, (char*)message.GetData().c_str(),
@@ -195,7 +194,6 @@ void denSocketUnix::SendDatagram(const denMessage &message, const denSocketAddre
 	}else{
 		struct sockaddr_in sa;
 		memset(&sa, 0, sizeof(sa));
-		sa.sin_family = AF_INET;
 		SocketFromAddress(address, sa);
 		
 		sendto(pSocket, (char*)message.GetData().c_str(),

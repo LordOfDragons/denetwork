@@ -489,48 +489,48 @@ std::vector<std::string> denSocketWindows::pFindAddresses(bool onlyPublic){
 uint32_t denSocketWindows::pScopeIdFor(const sockaddr_in6& address){
 	// get size and allocate buffer
 	PIP_ADAPTER_ADDRESSES addresses = (IP_ADAPTER_ADDRESSES*)HeapAlloc(GetProcessHeap(), 0, 15000);
-    if (addresses == NULL) {
-        throw std::invalid_argument("HeapAlloc returned nullptr");
-    }
+	if (addresses == NULL) {
+		throw std::invalid_argument("HeapAlloc returned nullptr");
+	}
 	
 	ULONG flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST
 		| GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_INCLUDE_PREFIX;
-
+	
 	// get the data. this stupid way to do it is actually recommended by microsoft
 	ULONG outBufLen = 15000;
 	ULONG iterations = 0;
 	DWORD dwRetVal = NO_ERROR;
-
-    do{
-        addresses = (IP_ADAPTER_ADDRESSES*)HeapAlloc(GetProcessHeap(), 0, outBufLen);
-        if(addresses == NULL){
+	
+	do{
+		addresses = (IP_ADAPTER_ADDRESSES*)HeapAlloc(GetProcessHeap(), 0, outBufLen);
+		if(addresses == NULL){
 			throw std::invalid_argument("HeapAlloc failed");
-        }
-
-        dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, addresses, &outBufLen);
-        if(dwRetVal == ERROR_BUFFER_OVERFLOW){
-            HeapFree(GetProcessHeap(), 0, addresses);
-            addresses = NULL;
-
-        }else{
-            break;
-        }
-
-        iterations++;
-    }while(dwRetVal == ERROR_BUFFER_OVERFLOW && iterations < 3);
-
+		}
+		
+		dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, addresses, &outBufLen);
+		if(dwRetVal == ERROR_BUFFER_OVERFLOW){
+			HeapFree(GetProcessHeap(), 0, addresses);
+			addresses = NULL;
+			
+		}else{
+			break;
+		}
+		
+		iterations++;
+	}while(dwRetVal == ERROR_BUFFER_OVERFLOW && iterations < 3);
+	
 	if(dwRetVal != NO_ERROR){
 		HeapFree(GetProcessHeap(), 0, addresses);
 		throw std::invalid_argument("GetAdaptersAddresses failed");
 	}
-
+	
 	// evaluate the result
 	uint32_t scope = 0;
 	bool found = false;
-
+	
 	try{
 		PIP_ADAPTER_ADDRESSES curAddress = addresses;
-        while(curAddress && !found){
+		while(curAddress && !found){
 			PIP_ADAPTER_UNICAST_ADDRESS ua = curAddress->FirstUnicastAddress;
 			while(ua && !found){
 				if(ua->Address.lpSockaddr->sa_family == AF_INET6){
@@ -554,7 +554,7 @@ uint32_t denSocketWindows::pScopeIdFor(const sockaddr_in6& address){
 		HeapFree(GetProcessHeap(), 0, addresses);
 		throw;
 	}
-
+	
 	return scope;
 }
 
