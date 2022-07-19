@@ -24,7 +24,24 @@
 
 """@package Drag[en]gine Network Library Python Module."""
 
-from .connection import Connection
-from . import math
-from . import message
-from . import endpoint
+from ..message.message import Message
+
+
+class Endpoint:
+
+    """Endpoint interface."""
+
+    class Listener:
+        """Endpoint listener interface."""
+
+        def __init__(self: 'Endpoint.Listener'):
+            """Create endpoint listener."""
+            pass
+            
+        def received_datagram(self: 'Endpoint.Listener', address: SocketAddress, message: Message) -> None:
+            """Datagram received."""
+            pass
+
+    def __init__(self: 'Endpoint') -> None:
+        """Create endpoint."""
+        pass

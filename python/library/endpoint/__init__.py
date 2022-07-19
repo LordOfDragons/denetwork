@@ -24,7 +24,5 @@
 
 """@package Drag[en]gine Network Library Python Module."""
 
-from .connection import Connection
-from . import math
-from . import message
-from . import endpoint
+from .address import Address
+from .endpoint import Endpoint
