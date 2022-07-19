@@ -24,7 +24,36 @@
 
 """@package Drag[en]gine Network Library Python Module."""
 
-from .connection import Connection
-from . import math
-from . import message
+from datetime import datetime, timezone
 
+
+class Message:
+
+    """Network message."""
+
+    def __init__(self: 'Message') -> None:
+        """Create message."""
+
+        self.data = bytearray(0)
+        """Message data. Can be longer than actual message length."""
+
+        self.length = 0
+        """Length of message. Can be less than data size."""
+
+        self.timestamp = datetime.now(timezone.utc)
+        """Message timestamp."""
+
+    def resize(self: 'Message',  size: int) -> None:
+        """Set length of message.
+
+        Can be less than data size. If length is larger than current data
+        size the data size is increased. The data content is not retained
+        if the size is increased.
+
+        """
+
+        if size < 0:
+            raise Exception('size < 0')
+        self.length = size
+        if len(self.data) < size:
+            self.data = bytearray(size)

@@ -54,3 +54,16 @@ print(dnl.math.Vector3(5, 2, 3) < dnl.math.Vector3(1, 1, 2) + dnl.math.Vector3(6
 print(dnl.math.Quaternion(8, 5, 7))
 print(dnl.math.Quaternion())
 print(dnl.math.Quaternion(5, 2, 3) < dnl.math.Quaternion(1, 1, 2) + dnl.math.Quaternion(6, 2, 2))
+
+message = dnl.message.Message()
+with dnl.message.MessageWriter(message) as w:
+    w.write_byte(8)
+    w.write_float(2.5)
+    w.write_vector3(dnl.math.Vector3(1.5,  8,  6.8))
+    w.write_string8('hello world')
+
+with dnl.message.MessageReader(message) as r:
+    print(r.read_byte())
+    print(r.read_float())
+    print(r.read_vector3())
+    print(r.read_string8())
