@@ -26,3 +26,4 @@
 
 from .address import Address
 from .endpoint import Endpoint
+from .socket import SocketEndpoint

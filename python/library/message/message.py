@@ -35,25 +35,7 @@ class Message:
         """Create message."""
 
         self.data = bytearray(0)
-        """Message data. Can be longer than actual message length."""
-
-        self.length = 0
-        """Length of message. Can be less than data size."""
+        """Message data."""
 
         self.timestamp = datetime.now(timezone.utc)
         """Message timestamp."""
-
-    def resize(self: 'Message',  size: int) -> None:
-        """Set length of message.
-
-        Can be less than data size. If length is larger than current data
-        size the data size is increased. The data content is not retained
-        if the size is increased.
-
-        """
-
-        if size < 0:
-            raise Exception('size < 0')
-        self.length = size
-        if len(self.data) < size:
-            self.data = bytearray(size)

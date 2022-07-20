@@ -252,7 +252,7 @@ class Quaternion:
         str: String
 
         """
-        return 'Quaternion({0},{1},{2},{3})'.format(
+        return "Quaternion({0},{1},{2},{3})".format(
                self.x, self.y, self.z, self.w)
 
     def __str__(self: 'Quaternion') -> str:
@@ -262,7 +262,7 @@ class Quaternion:
         str: String
 
         """
-        return 'Quaternion({0:.3g},{1:.3g},{2:.3g},{3:.3g})'.format(
+        return "Quaternion({0:.3g},{1:.3g},{2:.3g},{3:.3g})".format(
                self.x, self.y, self.z, self.w)
 
     def __getitem__(self: 'Quaternion', key: int) -> float:

@@ -25,23 +25,75 @@
 """@package Drag[en]gine Network Library Python Module."""
 
 from ..message.message import Message
+from .address import Address
+from abc import ABC,  abstractmethod
 
 
-class Endpoint:
+class Endpoint(ABC):
 
     """Endpoint interface."""
 
-    class Listener:
+    class Listener(ABC):
         """Endpoint listener interface."""
 
         def __init__(self: 'Endpoint.Listener'):
             """Create endpoint listener."""
             pass
-            
-        def received_datagram(self: 'Endpoint.Listener', address: SocketAddress, message: Message) -> None:
-            """Datagram received."""
+
+        @abstractmethod
+        def received_datagram(self: 'Endpoint.Listener',
+                              address: Address,
+                              message: Message) -> None:
+            """Datagram received.
+
+            Parameters:
+            address (Address): Address of sending client.
+            message (Message): Received message.
+
+            """
             pass
 
     def __init__(self: 'Endpoint') -> None:
         """Create endpoint."""
+
+        self.address = None
+        """Address if listening otherwise None."""
+
+    def dispose(self: 'Endpoint') -> None:
+        """Dispose of endpoint."""
+        pass
+
+    @abstractmethod
+    def open(self: 'Endpoint',
+             address: Address,
+             listener: 'Endpoint.Listener') -> None:
+        """Open endpoint delivering events to the provided listener.
+
+        Parameters:
+        address (Address): Address to listen on.
+        listener (Listener): Listener to invoke.
+
+        """
+        pass
+
+    @abstractmethod
+    def close(self: 'Endpoint') -> None:
+        """Close endpoint if open.
+
+        Stop delivering events to listener provided in the previous open call.
+
+        """
+        pass
+
+    @abstractmethod
+    def send_datagram(self: 'Endpoint',
+                      address: Address,
+                      message: Message) -> None:
+        """Send datagram.
+
+        Parameters:
+        address (Address): Address to send datagram to.
+        message (Message): Message to send.
+
+        """
         pass

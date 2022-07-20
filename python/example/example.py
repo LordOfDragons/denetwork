@@ -67,3 +67,20 @@ with dnl.message.MessageReader(message) as r:
     print(r.read_float())
     print(r.read_vector3())
     print(r.read_string8())
+
+"""
+from DENetworkLibrary.endpoint.ifaddr import get_adapters
+for x in get_adapters():
+    print(x)
+"""
+
+class TestListener(dnl.endpoint.Endpoint.Listener):
+    def __init__(self):
+        dnl.endpoint.Endpoint.Listener.__init__(self)
+    
+    def received_datagram(self, address, message):
+        print("Received: '{0}'".format(message.data))
+
+ep = dnl.endpoint.SocketEndpoint()
+ep.open(dnl.endpoint.Address.ipv4_loopback(), TestListener())
+ep.dispose()

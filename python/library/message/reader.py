@@ -57,9 +57,6 @@ class MessageReader:
 
         self.data = message.data
 
-        self.length = message.length
-        """Length of message data (read-only)."""
-
         self.position = 0
         """Read position in bytes from the start of the message (read-only)."""
 
@@ -70,7 +67,7 @@ class MessageReader:
         int: Value
 
         """
-        value = unpack_from('<b', self.data, self.position)[0]
+        value = unpack_from("<b", self.data, self.position)[0]
         self.position = self.position + 1
         return value
 
@@ -81,7 +78,7 @@ class MessageReader:
         int: Value
 
         """
-        value = unpack_from('<B', self.data, self.position)[0]
+        value = unpack_from("<B", self.data, self.position)[0]
         self.position = self.position + 1
         return value
 
@@ -92,7 +89,7 @@ class MessageReader:
         int: Value
 
         """
-        value = unpack_from('<h', self.data, self.position)[0]
+        value = unpack_from("<h", self.data, self.position)[0]
         self.position = self.position + 2
         return value
 
@@ -103,7 +100,7 @@ class MessageReader:
         int: Value
 
         """
-        value = unpack_from('<H', self.data, self.position)[0]
+        value = unpack_from("<H", self.data, self.position)[0]
         self.position = self.position + 2
         return value
 
@@ -114,7 +111,7 @@ class MessageReader:
         int: Value
 
         """
-        value = unpack_from('<i', self.data, self.position)[0]
+        value = unpack_from("<i", self.data, self.position)[0]
         self.position = self.position + 4
         return value
 
@@ -125,7 +122,7 @@ class MessageReader:
         int: Value
 
         """
-        value = unpack_from('<I', self.data, self.position)[0]
+        value = unpack_from("<I", self.data, self.position)[0]
         self.position = self.position + 4
         return value
 
@@ -136,7 +133,7 @@ class MessageReader:
         int: Value
 
         """
-        value = unpack_from('<q', self.data, self.position)[0]
+        value = unpack_from("<q", self.data, self.position)[0]
         self.position = self.position + 8
         return value
 
@@ -147,7 +144,7 @@ class MessageReader:
         int: Value
 
         """
-        value = unpack_from('<Q', self.data, self.position)[0]
+        value = unpack_from("<Q", self.data, self.position)[0]
         self.position = self.position + 8
         return value
 
@@ -158,7 +155,7 @@ class MessageReader:
         float: Value
 
         """
-        value = unpack_from('<f', self.data, self.position)[0]
+        value = unpack_from("<f", self.data, self.position)[0]
         self.position = self.position + 4
         return value
 
@@ -169,7 +166,7 @@ class MessageReader:
         float: Value
 
         """
-        value = unpack_from('<d', self.data, self.position)[0]
+        value = unpack_from("<d", self.data, self.position)[0]
         self.position = self.position + 8
         return value
 
@@ -180,11 +177,11 @@ class MessageReader:
         str: Value
 
         """
-        length = unpack_from('<B', self.data, self.position)[0]
+        length = unpack_from("<B", self.data, self.position)[0]
         value = self.data[self.position + 1:self.position + 1 + length]
         value = value.decode('utf-8')
         if len(value) != length:
-            raise Exception('not enough remaining data')
+            raise Exception("not enough remaining data")
         self.position = self.position + 1 + length
         return value
 
@@ -195,11 +192,11 @@ class MessageReader:
         str: Value
 
         """
-        length = unpack_from('<H', self.data, self.position)[0]
+        length = unpack_from("<H", self.data, self.position)[0]
         value = self.data[self.position + 2:self.position + 2 + length]
         value = value.decode('utf-8')
         if len(value) != length:
-            raise Exception('not enough remaining data')
+            raise Exception("not enough remaining data")
         self.position = self.position + 2 + length
         return value
 
@@ -210,7 +207,7 @@ class MessageReader:
         Vector2: Value
 
         """
-        value = unpack_from('<ff', self.data, self.position)
+        value = unpack_from("<ff", self.data, self.position)
         value = Vector2(value[0], value[1])
         self.position = self.position + 8
         return value
@@ -222,7 +219,7 @@ class MessageReader:
         Vector3: Value
 
         """
-        value = unpack_from('<fff', self.data, self.position)
+        value = unpack_from("<fff", self.data, self.position)
         value = Vector3(value[0], value[1],  value[2])
         self.position = self.position + 12
         return value
@@ -234,7 +231,7 @@ class MessageReader:
         Quaternion: Value
 
         """
-        value = unpack_from('<ffff', self.data, self.position)
+        value = unpack_from("<ffff",  self.data, self.position)
         value = Quaternion(value[0], value[1],  value[2],  value[3])
         self.position = self.position + 16
         return value
@@ -246,7 +243,7 @@ class MessageReader:
         Point2: Value
 
         """
-        value = unpack_from('<ii', self.data, self.position)
+        value = unpack_from("<ii", self.data, self.position)
         value = Point2(value[0], value[1])
         self.position = self.position + 8
         return value
@@ -258,7 +255,7 @@ class MessageReader:
         Point3: Value
 
         """
-        value = unpack_from('<iii', self.data, self.position)
+        value = unpack_from("<iii", self.data, self.position)
         value = Point3(value[0], value[1], value[2])
         self.position = self.position + 12
         return value
@@ -270,7 +267,7 @@ class MessageReader:
         Vector3: Value
 
         """
-        value = unpack_from('<ddd', self.data, self.position)
+        value = unpack_from("<ddd", self.data, self.position)
         value = Vector3(value[0], value[1],  value[2])
         self.position = self.position + 24
         return value
@@ -286,10 +283,10 @@ class MessageReader:
 
         """
         if length < 0:
-            raise Exception('length < 0')
+            raise Exception("length < 0")
         value = self.data[self.position:self.position + length]
         if len(value) != length:
-            raise Exception('not enough remaining data')
+            raise Exception("not enough remaining data")
         self.position = self.position + length
         return value
 
@@ -306,7 +303,7 @@ class MessageReader:
 
         """
         if length < 0:
-            raise Exception('length < 0')
+            raise Exception("length < 0")
         buffer[offset:offset + length] = self.data[
             self.position:self.position + length]
         self.position = self.position + length
@@ -319,11 +316,11 @@ class MessageReader:
                            be set to the count of bytes to read.
 
         """
-        if message.length < 0:
-            raise Exception('length < 0')
-        message.data[0:message.length] = self.data[
-            self.position:self.position + message.length]
-        self.position = self.position + message.length
+        l = len(message.data)
+        if l == 0:
+            raise Exception("length < 0")
+        message.data = self.data[self.position:self.position + l]
+        self.position = self.position + l
 
     def __enter__(self: 'MessageReader') -> 'MessageReader':
         """Enter method for context manager support.

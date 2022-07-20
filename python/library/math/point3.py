@@ -193,7 +193,7 @@ class Point3:
         str: String
 
         """
-        return 'Point3({0},{1},{2})'.format(self.x, self.y, self.z)
+        return "Point3({0},{1},{2})".format(self.x, self.y, self.z)
 
     def __str__(self: 'Point3') -> str:
         """Readable string.
@@ -202,7 +202,7 @@ class Point3:
         str: String
 
         """
-        return 'Point3({0},{1},{2})'.format(self.x, self.y, self.z)
+        return "Point3({0},{1},{2})".format(self.x, self.y, self.z)
 
     def __getitem__(self: 'Point3', key: int) -> int:
         """Get component.

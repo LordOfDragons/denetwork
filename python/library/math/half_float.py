@@ -59,7 +59,7 @@ class HalfFloat:
         f16_mantissa_shift = (23 - f16_exponent_shift)
         f16_max_exponent = (f16_exponent_bits << f16_exponent_shift)
 
-        a = struct.pack('>f', value)
+        a = struct.pack(">f", value)
         b = binascii.hexlify(a)
 
         f32 = int(b, 16)
@@ -114,4 +114,4 @@ class HalfFloat:
         e = e + (127 - 15)
         f = f << 13
         i = int((s << 31) | (e << 23) | f)
-        return struct.unpack('>f', struct.pack('>I', i))[0]
+        return struct.unpack(">f", struct.pack(">I", i))[0]

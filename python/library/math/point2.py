@@ -189,7 +189,7 @@ class Point2:
         str: String
 
         """
-        return 'Point2({0},{1})'.format(self.x, self.y)
+        return "Point2({0},{1})".format(self.x, self.y)
 
     def __str__(self: 'Point2') -> str:
         """Readable string.
@@ -198,7 +198,7 @@ class Point2:
         str: String
 
         """
-        return 'Point2({0},{1})'.format(self.x, self.y)
+        return "Point2({0},{1})".format(self.x, self.y)
 
     def __getitem__(self: 'Point2', key: int) -> int:
         """Get component.

@@ -24,7 +24,7 @@
 
 """@package Drag[en]gine Network Library Python Module."""
 
-from typing import Optional
+from typing import Optional, List
 from enum import IntEnum
 from io import StringIO
 
@@ -60,7 +60,7 @@ class Address:
         """Port."""
 
     @classmethod
-    def ipv4(cls: 'Address', values: list, port: int) -> 'Address':
+    def ipv4(cls: 'Address', values: List[int], port: int) -> 'Address':
         """Create IPv4 address.
 
         The values represent the address values with 0 being the left
@@ -78,7 +78,7 @@ class Address:
         return address
 
     @classmethod
-    def ipv6(cls: 'Address', values: list, port: int) -> 'Address':
+    def ipv6(cls: 'Address', values: List[int], port: int) -> 'Address':
         """Create IPv6 address.
 
         The values represent the address values with 0 being the left
@@ -161,18 +161,8 @@ class Address:
         address.port = port
         return address
 
-    def __repr__(self: 'Address') -> str:
-        """Representing string (object information).
-
-        Return:
-        str: String
-
-        """
-        return 'Address({0}, {1}, {2})'.format(
-            self.type, self.values, self.port)
-
-    def __str__(self: 'Address') -> str:
-        """Readable string.
+    def host(self: 'Address') -> str:
+        """Host part of address in string form.
 
         Return:
         str: String
@@ -182,12 +172,10 @@ class Address:
         can_group_zeros = True
         s = StringIO()
 
-        if type == Address.Type.IPV4:
-            s.write('{0}.{1}.{2}.{3}:{4}'.format(
-                self.values[0], self.values[1], self.values[2],
-                self.values[3], self.port))
-        elif type == Address.Type.IPV6:
-            s.write('[')
+        if self.type == Address.Type.IPV4:
+            s.write("{0}.{1}.{2}.{3}".format(self.values[0],
+                    self.values[1], self.values[2], self.values[3]))
+        elif self.type == Address.Type.IPV6:
             for i in range(8):
                 a = self.values[i * 2]
                 b = self.values[i * 2 + 1]
@@ -197,7 +185,7 @@ class Address:
                     if grouping_zeros:
                         continue
                     elif can_group_zeros:
-                        s.write(':')
+                        s.write(":")
                         grouping_zeros = True
                         continue
                 elif grouping_zeros:
@@ -206,17 +194,39 @@ class Address:
 
                 # leading zeros can be truncated
                 if i > 0:
-                    s.write(':')
-                s.write('{0:x}'.format((a << 8) | b))
+                    s.write(":")
+                s.write("{0:x}".format((a << 8) | b))
 
             if grouping_zeros:
-                s.write(':')
-
-            s.write(']:{0}'.format(self.port))
+                s.write(":")
         else:
-            s.write('?')
+            raise Exception("invald type")
         s.seek(0)
         return s.read()
+
+    def __repr__(self: 'Address') -> str:
+        """Representing string (object information).
+
+        Return:
+        str: String
+
+        """
+        return "Address({0}, {1}, {2})".format(
+            self.type, self.host(), self.port)
+
+    def __str__(self: 'Address') -> str:
+        """Readable string.
+
+        Return:
+        str: String
+
+        """
+        if self.type == Address.Type.IPV4:
+            return "{0}:{1}".format(self.host(), self.port)
+        elif self.type == Address.Type.IPV6:
+            return "[{0}]:{1}".format(self.host(), self.port)
+        else:
+            raise Exception("invald type")
 
     def __eq__(self: 'Address', other: 'Address') -> bool:
         """Equals.

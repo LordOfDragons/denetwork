@@ -231,7 +231,7 @@ class Vector2:
         str: String
 
         """
-        return 'Vector2({0},{1})'.format(self.x, self.y)
+        return "Vector2({0},{1})".format(self.x, self.y)
 
     def __str__(self: 'Vector2') -> str:
         """Readable string.
@@ -240,7 +240,7 @@ class Vector2:
         str: String
 
         """
-        return 'Vector2({0:.3g},{1:.3g})'.format(self.x, self.y)
+        return "Vector2({0:.3g},{1:.3g})".format(self.x, self.y)
 
     def __getitem__(self: 'Vector2', key: int) -> float:
         """Get component.

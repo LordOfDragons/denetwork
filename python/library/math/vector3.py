@@ -237,7 +237,7 @@ class Vector3:
         str: String
 
         """
-        return 'Vector3({0},{1},{2})'.format(self.x, self.y, self.z)
+        return "Vector3({0},{1},{2})".format(self.x, self.y, self.z)
 
     def __str__(self: 'Vector3') -> str:
         """Readable string.
@@ -246,7 +246,7 @@ class Vector3:
         str: String
 
         """
-        return 'Vector3({0:.3g},{1:.3g},{2:.3g})'.format(
+        return "Vector3({0:.3g},{1:.3g},{2:.3g})".format(
                self.x, self.y, self.z)
 
     def __getitem__(self: 'Vector3', key: int) -> float:
