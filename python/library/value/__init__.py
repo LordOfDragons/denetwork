@@ -24,8 +24,7 @@
 
 """@package Drag[en]gine Network Library Python Module."""
 
-from .connection import Connection
-from . import math
-from . import message
-from . import endpoint
-from . import value
+from .value import Value
+from .data import ValueData
+from .value_float import ValueFloat
+from .value_int import ValueInt

@@ -31,7 +31,7 @@ from io import StringIO
 
 class Address:
 
-    """Endpoint address.
+    """Immutable endpoint address.
 
     Can be IPv4 or IPv6 address.
 
@@ -47,17 +47,43 @@ class Address:
         IPV6 = 1
         """IPv6."""
 
-    def __init__(self: 'Address') -> None:
+    def __init__(self: 'Address', address_type: 'Address._type',
+                 values: List[int], port: int) -> None:
         """Create address."""
 
-        self.type = Address.Type.IPV4
-        """Address type."""
+        self._type = address_type
+        self._values = tuple(values)
+        self._port = port
 
-        self.values = ()
-        """Address components."""
+    @property
+    def type(self: 'Address') -> 'Address._type':
+        """Address type.
 
-        self.port = 3413
-        """Port."""
+        Return:
+        Address._type: Address type.
+
+        """
+        return self._type
+
+    @property
+    def values(self: 'Address') -> List[int]:
+        """Address components.
+
+        Return:
+        List[int]: Address components.
+
+        """
+        return self._values
+
+    @property
+    def port(self: 'Address') -> int:
+        """Port.
+
+        Return:
+        int: Port.
+
+        """
+        return self._port
 
     @classmethod
     def ipv4(cls: 'Address', values: List[int], port: int) -> 'Address':
@@ -71,11 +97,7 @@ class Address:
 
         """
 
-        address = Address()
-        address.type = Address.Type.IPV4
-        address.values = tuple(values)
-        address.port = port
-        return address
+        return Address(Address.Type.IPV4, values, port)
 
     @classmethod
     def ipv6(cls: 'Address', values: List[int], port: int) -> 'Address':
@@ -89,11 +111,7 @@ class Address:
 
         """
 
-        address = Address()
-        address.type = Address.Type.IPV6
-        address.values = tuple(values)
-        address.port = port
-        return address
+        return Address(Address.Type.IPV6, values, port)
 
     @classmethod
     def ipv4_any(cls: 'Address') -> 'Address':
@@ -104,11 +122,7 @@ class Address:
 
         """
 
-        address = Address()
-        address.type = Address.Type.IPV4
-        address.values = tuple([0] * 4)
-        address.port = 0
-        return address
+        return Address(Address.Type.IPV4, [0] * 4, 0)
 
     @classmethod
     def ipv6_any(cls: 'Address') -> 'Address':
@@ -119,11 +133,7 @@ class Address:
 
         """
 
-        address = Address()
-        address.type = Address.Type.IPV6
-        address.values = tuple([0] * 16)
-        address.port = 0
-        return address
+        return Address(Address.Type.IPV6, [0] * 16, 0)
 
     @classmethod
     def ipv4_loopback(cls: 'Address', port: Optional[int] = 3413) -> 'Address':
@@ -137,11 +147,7 @@ class Address:
 
         """
 
-        address = Address()
-        address.type = Address.Type.IPV4
-        address.values = (127, 0, 0, 1)
-        address.port = port
-        return address
+        return Address(Address.Type.IPV4, (127, 0, 0, 1), port)
 
     @classmethod
     def ipv6_loopback(cls: 'Address', port: Optional[int] = 3413) -> 'Address':
@@ -155,12 +161,9 @@ class Address:
 
         """
 
-        address = Address()
-        address.type = Address.Type.IPV6
-        address.values = tuple([0] * 15 + [1])
-        address.port = port
-        return address
+        return Address(Address.Type.IPV6, [0] * 15 + [1], port)
 
+    @property
     def host(self: 'Address') -> str:
         """Host part of address in string form.
 
@@ -172,13 +175,13 @@ class Address:
         can_group_zeros = True
         s = StringIO()
 
-        if self.type == Address.Type.IPV4:
-            s.write("{0}.{1}.{2}.{3}".format(self.values[0],
-                    self.values[1], self.values[2], self.values[3]))
-        elif self.type == Address.Type.IPV6:
+        if self._type == Address.Type.IPV4:
+            s.write("{0}.{1}.{2}.{3}".format(self._values[0],
+                    self._values[1], self._values[2], self._values[3]))
+        elif self._type == Address.Type.IPV6:
             for i in range(8):
-                a = self.values[i * 2]
-                b = self.values[i * 2 + 1]
+                a = self._values[i * 2]
+                b = self._values[i * 2 + 1]
 
                 # groups of 0 can be truncated but only once
                 if not a and not b:
@@ -212,7 +215,7 @@ class Address:
 
         """
         return "Address({0}, {1}, {2})".format(
-            self.type, self.host(), self.port)
+            self._type, self.host, self._port)
 
     def __str__(self: 'Address') -> str:
         """Readable string.
@@ -221,10 +224,10 @@ class Address:
         str: String
 
         """
-        if self.type == Address.Type.IPV4:
-            return "{0}:{1}".format(self.host(), self.port)
-        elif self.type == Address.Type.IPV6:
-            return "[{0}]:{1}".format(self.host(), self.port)
+        if self._type == Address.Type.IPV4:
+            return "{0}:{1}".format(self.host, self._port)
+        elif self._type == Address.Type.IPV6:
+            return "[{0}]:{1}".format(self.host, self._port)
         else:
             raise Exception("invald type")
 
@@ -239,8 +242,8 @@ class Address:
 
         """
         if isinstance(other, Address):
-            return (self.type == other.type and self.values == other.values
-                    and self.port == other.port)
+            return (self._type == other._type and self._values == other._values
+                    and self._port == other._port)
         return NotImplemented
 
     def __ne__(self: 'Address',  other: 'Address') -> bool:
@@ -253,5 +256,5 @@ class Address:
         bool: Result.
 
         """
-        return (self.type != other.type or self.values != other.values
-                or self.port != other.port)
+        return (self._type != other._type or self._values != other._values
+                or self._port != other._port)

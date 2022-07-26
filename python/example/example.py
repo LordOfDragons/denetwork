@@ -75,12 +75,48 @@ for x in get_adapters():
 """
 
 class TestListener(dnl.endpoint.Endpoint.Listener):
-    def __init__(self):
+    def __init__(self, ep):
         dnl.endpoint.Endpoint.Listener.__init__(self)
+        self.ep = ep
     
     def received_datagram(self, address, message):
-        print("Received: '{0}'".format(message.data))
+        with dnl.message.MessageReader(message) as r:
+            print("Received: '{0}'".format(r.read_byte()))
+        asyncio.get_event_loop().create_task(self.disconnect())
+    
+    async def disconnect(self):
+        message = dnl.message.Message()
+        with dnl.message.MessageWriter(message) as w:
+            from DENetworkLibrary.protocol import CommandCodes
+            w.write_byte(CommandCodes.CONNECTION_CLOSE)
+        self.ep.send_datagram(dnl.endpoint.Address.ipv4_loopback(), message)
+        self.ep.close()
+
+print("public_address:")
+for a in dnl.endpoint.SocketEndpoint.find_public_address():
+    print("- {}".format(a))
+
+print("all address:")
+for a in dnl.endpoint.SocketEndpoint.find_all_address():
+    print("- {}".format(a))
 
 ep = dnl.endpoint.SocketEndpoint()
-ep.open(dnl.endpoint.Address.ipv4_loopback(), TestListener())
+
+print("resolve:", ep.resolve_address("google.ch"))
+
+ep.open(dnl.endpoint.Address.ipv4_any(), TestListener(ep))
+
+message = dnl.message.Message()
+with dnl.message.MessageWriter(message) as w:
+    from DENetworkLibrary.protocol import CommandCodes, Protocols
+    w.write_byte(CommandCodes.CONNECTION_REQUEST)
+    w.write_ushort(1)
+    w.write_ushort(Protocols.DENETWORK_PROTOCOL)
+ep.send_datagram(dnl.endpoint.Address.ipv4_loopback(), message)
+
+import asyncio
+while ep._transport:
+    asyncio.get_event_loop().run_until_complete(asyncio.sleep(0.01))
+
+print("dispose socket")
 ep.dispose()

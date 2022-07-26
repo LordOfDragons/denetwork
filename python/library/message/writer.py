@@ -56,8 +56,28 @@ class MessageWriter:
     def __init__(self: 'MessageWriter',  message: Message) -> None:
         """Create message writer."""
 
-        self.message = message
-        self.data = bytearray()
+        self._message = message
+        self._data = bytearray()
+
+    @property
+    def message(self: 'MessageWriter') -> Message:
+        """Message reading from.
+
+        Return:
+        Message: Message.
+
+        """
+        return self._message
+
+    @property
+    def data(self: 'MessageWriter') -> bytearray:
+        """Data writing to.
+
+        Return:
+        bytearray: Data.
+
+        """
+        return self._data
 
     def write_char(self: 'MessageWriter', value: int) -> None:
         """Write value.
@@ -66,7 +86,7 @@ class MessageWriter:
         value (int): Value
 
         """
-        self.data += pack("<b", value)
+        self._data += pack("<b", value)
 
     def write_byte(self: 'MessageWriter', value: int) -> None:
         """Write value.
@@ -75,7 +95,7 @@ class MessageWriter:
         value (int): Value
 
         """
-        self.data += pack("<B", value)
+        self._data += pack("<B", value)
 
     def write_short(self: 'MessageWriter', value: int) -> None:
         """Write value.
@@ -84,7 +104,7 @@ class MessageWriter:
         value (int): Value
 
         """
-        self.data += pack("<h", value)
+        self._data += pack("<h", value)
 
     def write_ushort(self: 'MessageWriter', value: int) -> None:
         """Write value.
@@ -93,7 +113,7 @@ class MessageWriter:
         value (int): Value
 
         """
-        self.data += pack("<H", value)
+        self._data += pack("<H", value)
 
     def write_int(self: 'MessageWriter', value: int) -> None:
         """Write value.
@@ -102,7 +122,7 @@ class MessageWriter:
         value (int): Value
 
         """
-        self.data += pack("<i", value)
+        self._data += pack("<i", value)
 
     def write_uint(self: 'MessageWriter', value: int) -> None:
         """Write value.
@@ -111,7 +131,7 @@ class MessageWriter:
         value (int): Value
 
         """
-        self.data += pack("<I", value)
+        self._data += pack("<I", value)
 
     def write_long(self: 'MessageWriter', value: int) -> None:
         """Write value.
@@ -120,7 +140,7 @@ class MessageWriter:
         value (int): Value
 
         """
-        self.data += pack("<q", value)
+        self._data += pack("<q", value)
 
     def write_ulong(self: 'MessageWriter', value: int) -> None:
         """Write value.
@@ -129,7 +149,7 @@ class MessageWriter:
         value (int): Value
 
         """
-        self.data += pack("<Q", value)
+        self._data += pack("<Q", value)
 
     def write_float(self: 'MessageWriter', value: float) -> None:
         """Write value.
@@ -138,7 +158,7 @@ class MessageWriter:
         value (float): Value
 
         """
-        self.data += pack("<f", value)
+        self._data += pack("<f", value)
 
     def write_double(self: 'MessageWriter', value: float) -> None:
         """Write value.
@@ -147,7 +167,7 @@ class MessageWriter:
         value (float): Value
 
         """
-        self.data += pack("<d", value)
+        self._data += pack("<d", value)
 
     def write_string8(self: 'MessageWriter', value: str) -> None:
         """Write value.
@@ -160,8 +180,8 @@ class MessageWriter:
         length = len(data)
         if length > 255:
             raise Exception("encoded string too long")
-        self.data += pack("<B", length)
-        self.data += data
+        self._data += pack("<B", length)
+        self._data += data
 
     def write_string16(self: 'MessageWriter', value: str) -> None:
         """Write value.
@@ -174,8 +194,8 @@ class MessageWriter:
         length = len(data)
         if length > 65535:
             raise Exception("encoded string too long")
-        self.data += pack("<H", length)
-        self.data += data
+        self._data += pack("<H", length)
+        self._data += data
 
     def write_vector2(self: 'MessageWriter', value: Vector2) -> None:
         """Write value.
@@ -184,7 +204,7 @@ class MessageWriter:
         value (Vector2): Value
 
         """
-        self.data += pack("<ff", value.x,  value.y)
+        self._data += pack("<ff", value.x,  value.y)
 
     def write_vector3(self: 'MessageWriter', value: Vector3) -> None:
         """Write value.
@@ -193,7 +213,7 @@ class MessageWriter:
         value (Vector3): Value
 
         """
-        self.data += pack("<fff", value.x,  value.y,  value.z)
+        self._data += pack("<fff", value.x,  value.y,  value.z)
 
     def write_quaternion(self: 'MessageWriter', value: Quaternion) -> None:
         """Write value.
@@ -202,7 +222,7 @@ class MessageWriter:
         value (Quaternion): Value
 
         """
-        self.data += pack("<ffff", value.x,  value.y,  value.z,  value.w)
+        self._data += pack("<ffff", value.x,  value.y,  value.z,  value.w)
 
     def write_point2(self: 'MessageWriter', value: Point2) -> None:
         """Write value.
@@ -211,7 +231,7 @@ class MessageWriter:
         value (Point2): Value
 
         """
-        self.data += pack("<ii", value.x,  value.y)
+        self._data += pack("<ii", value.x,  value.y)
 
     def write_point3(self: 'MessageWriter', value: Point3) -> None:
         """Write value.
@@ -220,7 +240,7 @@ class MessageWriter:
         value (Point3): Value
 
         """
-        self.data += pack("<iii", value.x,  value.y, value.z)
+        self._data += pack("<iii", value.x,  value.y, value.z)
 
     def write_dvector(self: 'MessageWriter', value: Vector3) -> None:
         """Write value.
@@ -229,7 +249,7 @@ class MessageWriter:
         value (Vector3): Value
 
         """
-        self.data += pack("<ddd", value.x,  value.y,  value.z)
+        self._data += pack("<ddd", value.x,  value.y,  value.z)
 
     def write(self: 'MessageWriter',
               buffer: str,
@@ -250,7 +270,7 @@ class MessageWriter:
         data = buffer[offset:offset + length]
         if len(data) != length:
             raise Exception("length mismatch")
-        self.data += data
+        self._data += data
 
     def write_message(self: 'MessageWriter', message: Message) -> None:
         """Write message.
@@ -259,12 +279,12 @@ class MessageWriter:
         message (Message): Message to write.
 
         """
-        self.data += message.data
+        self._data += message.data
 
     def close(self: 'MessageWriter') -> None:
         """Close writer updating message."""
 
-        self.message.data = self.data
+        self._message.data = self._data
 
     def __enter__(self: 'MessageWriter') -> 'MessageWriter':
         """Enter method for context manager support.

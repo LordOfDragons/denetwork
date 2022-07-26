@@ -37,11 +37,28 @@ class Vector2:
                  y: Optional[float] = 0.0) -> None:
         """Create vector."""
 
-        self.x = x
-        """X component."""
+        self._x = x
+        self._y = y
 
-        self.y = y
-        """Y component."""
+    @property
+    def x(self: 'Vector2') -> float:
+        """X component.
+
+        Return:
+        float: X component.
+
+        """
+        return self._x
+
+    @property
+    def y(self: 'Vector2') -> float:
+        """Y component.
+
+        Return:
+        float: Y component.
+
+        """
+        return self._y
 
     def equals(self: 'Vector2',
                other: 'Vector2',
@@ -56,8 +73,8 @@ class Vector2:
         bool: Result
 
         """
-        return (fabs(self.x - other.x) <= threshold
-                and fabs(self.y - other.y) <= threshold)
+        return (fabs(self._x - other._x) <= threshold
+                and fabs(self._y - other._y) <= threshold)
 
     def differs(self: 'Vector2',
                 other: 'Vector2',
@@ -72,8 +89,8 @@ class Vector2:
         bool: Result
 
         """
-        return (fabs(self.x - other.x) > threshold
-                or fabs(self.y - other.y) > threshold)
+        return (fabs(self._x - other._x) > threshold
+                or fabs(self._y - other._y) > threshold)
 
     def __eq__(self: 'Vector2', other: 'Vector2') -> bool:
         """Equals.
@@ -111,7 +128,7 @@ class Vector2:
         bool: Result.
 
         """
-        return self.x < other.x and self.y < other.y
+        return self._x < other._x and self._y < other._y
 
     def __le__(self: 'Vector2', other: 'Vector2') -> bool:
         """Less than or equal.
@@ -123,7 +140,7 @@ class Vector2:
         bool: Result.
 
         """
-        return self.x <= other.x and self.y <= other.y
+        return self._x <= other._x and self._y <= other._y
 
     def __gt__(self: 'Vector2', other: 'Vector2') -> bool:
         """Greater than.
@@ -135,7 +152,7 @@ class Vector2:
         bool: Result.
 
         """
-        return self.x > other.x and self.y > other.y
+        return self._x > other._x and self._y > other._y
 
     def __ge__(self: 'Vector2', other: 'Vector2') -> bool:
         """Greater than or equal.
@@ -147,7 +164,7 @@ class Vector2:
         bool: Result.
 
         """
-        return self.x >= other.x and self.y >= other.y
+        return self._x >= other._x and self._y >= other._y
 
     def __abs__(self: 'Vector2') -> 'Vector2':
         """Absolute.
@@ -156,7 +173,7 @@ class Vector2:
         Vector2: Result.
 
         """
-        return Vector2(fabs(self.x), fabs(self.y))
+        return Vector2(fabs(self._x), fabs(self._y))
 
     def __add__(self: 'Vector2', other: 'Vector2') -> 'Vector2':
         """Add.
@@ -168,7 +185,7 @@ class Vector2:
         Vector2: Result.
 
         """
-        return Vector2(self.x + other.x, self.y + other.y)
+        return Vector2(self._x + other._x, self._y + other._y)
 
     def __sub__(self: 'Vector2', other: 'Vector2') -> 'Vector2':
         """Subtract.
@@ -180,7 +197,7 @@ class Vector2:
         Vector2: Result.
 
         """
-        return Vector2(self.x - other.x, self.y - other.y)
+        return Vector2(self._x - other._x, self._y - other._y)
 
     def __mul__(self: 'Vector2', scale: float) -> 'Vector2':
         """Multiply.
@@ -192,7 +209,7 @@ class Vector2:
         Vector2: Result.
 
         """
-        return Vector2(self.x * scale, self.y * scale)
+        return Vector2(self._x * scale, self._y * scale)
 
     def __div__(self: 'Vector2', divisor: float) -> 'Vector2':
         """Multiply.
@@ -204,7 +221,7 @@ class Vector2:
         Vector2: Result.
 
         """
-        return Vector2(self.x / divisor, self.y / divisor)
+        return Vector2(self._x / divisor, self._y / divisor)
 
     def __neg__(self: 'Vector2') -> 'Vector2':
         """Negate.
@@ -213,7 +230,7 @@ class Vector2:
         Vector2: Result.
 
         """
-        return Vector2(-self.x, -self.y)
+        return Vector2(-self._x, -self._y)
 
     def __hash__(self: 'Vector2') -> int:
         """Hash.
@@ -222,7 +239,7 @@ class Vector2:
         int: Hash
 
         """
-        return hash((self.x, self.y))
+        return hash((self._x, self._y))
 
     def __repr__(self: 'Vector2') -> str:
         """Representing string (object information).
@@ -231,7 +248,7 @@ class Vector2:
         str: String
 
         """
-        return "Vector2({0},{1})".format(self.x, self.y)
+        return "Vector2({0},{1})".format(self._x, self._y)
 
     def __str__(self: 'Vector2') -> str:
         """Readable string.
@@ -240,7 +257,7 @@ class Vector2:
         str: String
 
         """
-        return "Vector2({0:.3g},{1:.3g})".format(self.x, self.y)
+        return "Vector2({0:.3g},{1:.3g})".format(self._x, self._y)
 
     def __getitem__(self: 'Vector2', key: int) -> float:
         """Get component.
@@ -253,23 +270,8 @@ class Vector2:
 
         """
         if key == 0:
-            return self.x
+            return self._x
         elif key == 1:
-            return self.y
-        else:
-            raise KeyError()
-
-    def __setitem__(self: 'Vector2', key: int,  value: float) -> None:
-        """Set component.
-
-        Parameters:
-        key (int): Index of component to modify (0=x, 1=y).
-        value (float): Value to set.
-
-        """
-        if key == 0:
-            self.x = value
-        elif key == 1:
-            self.y = value
+            return self._y
         else:
             raise KeyError()

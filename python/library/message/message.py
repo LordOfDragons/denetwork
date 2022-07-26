@@ -25,16 +25,17 @@
 """@package Drag[en]gine Network Library Python Module."""
 
 from datetime import datetime, timezone
+from typing import Optional
 
 
 class Message:
 
     """Network message."""
 
-    def __init__(self: 'Message') -> None:
+    def __init__(self: 'Message', data: Optional[bytearray] = None) -> None:
         """Create message."""
 
-        self.data = bytearray(0)
+        self.data = data if data is not None else bytearray(0)
         """Message data."""
 
         self.timestamp = datetime.now(timezone.utc)

@@ -36,11 +36,28 @@ class Point2:
                  y: Optional[int] = 0) -> None:
         """Create point."""
 
-        self.x = x
-        """X component."""
+        self._x = x
+        self._y = y
 
-        self.y = y
-        """Y component."""
+    @property
+    def x(self: 'Point2') -> int:
+        """X component.
+
+        Return:
+        int: X component.
+
+        """
+        return self._x
+
+    @property
+    def y(self: 'Point2') -> int:
+        """Y component.
+
+        Return:
+        int: Y component.
+
+        """
+        return self._y
 
     def __eq__(self: 'Point2', other: 'Point2') -> bool:
         """Equals.
@@ -53,7 +70,7 @@ class Point2:
 
         """
         if isinstance(other, Point2):
-            return (self.x, self.y) == (other.x, other.y)
+            return (self._x, self._y) == (other._x, other._y)
         return NotImplemented
 
     def __ne__(self: 'Point2',  other: 'Point2') -> bool:
@@ -66,7 +83,7 @@ class Point2:
         bool: Result.
 
         """
-        return (self.x, self.y) != (other.x, other.y)
+        return (self._x, self._y) != (other._x, other._y)
 
     def __lt__(self: 'Point2',  other: 'Point2') -> bool:
         """Less than.
@@ -78,7 +95,7 @@ class Point2:
         bool: Result.
 
         """
-        return self.x < other.x and self.y < other.y
+        return self._x < other._x and self._y < other._y
 
     def __le__(self: 'Point2', other: 'Point2') -> bool:
         """Less than or equal.
@@ -90,7 +107,7 @@ class Point2:
         bool: Result.
 
         """
-        return self.x <= other.x and self.y <= other.y
+        return self._x <= other._x and self._y <= other._y
 
     def __gt__(self: 'Point2', other: 'Point2') -> bool:
         """Greater than.
@@ -102,7 +119,7 @@ class Point2:
         bool: Result.
 
         """
-        return self.x > other.x and self.y > other.y
+        return self._x > other._x and self._y > other._y
 
     def __ge__(self: 'Point2', other: 'Point2') -> bool:
         """Greater than or equal.
@@ -114,7 +131,7 @@ class Point2:
         bool: Result.
 
         """
-        return self.x >= other.x and self.y >= other.y
+        return self._x >= other._x and self._y >= other._y
 
     def __add__(self: 'Point2', other: 'Point2') -> 'Point2':
         """Add.
@@ -126,7 +143,7 @@ class Point2:
         Point2: Result.
 
         """
-        return Point2(self.x + other.x, self.y + other.y)
+        return Point2(self._x + other._x, self._y + other._y)
 
     def __sub__(self: 'Point2', other: 'Point2') -> 'Point2':
         """Subtract.
@@ -138,7 +155,7 @@ class Point2:
         Point2: Result.
 
         """
-        return Point2(self.x - other.x, self.y - other.y)
+        return Point2(self._x - other._x, self._y - other._y)
 
     def __mul__(self: 'Point2', scale: float) -> 'Point2':
         """Multiply.
@@ -150,7 +167,7 @@ class Point2:
         Point2: Result.
 
         """
-        return Point2(self.x * scale, self.y * scale)
+        return Point2(self._x * scale, self._y * scale)
 
     def __div__(self: 'Point2', divisor: float) -> 'Point2':
         """Multiply.
@@ -162,7 +179,7 @@ class Point2:
         Point2: Result.
 
         """
-        return Point2(self.x / divisor, self.y / divisor)
+        return Point2(self._x / divisor, self._y / divisor)
 
     def __neg__(self: 'Point2') -> 'Point2':
         """Negate.
@@ -171,7 +188,7 @@ class Point2:
         Point2: Result.
 
         """
-        return Point2(-self.x, -self.y)
+        return Point2(-self._x, -self._y)
 
     def __hash__(self: 'Point2') -> int:
         """Hash.
@@ -180,7 +197,7 @@ class Point2:
         int: Hash
 
         """
-        return hash((self.x, self.y))
+        return hash((self._x, self._y))
 
     def __repr__(self: 'Point2') -> str:
         """Representing string (object information).
@@ -189,7 +206,7 @@ class Point2:
         str: String
 
         """
-        return "Point2({0},{1})".format(self.x, self.y)
+        return "Point2({0},{1})".format(self._x, self._y)
 
     def __str__(self: 'Point2') -> str:
         """Readable string.
@@ -198,7 +215,7 @@ class Point2:
         str: String
 
         """
-        return "Point2({0},{1})".format(self.x, self.y)
+        return "Point2({0},{1})".format(self._x, self._y)
 
     def __getitem__(self: 'Point2', key: int) -> int:
         """Get component.
@@ -211,23 +228,8 @@ class Point2:
 
         """
         if key == 0:
-            return self.x
+            return self._x
         elif key == 1:
-            return self.y
-        else:
-            raise KeyError()
-
-    def __setitem__(self: 'Point2', key: int,  value: int) -> None:
-        """Set component.
-
-        Parameters:
-        key (int): Index of component to modify (0=x, 1=y).
-        value (int): Value to set.
-
-        """
-        if key == 0:
-            self.x = value
-        elif key == 1:
-            self.y = value
+            return self._y
         else:
             raise KeyError()
