@@ -90,7 +90,7 @@ class TestListener(dnl.endpoint.Endpoint.Listener):
         message = dnl.message.Message()
         with dnl.message.MessageWriter(message) as w:
             from DENetworkLibrary.protocol import CommandCodes
-            w.write_byte(CommandCodes.CONNECTION_CLOSE)
+            w.write_byte(CommandCodes.CONNECTION_CLOSE.value)
         self.ep.send_datagram(dnl.endpoint.Address.ipv4_loopback(), message)
         self.ep.close()
 
@@ -111,9 +111,9 @@ ep.open(dnl.endpoint.Address.ipv4_any(), TestListener(ep))
 message = dnl.message.Message()
 with dnl.message.MessageWriter(message) as w:
     from DENetworkLibrary.protocol import CommandCodes, Protocols
-    w.write_byte(CommandCodes.CONNECTION_REQUEST)
+    w.write_byte(CommandCodes.CONNECTION_REQUEST.value)
     w.write_ushort(1)
-    w.write_ushort(Protocols.DENETWORK_PROTOCOL)
+    w.write_ushort(Protocols.DENETWORK_PROTOCOL.value)
 ep.send_datagram(dnl.endpoint.Address.ipv4_loopback(), message)
 
 import asyncio

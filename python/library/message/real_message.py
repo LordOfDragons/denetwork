@@ -24,9 +24,45 @@
 
 """@package Drag[en]gine Network Library Python Module."""
 
-from .connection import Connection
-from . import math
-from . import message
-from . import endpoint
-from . import value
-from . import state
+from .message import Message
+from ..protocol import CommandCodes
+from enum import IntEnum
+
+
+class RealMessage:
+
+    """Real message."""
+
+    class State(IntEnum):
+
+        """Message state."""
+
+        PENDING = 0
+        """Message is pending to be send."""
+
+        SEND = 1
+        """Message has been send awaiting ack."""
+
+        DONE = 2
+        """Message is done."""
+
+    def __init__(self: 'RealMessage') -> None:
+        """Create message."""
+
+        self.message = Message()
+        """Message."""
+
+        self.number = -1
+        """Number."""
+
+        self.state = RealMessage.State.PENDING
+        """State."""
+
+        self.type = CommandCodes.RELIABLE_MESSAGE
+        """Type."""
+
+        self.elapsed_resend = 0.0
+        """Elapsed time for resending."""
+
+        self.elapsed_timeout = 0.0
+        """Elapsed time for timeout."""

@@ -116,7 +116,7 @@ public class State {
 			value.remoteValueChanged();
 		}
 
-		return i == count;
+		return true;
 	}
 
 	/**
@@ -194,7 +194,9 @@ public class State {
 	 */
 	private void invalidateValueAtExcept(int index, StateLink link) {
 		for (StateLink each : links) {
-			each.setValueChangedAt(index, each != link);
+			if (each != link) {
+				each.setValueChangedAt(index, true);
+			}
 		}
 	}
 
