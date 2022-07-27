@@ -25,7 +25,7 @@
 """@package Drag[en]gine Network Library Python Module."""
 
 from ..connection import Connection
-from enum import IntEnum
+from enum import IntEnum, auto
 
 """
 from .state import State
@@ -41,13 +41,13 @@ class StateLink:
 
         """Link state."""
 
-        DOWN = 0
+        DOWN = auto()
         """Link down."""
 
-        LISTENING = 1
+        LISTENING = auto()
         """Link listening."""
 
-        UP = 2
+        UP = auto()
         """Link up."""
 
     def __init__(self: 'StateLink', connection: Connection,

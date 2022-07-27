@@ -24,8 +24,17 @@
 
 """@package Drag[en]gine Network Library Python Module."""
 
-from typing import Optional, List
+from typing import List, Deque
+from .connection import Connection
 from .endpoint.socket import SocketEndpoint
+from .endpoint.address import Address
+from .message.message import Message
+from .message.reader import MessageReader
+from .message.writer import MessageWriter
+from .endpoint.endpoint import Endpoint
+from .protocol import CommandCodes, ConnectionAck, Protocols
+from collections import deque
+import logging
 
 
 class Server:
@@ -55,7 +64,87 @@ class Server:
 
     def __init__(self: 'Server') -> None:
         """Create server."""
-        print('Create Server')
+
+        self._address = None
+        self._endpoint = None
+        self._listening = False
+        self._connections = deque()
+
+    def dispose(self: 'Server') -> None:
+        """Dispose of server."""
+        self.stop_listening()
+
+    @property
+    def address(self: 'Server') -> str:
+        """Address.
+
+        Return:
+        str: Address.
+
+        """
+        return self._address
+
+    @property
+    def listening(self: 'Server') -> bool:
+        """Server is listening for connections.
+
+        Return:
+        bool: Listening.
+
+        """
+        return self._listening
+
+    def listen_on(self: 'Server', address: str) -> None:
+        """Start listening on address for incoming connections.
+
+        Parameters:
+        address (str): address Address is in the format "hostnameOrIP" or
+                       "hostnameOrIP:port". You can use a resolvable hostname
+                       or an IPv4. If the port is not specified the default
+                       port 3413 is used. You can use any port you you like.
+
+        """
+        if self._listening:
+            raise Exception("Already listening")
+
+        use_address = address
+        if use_address == "*":
+            addrs = self.find_public_address()
+            if addrs:
+                logging.info("Found public address: {0}",  ", ".join(addrs))
+                use_address = addrs[0]
+            else:
+                logging.info("No public address found. Using localhost")
+                use_address = "127.0.0.1"
+
+        self._endpoint = self.create_endpoint()
+        self._endpoint.open(self.resolve_address(use_address), self)
+
+        logging.info("Server: Listening on {0}", self.endpoint.address)
+        self._listening = True
+
+    def stop_listening(self: 'Server') -> None:
+        """Stop listening."""
+        if self._listening:
+            for connection in list(self._connections):
+                connection.dispose()
+            del self._connections[:]
+            if self._endpoint is not None:
+                self._endpoint.dispose()
+                self._endpoint = None
+            self._listening = False
+
+    @property
+    def connections(self: 'Server') -> Deque[Connection]:
+        """Connections.
+
+        Do not modify the linked list. Use it read only.
+
+        Return:
+        Deque[Connection]: Connections.
+
+        """
+        return self._connections
 
     def find_public_address(self: 'Server') -> List[str]:
         """Find public addresses.
@@ -84,3 +173,106 @@ class Server:
 
         """
         return SocketEndpoint.resolve_address(address)
+
+    def received_datagram(self: 'Server', message: Message) -> None:
+        """Datagram received.
+
+        Parameters:
+        message (Message): Message.
+
+        """
+        connection = None
+        try:
+            reader = MessageReader(message)
+            connection = next((c for c in self._connections if
+                              c.matches(self._endpoint, self._address)), None)
+            if connection is not None:
+                connection.process_datagram(reader)
+            else:
+                command = CommandCodes(reader.read_byte())
+                if command == CommandCodes.CONNECTION_REQUEST:
+                    self._process_connection_request(self._address, reader)
+                """else: ignore invalid package"""
+        except Exception:
+            logging.exception("failed processing received datagra")
+
+    def create_connection(self: 'Server') -> Connection:
+        """Create connection for each connecting client.
+
+        Overwrite this method to create an instance of a custom subclass of
+        Connection handling the client.
+
+        Default implementation creates instance of Connection.
+
+        Return:
+        Connection: Connection.
+
+        """
+        return Connection()
+
+    def create_endpoint(self: 'Server') -> Endpoint:
+        """Create endpoint.
+
+        Default implementation creates an instance of DatagramChannelEndpoint
+        which is a UDP socket. If you have to accept clients using a different
+        transportation method overwrite method to create an instance of a class
+        implementing Endpoint interface providing the required capabilities.
+
+        Return:
+        Endpoint: Endpoint.
+
+        """
+        return SocketEndpoint()
+
+    def client_connected(self: 'Server', connection: Connection) -> None:
+        """Client connected.
+
+        Overwrite to communicate with a connecting client to link states
+        and exchange messages.
+
+        Parameters:
+        connection (Connection): Connection of connecting client.
+
+        """
+        pass
+
+    def _process_connection_request(self: 'Server', address: Address,
+                                    reader: MessageReader) -> None:
+        """Process connection request."""
+        if not self._listening:
+            message = Message()
+            with MessageWriter(message) as w:
+                w.write_byte(CommandCodes.CONNECTION_ACK.value)
+                w.write_byte(ConnectionAck.REJECTED.value)
+            self._endpoint.send_datagram(address, message)
+            return
+
+        """find best protocol to speak"""
+        count = reader.read_ushort()
+        client_protocols = [reader.read_ushort() for i in range(count)]
+
+        if Protocols.DENETWORK_PROTOCOL.value not in client_protocols:
+            message = Message()
+            with MessageWriter(message) as w:
+                w.write_byte(CommandCodes.CONNECTION_ACK.value)
+                w.write_byte(ConnectionAck.NO_COMMON_PROTOCOL.value)
+            self._endpoint.send_datagram(address, message)
+            return
+
+        protocol = Protocols.DENETWORK_PROTOCOL
+
+        """create connection"""
+        connection = self.create_connection()
+        connection.accept_connection(self, self._endpoint, address, protocol)
+        self._cconnections.append(connection)
+
+        """send back result"""
+        message = Message()
+        with MessageWriter(message) as w:
+            w.write_byte(CommandCodes.CONNECTION_ACK.value)
+            w.write_byte(ConnectionAck.ACCEPTED.value)
+            w.write_ushort(protocol.value)
+        self._endpoint.send_datagram(address, message)
+
+        logging.info("Server: Client connected from {0}", address)
+        self.client_connected(connection)

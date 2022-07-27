@@ -28,7 +28,7 @@ from ..protocol import ValueTypes
 from ..message.reader import MessageReader
 from ..message.writer import MessageWriter
 from abc import ABC, abstractmethod
-from enum import IntEnum
+from enum import IntEnum, auto
 
 
 class Value(ABC):
@@ -39,31 +39,31 @@ class Value(ABC):
 
         """Value type."""
 
-        INTEGER = 0
+        INTEGER = auto()
         """Integer."""
 
-        FLOAT = 1
+        FLOAT = auto()
         """Floating point."""
 
-        STRING = 2
+        STRING = auto()
         """String of arbitrary length."""
 
-        DATA = 3
+        DATA = auto()
         """Byte data of arbitrary length."""
 
-        POINT2 = 4
+        POINT2 = auto()
         """2 component integer point."""
 
-        POINT3 = 5
+        POINT3 = auto()
         """3 component integer point."""
 
-        VECTOR2 = 6
+        VECTOR2 = auto()
         """2 component float vector."""
 
-        VECTOR3 = 7
+        VECTOR3 = auto()
         """3 component float vector."""
 
-        QUATERNION = 8
+        QUATERNION = auto()
         """4 component float quaternoion."""
 
     def __init__(self: 'Value', value_type: 'Value.Type',

@@ -29,7 +29,7 @@ from ..message.reader import MessageReader
 from ..message.writer import MessageWriter
 from ..math.half_float import HalfFloat
 from .value import Value
-from enum import IntEnum
+from enum import IntEnum, auto
 
 
 class ValueFloat(Value):
@@ -40,13 +40,13 @@ class ValueFloat(Value):
 
         """Value type."""
 
-        FLOAT16 = 0
+        FLOAT16 = auto()
         """16-Bit float."""
 
-        FLOAT32 = 1
+        FLOAT32 = auto()
         """32-Bit float."""
 
-        FLOAT64 = 2
+        FLOAT64 = auto()
         """64-Bit float."""
 
     def __init__(self: 'ValueFloat',

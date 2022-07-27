@@ -28,7 +28,7 @@ from ..protocol import ValueTypes
 from ..message.reader import MessageReader
 from ..message.writer import MessageWriter
 from .value import Value
-from enum import IntEnum
+from enum import IntEnum, auto
 
 
 class ValueInt(Value):
@@ -39,28 +39,28 @@ class ValueInt(Value):
 
         """Value type."""
 
-        SINT8 = 0
+        SINT8 = auto()
         """8-Bit signed integer."""
 
-        UINT8 = 1
+        UINT8 = auto()
         """8-Bit unsigned integer."""
 
-        SINT16 = 2
+        SINT16 = auto()
         """16-Bit signed integer."""
 
-        UINT16 = 3
+        UINT16 = auto()
         """16-Bit unsigned integer."""
 
-        SINT32 = 4
+        SINT32 = auto()
         """32-Bit signed integer."""
 
-        UINT32 = 5
+        UINT32 = auto()
         """32-Bit unsigned integer."""
 
-        SINT64 = 6
+        SINT64 = auto()
         """64-Bit signed integer."""
 
-        UINT64 = 7
+        UINT64 = auto()
         """64-Bit unsigned integer."""
 
     def __init__(self: 'ValueInt',
