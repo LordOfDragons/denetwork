@@ -50,6 +50,8 @@ print(dnl.math.Vector2(5, 2) < dnl.math.Vector2(1, 1) + dnl.math.Vector2(6, 2))
 print(dnl.math.Vector3(8, 5, 7))
 print(dnl.math.Vector3())
 print(dnl.math.Vector3(5, 2, 3) < dnl.math.Vector3(1, 1, 2) + dnl.math.Vector3(6, 2, 2))
+for x in dnl.math.Vector3(5, 2, 3):
+    print(x)
 
 print(dnl.math.Quaternion(8, 5, 7))
 print(dnl.math.Quaternion())

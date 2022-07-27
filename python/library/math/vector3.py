@@ -24,7 +24,7 @@
 
 """@package Drag[en]gine Network Library Python Module."""
 
-from typing import Optional
+from typing import Optional, Iterator
 from math import fabs
 
 
@@ -296,3 +296,21 @@ class Vector3:
             return self._z
         else:
             raise KeyError()
+
+    def __len__(self: 'Vector3') -> int:
+        """Lenght of vector.
+
+        Return:
+        int: Length
+
+        """
+        return 3
+
+    def __iter__(self: 'Vector3') -> Iterator[float]:
+        """Iterator.
+
+        Return:
+        Iterator: Iterator.
+
+        """
+        return iter((self._x,  self._y,  self._z))

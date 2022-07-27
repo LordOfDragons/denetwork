@@ -28,3 +28,9 @@ from .value import Value
 from .data import ValueData
 from .value_float import ValueFloat
 from .value_int import ValueInt
+from .value_point2 import ValuePoint2
+from .value_point3 import ValuePoint3
+from .value_vector2 import ValueVector2
+from .value_vector3 import ValueVector3
+from .value_quaternion import ValueQuaternion
+from .value_string import ValueString

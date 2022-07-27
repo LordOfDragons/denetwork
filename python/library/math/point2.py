@@ -24,7 +24,7 @@
 
 """@package Drag[en]gine Network Library Python Module."""
 
-from typing import Optional
+from typing import Optional, Iterator
 
 
 class Point2:
@@ -233,3 +233,21 @@ class Point2:
             return self._y
         else:
             raise KeyError()
+
+    def __len__(self: 'Point2') -> int:
+        """Lenght of point.
+
+        Return:
+        int: Length
+
+        """
+        return 2
+
+    def __iter__(self: 'Point2') -> Iterator[int]:
+        """Iterator.
+
+        Return:
+        Iterator: Iterator.
+
+        """
+        return iter((self._x,  self._y))

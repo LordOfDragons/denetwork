@@ -24,7 +24,7 @@
 
 """@package Drag[en]gine Network Library Python Module."""
 
-from typing import Optional
+from typing import Optional, Iterator
 from math import fabs
 
 
@@ -318,3 +318,21 @@ class Quaternion:
             return self._w
         else:
             raise KeyError()
+
+    def __len__(self: 'Quaternion') -> int:
+        """Lenght of vector.
+
+        Return:
+        int: Length
+
+        """
+        return 4
+
+    def __iter__(self: 'Quaternion') -> Iterator[float]:
+        """Iterator.
+
+        Return:
+        Iterator: Iterator.
+
+        """
+        return iter((self._x,  self._y,  self._z,  self._w))
