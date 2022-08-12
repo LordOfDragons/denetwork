@@ -38,6 +38,11 @@ jobs:
         id: date
         run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
       
+      - name: Update git tag
+        run: |
+          git tag -f nightly
+          git push -f origin nightly
+      
       - name: Upload Artifacts
         uses: ncipollo/release-action@v1
         with:
