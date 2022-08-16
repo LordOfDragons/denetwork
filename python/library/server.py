@@ -37,7 +37,7 @@ from collections import deque
 import logging
 
 
-class Server:
+class Server(Endpoint.Listener):
 
     """Network server.
 
@@ -65,6 +65,7 @@ class Server:
     def __init__(self: 'Server') -> None:
         """Create server."""
 
+        Endpoint.Listener.__init__(self)
         self._address = None
         self._endpoint = None
         self._listening = False
@@ -146,34 +147,6 @@ class Server:
         """
         return self._connections
 
-    def find_public_address(self: 'Server') -> List[str]:
-        """Find public addresses.
-
-        Return:
-        List[str]: List of address as string.
-
-        """
-        return SocketEndpoint.find_public_address()
-
-    def resolve_address(self: 'Server', address: str) -> str:
-        """Resolve address.
-
-        Address is in the format "hostnameOrIP" or "hostnameOrIP:port".
-        You can use a resolvable hostname or an IPv4. If the port is not
-        specified the default port 3413 is used.
-
-        If you overwrite create_socket() you have to also overwrite this
-        method to resolve address using the appropriate method.
-
-        Parameters:
-        address (str): Address to resolve.
-
-        Return:
-        str: Resolved address.
-
-        """
-        return SocketEndpoint.resolve_address(address)
-
     def received_datagram(self: 'Server', message: Message) -> None:
         """Datagram received.
 
@@ -223,6 +196,34 @@ class Server:
 
         """
         return SocketEndpoint()
+
+    def find_public_address(self: 'Server') -> List[str]:
+        """Find public addresses.
+
+        Return:
+        List[str]: List of address as string.
+
+        """
+        return SocketEndpoint.find_public_address()
+
+    def resolve_address(self: 'Server', address: str) -> str:
+        """Resolve address.
+
+        Address is in the format "hostnameOrIP" or "hostnameOrIP:port".
+        You can use a resolvable hostname or an IPv4. If the port is not
+        specified the default port 3413 is used.
+
+        If you overwrite create_socket() you have to also overwrite this
+        method to resolve address using the appropriate method.
+
+        Parameters:
+        address (str): Address to resolve.
+
+        Return:
+        str: Resolved address.
+
+        """
+        return SocketEndpoint.resolve_address(address)
 
     def client_connected(self: 'Server', connection: Connection) -> None:
         """Client connected.

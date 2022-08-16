@@ -76,8 +76,7 @@ for x in get_adapters():
     print(x)
 """
 
-c = dnl.Connection()
-
+"""
 class TestListener(dnl.endpoint.Endpoint.Listener):
     def __init__(self, ep):
         dnl.endpoint.Endpoint.Listener.__init__(self)
@@ -95,6 +94,7 @@ class TestListener(dnl.endpoint.Endpoint.Listener):
             w.write_byte(CommandCodes.CONNECTION_CLOSE.value)
         self.ep.send_datagram(dnl.endpoint.Address.ipv4_loopback(), message)
         self.ep.close()
+"""
 
 print("public_address:")
 for a in dnl.endpoint.SocketEndpoint.find_public_address():
@@ -104,6 +104,7 @@ print("all address:")
 for a in dnl.endpoint.SocketEndpoint.find_all_address():
     print("- {}".format(a))
 
+"""
 ep = dnl.endpoint.SocketEndpoint()
 
 print("resolve:", ep.resolve_address("google.ch"))
@@ -124,3 +125,4 @@ while ep._transport:
 
 print("dispose socket")
 ep.dispose()
+"""
