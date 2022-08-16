@@ -27,3 +27,4 @@
 from .message import Message
 from .reader import MessageReader
 from .writer import MessageWriter
+from .real_message import RealMessage

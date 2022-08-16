@@ -76,6 +76,8 @@ for x in get_adapters():
     print(x)
 """
 
+c = dnl.Connection()
+
 class TestListener(dnl.endpoint.Endpoint.Listener):
     def __init__(self, ep):
         dnl.endpoint.Endpoint.Listener.__init__(self)
