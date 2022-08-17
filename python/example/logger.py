@@ -22,12 +22,31 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""@package Drag[en]gine Network Library Python Module."""
+"""@package Drag[en]gine Network Library Example."""
 
-from .connection import Connection
-from .server import Server
-from . import math
-from . import message
-from . import endpoint
-from . import value
-from . import state
+from typing import List
+
+
+class Logger:
+
+    """Logger."""
+
+    def __init__(self: 'Logger') -> None:
+        """Create logger."""
+        self._buffer = []
+
+    @property
+    def buffer(self: 'Logger') -> List[str]:
+        """Buffer.
+
+        Return:
+        List[str] Buffer.
+
+        """
+        return self._buffer
+
+    def log(self: 'Logger', message: str) -> None:
+        """Add log message."""
+        while len(self._buffer) > 9:
+            self._buffer.pop()
+        self._buffer.append(message)

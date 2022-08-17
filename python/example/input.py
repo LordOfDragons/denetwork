@@ -22,12 +22,41 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""@package Drag[en]gine Network Library Python Module."""
+"""@package Drag[en]gine Network Library Example."""
 
-from .connection import Connection
-from .server import Server
-from . import math
-from . import message
-from . import endpoint
-from . import value
-from . import state
+import termios
+import sys
+import select
+
+
+class Input:
+
+    """Input."""
+
+    def __init__(self: 'Input') -> None:
+        """Create input."""
+
+    def nonblock(self: 'Input', enable: bool) -> None:
+        """Enable nonblock mode."""
+        fd = sys.stdin.fileno()
+        state = termios.tcgetattr(fd)
+        if enable:
+            state[3] = state[3] & ~termios.ICANON
+            state[3] = state[3] & ~termios.ECHO
+            state[6][termios.VMIN] = 1
+            sys.stdout.write("\033[?25l")
+        else:
+            state[3] = state[3] | termios.ICANON
+            state[3] = state[3] | termios.ECHO
+            sys.stdout.write("\033[?25h")
+        termios.tcsetattr(fd, termios.TCSANOW, state)
+
+    def kbhit(self: 'Input', timeoutms: int = 0) -> bool:
+        """Check if key input can be read.
+
+        Return:
+        bool Key input is read.
+
+        """
+        fds = [sys.stdin.fileno()]
+        return select.select(fds, [], [], 0.0001 * timeoutms) == (fds, [], [])

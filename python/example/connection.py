@@ -22,12 +22,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""@package Drag[en]gine Network Library Python Module."""
+"""@package Drag[en]gine Network Library Example."""
 
-from .connection import Connection
-from .server import Server
-from . import math
-from . import message
-from . import endpoint
-from . import value
-from . import state
+# Import Drag[en]gine Network Library python module. It is recommended
+# to use an alias name for the imported module to simplify usage
+import DENetworkLibrary as dnl
+
+
+class ExampleConnection(dnl.Connection):
+
+    """Example connection."""
+
+    def __init__(self: 'ExampleConnection',  read_only: bool) -> None:
+        """Create example connection."""
+        dnl.Connection.__init__(self)
+        self.bar = 35

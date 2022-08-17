@@ -143,23 +143,23 @@ class Connection(Endpoint.Listener):
         self._reliable_number_send = 0
         self._reliable_number_recv = 0
         self._reliable_window_size = 10
-        self._parentServer = None
+        self._parent_server = None
         self._update_task = None
 
     def dispose(self: 'Connection') -> None:
         """Dispose of connection."""
         self._stop_update_task()
         try:
-            self.disconnect(False, False)
+            self._disconnect(False, False)
         except Exception:
             logging.exception("Connection dispose")
 
-        del self._reliable_messages_send[:]
-        del self._reliable_messages_recv[:]
+        self._reliable_messages_send.clear()
+        self._reliable_messages_recv.clear()
         self._reliable_number_send = 0
         self._reliable_number_recv = 0
-        del self._modified_state_links[:]
-        del self._state_links[:]
+        self._modified_state_links.clear()
+        self._state_links.clear()
 
         if self._parent_server is None and self._endpoint is not None:
             self._endpoint.dispose()
@@ -293,8 +293,9 @@ class Connection(Endpoint.Listener):
         address (str): Address to connect to.
 
         """
-        if not self._endpoint or (self._connection_state
-                                  != Connection.ConnectionState.DISCONNECTED):
+        if self._endpoint is not None or (
+                self._connection_state
+                != Connection.ConnectionState.DISCONNECTED):
             raise Exception('already connected')
 
         try:
@@ -310,7 +311,7 @@ class Connection(Endpoint.Listener):
             message = Message()
             with MessageWriter(message) as w:
                 w.write_byte(CommandCodes.CONNECTION_REQUEST.value)
-                w.write_ushort(1) // version
+                w.write_ushort(1)  # version
                 w.write_ushort(Protocols.DENETWORK_PROTOCOL.value)
             self._real_remote_address = resolved
             self._remote_address = address
@@ -318,7 +319,7 @@ class Connection(Endpoint.Listener):
             logging.info("Connection: Connecting to {0}",
                          str(self._real_remote_address))
 
-            self._endpoint.send_datagram(address, message)
+            self._endpoint.send_datagram(resolved, message)
 
             self._connection_state = Connection.ConnectionState.CONNECTING
             self._elapsed_connect_resend = 0.0
@@ -420,7 +421,7 @@ class Connection(Endpoint.Listener):
             w.write_ushort(real_message.number)
             w.write_message(message)
 
-        _add_reliable_message(real_message)
+        self._add_reliable_message(real_message)
 
     def link_state(self: 'Connection',  message: Message, state: State,
                    read_only: bool) -> None:
@@ -492,7 +493,7 @@ class Connection(Endpoint.Listener):
             w.write_ushort(len(message.data))
             w.write_message(message)
 
-        _add_reliable_message(real_message)
+        self._add_reliable_message(real_message)
         state_link.link_state = StateLink.LinkState.LISTENING
 
     def _add_reliable_message(self: 'Connection',
@@ -516,7 +517,7 @@ class Connection(Endpoint.Listener):
         if self._parent_server is None:
             return
         try:
-            process_datagram(MessageReader(message))
+            self.process_datagram(MessageReader(message))
         except Exception as e:
             logging.error("received datagram", e)
 
@@ -638,23 +639,23 @@ class Connection(Endpoint.Listener):
         """
         command = CommandCodes(reader.read_byte())
         if command == CommandCodes.CONNECTION_ACK:
-            process_connection_ack(reader)
+            self.process_connection_ack(reader)
         elif command == CommandCodes.CONNECTION_CLOSE:
-            process_connection_close(reader)
+            self.process_connection_close(reader)
         elif command == CommandCodes.MESSAGE:
-            process_message(reader)
+            self.process_message(reader)
         elif command == CommandCodes.RELIABLE_MESSAGE:
-            process_reliable_message(reader)
+            self.process_reliable_message(reader)
         elif command == CommandCodes.RELIABLE_LINK_STATE:
-            process_reliable_link_state(reader)
+            self.process_reliable_link_state(reader)
         elif command == CommandCodes.RELIABLE_ACK:
-            process_reliable_ack(reader)
+            self.process_reliable_ack(reader)
         elif command == CommandCodes.LINK_UP:
-            process_link_up(reader)
+            self.process_link_up(reader)
         elif command == CommandCodes.LINK_DOWN:
-            process_link_down(reader)
+            self.process_link_down(reader)
         elif Command == CommandCodes.LINK_UPDATE:
-            process_link_update(reader)
+            self.process_link_update(reader)
 
     def accept_connection(self: 'Connection', server: 'Server',
                           endpoint: Endpoint, address: Address,
@@ -668,8 +669,8 @@ class Connection(Endpoint.Listener):
         self._elapsed_connect_timeout = 0.0
         self._protocol = protocol
         self._parent_server = server
-        _start_update_task()
-        connection_established()
+        self._start_update_task()
+        self.connection_established()
 
     def _disconnect(self: 'Connection', notify: bool,
                     remote_closed: bool) -> None:
@@ -691,8 +692,8 @@ class Connection(Endpoint.Listener):
             else:
                 logging.info("Disconnecting")
 
-                update_states()
-                send_pending_reliables()
+                self.update_states()
+                self.send_pending_reliables()
 
                 message = Message()
                 with MessageWriter(message) as w:
@@ -700,22 +701,22 @@ class Connection(Endpoint.Listener):
                 self._endpoint.send_datagram(self._real_remote_address,
                                              message)
 
-        clear_states()
-        del self._reliable_messages_recv[:]
-        del self._reliable_messages_send[:]
+        self._clear_states()
+        self._reliable_messages_recv.clear()
+        self._reliable_messages_send.clear()
         self.reliable_number_send = 0
         self.reliable_number_recv = 0
 
-        close_endpoint()
+        self._close_endpoint()
         logging.info("Connection closed")
         if notify:
-            connection_closed()
+            self.connection_closed()
 
-        remove_connection_from_parent_server()
+        self._remove_connection_from_parent_server()
 
     def _clear_states(self: 'Connection') -> None:
         """Clear states."""
-        del self._modified_state_links[:]
+        self._modified_state_links.clear()
         for l in self._modified_state_links:
             state = l.state
             if state is not None:
@@ -723,11 +724,11 @@ class Connection(Endpoint.Listener):
                 if index != -1:
                     l.drop_state()
                     del state.links[index]
-        del self._state_links[:]
+        self._state_links.clear()
 
     def _close_endpoint(self: 'Connection') -> None:
         """Close endpoint."""
-        stop_update_task()
+        self._stop_update_task()
         self._connection_state = Connection.ConnectionState.DISCONNECTED
         self.elapsed_connect_resend = 0.0
         self.elapsed_connect_timeout = 0.0
@@ -739,7 +740,7 @@ class Connection(Endpoint.Listener):
         """Remove connection from parent server."""
         if self._parent_server is None:
             return
-        close_endpoint()
+        self._close_endpoint()
         del self._parent_server.connections[self]
         self._parent_server = None
 
@@ -794,7 +795,7 @@ class Connection(Endpoint.Listener):
                 m.elapsed_timeout = m.elapsed_timeout + elapsed_time
                 if m.elapsed_timeout > self._reliable_timeout:
                     logging.error("Reliable message timeout")
-                    disconnect()
+                    self.disconnect()
                     return
 
                 m.elapsed_resend = m.elapsed_resend + elapsed_time
@@ -806,9 +807,10 @@ class Connection(Endpoint.Listener):
             self._elapsed_connect_timeout = (
                 self._elapsed_connect_timeout + elapsed_time)
             if self._elapsed_connect_timeout > self._connect_timeout:
-                close_endpoint()
+                self._close_endpoint()
                 logging.info("Connection failed (timeout)")
-                connection_failed(Connection.ConnectionFailedReason.TIMEOUT)
+                self.connection_failed(
+                    Connection.ConnectionFailedReason.TIMEOUT)
 
             self._elapsed_connect_resend = (
                 self._elapsed_connect_resend + elapsed_time)
@@ -843,10 +845,10 @@ class Connection(Endpoint.Listener):
                 break
 
             if message.type == CommandCodes.RELIABLE_MESSAGE:
-                process_reliable_message_message(
+                self.process_reliable_message_message(
                     MessageReader(message.message))
             elif message.type == CommandCodes.RELIABLE_LINK_STATE:
-                process_link_state(MessageReader(message.message))
+                self.process_link_state(MessageReader(message.message))
 
             del self._reliable_messages_recv[
                 self._reliable_messages_recv.index(message)]
@@ -882,7 +884,7 @@ class Connection(Endpoint.Listener):
     def process_connection_close(self: 'Connection',
                                  reader: MessageReader) -> None:
         """Process connection close."""
-        disconnect(True, True)
+        self._disconnect(True, True)
 
     def process_message(self: 'Connection',
                         reader: MessageReader) -> None:
@@ -891,7 +893,7 @@ class Connection(Endpoint.Listener):
 
         message = Message(bytearray(len(reader.data) - reader.position))
         reader.read(message)
-        message_received(message)
+        self.message_received(message)
 
     def process_reliable_message(self: 'Connection',
                                  reader: MessageReader) -> None:
@@ -917,12 +919,13 @@ class Connection(Endpoint.Listener):
         self._endpoint.send_datagram(self._real_remote_address, message)
 
         if number == self._reliable_number_recv:
-            process_reliable_message_message(reader)
+            self.process_reliable_message_message(reader)
             self._reliable_number_recv = (
                 self._reliable_number_recv + 1) % 65535
-            process_queued_messages()
+            self.process_queued_messages()
         else:
-            add_reliable_receive(CommandCodes.RELIABLE_MESSAGE, number, reader)
+            self.add_reliable_receive(
+                CommandCodes.RELIABLE_MESSAGE, number, reader)
 
     def process_reliable_message_message(self: 'Connection',
                                          reader: MessageReader) -> None:
@@ -978,12 +981,12 @@ class Connection(Endpoint.Listener):
         self._endpoint.send_datagram(self._real_remote_address, message)
 
         if number == self._reliable_number_recv:
-            process_link_state(reader)
+            self.process_link_state(reader)
             self._reliable_number_recv = (
                 self._reliable_number_recv + 1) % 65535
-            process_queued_messages()
+            self.process_queued_messages()
         else:
-            add_reliable_receive(
+            self.add_reliable_receive(
                 CommandCodes.RELIABLE_LINK_STATE, number, reader)
 
     def process_link_up(self: 'Connection',
@@ -1092,7 +1095,7 @@ class Connection(Endpoint.Listener):
                 self._reliable_number_send + 1) % 65535
             any_removed = True
         if any_removed:
-            send_pending_reliables()
+            self.send_pending_reliables()
 
     def send_pending_reliables(self: 'Connection') -> None:
         """Send pending reliables."""
@@ -1131,7 +1134,7 @@ class Connection(Endpoint.Listener):
         """Start update task."""
         if self._update_task is None:
             self._update_task = asyncio.get_event_loop().create_task(
-                self._task_update)
+                self._task_update())
 
     def _stop_update_task(self: 'Connection') -> None:
         """Stop update task."""

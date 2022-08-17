@@ -121,7 +121,7 @@ class Server(Endpoint.Listener):
         self._endpoint = self.create_endpoint()
         self._endpoint.open(self.resolve_address(use_address), self)
 
-        logging.info("Server: Listening on {0}", self.endpoint.address)
+        logging.info("Server: Listening on {0}", self._endpoint.address)
         self._listening = True
 
     def stop_listening(self: 'Server') -> None:
@@ -129,7 +129,7 @@ class Server(Endpoint.Listener):
         if self._listening:
             for connection in list(self._connections):
                 connection.dispose()
-            del self._connections[:]
+            self._connections.clear()
             if self._endpoint is not None:
                 self._endpoint.dispose()
                 self._endpoint = None
