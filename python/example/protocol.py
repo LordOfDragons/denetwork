@@ -24,40 +24,21 @@
 
 """@package Drag[en]gine Network Library Example."""
 
-from typing import List
-
-import logging
+from enum import IntEnum
 
 
-class Logger:
+class MessageCodes(IntEnum):
 
-    """Logger."""
+    """Message codes."""
 
-    def __init__(self: 'Logger') -> None:
-        """Create logger."""
-        self._buffer = []
-        logging.basicConfig(stream=self, level=logging.DEBUG)
+    LINK_SERVER_STATE = 1
+    """Link server state."""
 
-    @property
-    def buffer(self: 'Logger') -> List[str]:
-        """Buffer.
+    LINK_CLIENT_STATE = 2
+    """Link client state."""
 
-        Return:
-        List[str] Buffer.
+    LINK_OTHER_CLIENT_STATE = 3
+    """Link other client state."""
 
-        """
-        return self._buffer
-
-    def log(self: 'Logger', message: str) -> None:
-        """Add log message."""
-        while len(self._buffer) > 9:
-            self._buffer.pop()
-        self._buffer.append(message)
-
-    def write(self: 'Logger', data: str) -> None:
-        """Write data."""
-        self.log(data)
-
-    def flush(self: 'Logger') -> None:
-        """Flush."""
-        pass
+    DROP_CLIENT = 4
+    """Drop client."""

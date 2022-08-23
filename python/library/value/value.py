@@ -148,3 +148,8 @@ class Value(ABC):
 
         """
         pass
+
+    def _value_changed(self: 'Value') -> None:
+        """Value changed."""
+        if self.state is not None:
+            self.state.value_changed(self)

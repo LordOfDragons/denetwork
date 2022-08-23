@@ -60,7 +60,7 @@ class ValueFloat(Value):
         value_types = [ValueTypes.FLOAT16,
                        ValueTypes.FLOAT32,
                        ValueTypes.FLOAT64]
-        Value.__init__(self, type, value_types[format])
+        Value.__init__(self, type, value_types[value_format.value])
 
         self._format = value_format
         self._value = 0.0

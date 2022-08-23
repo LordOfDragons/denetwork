@@ -24,7 +24,6 @@
 
 """@package Drag[en]gine Network Library Example."""
 
-import DENetworkLibrary as dnl
 from server import ExampleServer
 from connection import ExampleConnection
 from screen import Screen
@@ -33,6 +32,7 @@ from logger import Logger
 from io import StringIO
 import sys
 import time
+import logging
 
 
 class ExampleApp:
@@ -49,7 +49,7 @@ class ExampleApp:
         self._screen = Screen()
         self._input = Input()
         self._logger = Logger()
-        self._quit = False
+        self.quit = False
 
     def run(self: 'ExampleApp') -> None:
         """Run example application."""
@@ -58,7 +58,7 @@ class ExampleApp:
             return
 
         self._init_screen()
-        
+
         try:
             if self._param_listen:
                 self._server_listen()
@@ -127,17 +127,19 @@ class ExampleApp:
 
     def _server_listen(self: 'ExampleApp') -> None:
         """Start server listening."""
-        self._server = ExampleServer()
+        logging.info("Start listening")
+        self._server = ExampleServer(self)
         self._server.listen_on(self._param_listen)
 
     def _client_connect(self: 'ExampleApp') -> None:
         """Connect to server."""
-        self._connection = ExampleConnection(False)
+        logging.info("Connect to server")
+        self._connection = ExampleConnection(self, False)
         self._connection.connect_to(self._param_connect)
 
     def _app_loop(self: 'ExampleApp') -> None:
         """Application loop."""
-        while not self._quit:
+        while not self.quit:
             self._handle_input()
             if self._server is not None:
                 self._server.update_time()
@@ -193,7 +195,7 @@ class ExampleApp:
 
         c = sys.stdin.read(1)
         if c == 'q':
-            self._quit = True
+            self.quit = True
         elif c == '\033':
             sys.stdin.read(1)  # '['
             c = sys.stdin.read(1)
@@ -213,6 +215,8 @@ ExampleApp().run()
 sys.exit(0)
 
 '''
+import DENetworkLibrary as dnl
+
 c = dnl.Connection()
 v = dnl.math.HalfFloat.float_to_half(8.5)
 print('0x{0:x}'.format(v))

@@ -52,7 +52,7 @@ class ValuePoint3(Value):
                        ValueTypes.Point3U32,
                        ValueTypes.Point3S64,
                        ValueTypes.Point3U64]
-        Value.__init__(self, type, value_types[format])
+        Value.__init__(self, type, value_types[value_format.value])
 
         self._format = value_format
         self._value = Point3()
