@@ -25,7 +25,7 @@
 """@package Drag[en]gine Network Library Python Module."""
 
 from .value import Value
-from .data import ValueData
+from .value_data import ValueData
 from .value_float import ValueFloat
 from .value_int import ValueInt
 from .value_point2 import ValuePoint2

@@ -36,7 +36,7 @@ class ValueData(Value):
 
     def __init__(self: 'ValueData') -> None:
         """Create data value."""
-        Value.__init__(self, ValueTypes.DATA)
+        Value.__init__(self,  Value.Type.DATA, ValueTypes.DATA)
 
         self._value = bytes()
         self._last_value = self._value

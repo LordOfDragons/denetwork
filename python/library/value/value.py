@@ -141,7 +141,7 @@ class Value(ABC):
         """
         pass
 
-    def remove_value_changed(self: 'Value') -> None:
+    def remote_value_changed(self: 'Value') -> None:
         """Remote value changed.
 
         For use by subclass to react to remote value changes.

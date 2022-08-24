@@ -56,7 +56,10 @@ class Logger:
 
     def write(self: 'Logger', data: str) -> None:
         """Write data."""
-        self.log(data)
+        if data and data[-1] == "\n":
+            data = data[0:-1]
+        if data:
+            self.log(data)
 
     def flush(self: 'Logger') -> None:
         """Flush."""

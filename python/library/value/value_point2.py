@@ -36,6 +36,15 @@ class ValuePoint2(Value):
 
     """2 component integer vector value."""
 
+    _map_value_type = {ValueInt.Format.SINT8: ValueTypes.POINT2S8,
+                       ValueInt.Format.UINT8: ValueTypes.POINT2U8,
+                       ValueInt.Format.SINT16: ValueTypes.POINT2S16,
+                       ValueInt.Format.UINT16: ValueTypes.POINT2U16,
+                       ValueInt.Format.SINT32: ValueTypes.POINT2S32,
+                       ValueInt.Format.UINT32: ValueTypes.POINT2U32,
+                       ValueInt.Format.SINT64: ValueTypes.POINT2S64,
+                       ValueInt.Format.UINT64: ValueTypes.POINT2U64}
+
     def __init__(self: 'ValuePoint2',
                  value_format: 'ValueInt.Format') -> None:
         """Create integer value.
@@ -44,15 +53,8 @@ class ValuePoint2(Value):
         format (ValueInt.Format): Format of value.
 
         """
-        value_types = [ValueTypes.POINT2S8,
-                       ValueTypes.POINT2U8,
-                       ValueTypes.POINT2S16,
-                       ValueTypes.POINT2U16,
-                       ValueTypes.POINT2S32,
-                       ValueTypes.POINT2U32,
-                       ValueTypes.POINT2S64,
-                       ValueTypes.POINT2U64]
-        Value.__init__(self, type, value_types[value_format.value])
+        Value.__init__(self, Value.Type.POINT2,
+                       ValuePoint2._map_value_type[value_format])
 
         self._format = value_format
         self._value = Point2()

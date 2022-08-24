@@ -63,6 +63,15 @@ class ValueInt(Value):
         UINT64 = auto()
         """64-Bit unsigned integer."""
 
+    _map_value_type = {Format.SINT8: ValueTypes.SINT8,
+                       Format.UINT8: ValueTypes.UINT8,
+                       Format.SINT16: ValueTypes.SINT16,
+                       Format.UINT16: ValueTypes.UINT16,
+                       Format.SINT32: ValueTypes.SINT32,
+                       Format.UINT32: ValueTypes.UINT32,
+                       Format.SINT64: ValueTypes.SINT64,
+                       Format.UINT64: ValueTypes.UINT64}
+
     def __init__(self: 'ValueInt',
                  value_format: 'ValueInt.Format') -> None:
         """Create integer value.
@@ -71,15 +80,7 @@ class ValueInt(Value):
         format (ValueInt.Format): Format of value.
 
         """
-        value_types = [ValueTypes.SINT8,
-                       ValueTypes.UINT8,
-                       ValueTypes.SINT16,
-                       ValueTypes.UINT16,
-                       ValueTypes.SINT32,
-                       ValueTypes.UINT32,
-                       ValueTypes.SINT64,
-                       ValueTypes.UINT64]
-        Value.__init__(self, type, value_types[value_format.value])
+        Value.__init__(self, type, ValueInt._map_value_type[value_format])
 
         self._format = value_format
         self._value = 0

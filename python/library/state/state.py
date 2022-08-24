@@ -29,8 +29,9 @@ from ..value.value import Value
 from ..message.reader import MessageReader
 from ..message.writer import MessageWriter
 from ..protocol import ValueTypes
-from typing import List
+from typing import List, Deque
 from collections import deque
+import logging
 
 
 class State:
@@ -67,6 +68,16 @@ class State:
 
         """
         return self._read_only
+
+    @property
+    def links(self: 'State') -> Deque['State']:
+        """State links.
+
+        Return:
+        Deque[State]: State links.
+
+        """
+        return self._links
 
     @property
     def values(self: 'State') -> List[Value]:
@@ -128,7 +139,7 @@ class State:
                 raise Exception("index out of range")
             value = self._values[index]
             value.read(reader)
-            self.invalidate_value_at_except(index, link)
+            self.invalidate_value_except(index, link)
             self.remote_value_changed(value)
             value.remote_value_changed()
         link.changed = link.has_changed_values
@@ -146,7 +157,7 @@ class State:
         for i in range(count):
             value = self._values[i]
             value.read(reader)
-            self.invalidate_value_at(i)
+            self.invalidate_value(i)
             self.remote_value_changed(value)
             value.remote_value_changed()
         if not link.has_changed_values:
@@ -164,15 +175,17 @@ class State:
 
         """
         count = len(self._values)
-        if count != reader.read_ushort:
+        if count != reader.read_ushort():
             raise Exception("count out of range")
         for i in range(count):
             data_type = ValueTypes(reader.read_byte())
             value = self._values[i]
             if data_type != value.data_type:
+                logging.debug("data type mismatch: expected %s found %s",
+                    data_type,  value.data_type)
                 raise Exception("data type mismatch")
             value.read(reader)
-            self.invalidate_value_at(i)
+            self.invalidate_value(i)
             self.remote_value_changed(value)
             value.remote_value_changed()
         return True
@@ -223,7 +236,7 @@ class State:
                 continue
             writer.write_ushort(i)
             self._values[i].write(writer)
-            self._links.set_value_changed(i, False)
+            link.set_value_changed(i, False)
             changed_count = changed_count - 1
             if changed_count == 0:
                 break
@@ -239,8 +252,8 @@ class State:
         for link in self._links:
             link.set_value_changed(index, True)
 
-    def invalidate_value_at_except(self: 'State', index: int,
-                                   link: StateLink) -> None:
+    def invalidate_value_except(self: 'State', index: int,
+                                link: StateLink) -> None:
         """Invalid value in all state links.
 
         Parameters:
@@ -261,3 +274,16 @@ class State:
         """
         if value.update_value(False):
             self.invalidate_value(value.index)
+
+    def remote_value_changed(self: 'State', value: Value) -> None:
+        """Remote value changed.
+
+        For use by subclass to react to remote value changes. After this
+        call Value.remote_value_changed is called too so you can decide
+        where to subclass.
+
+        Parameters:
+        value (Value): Value.
+
+        """
+        pass

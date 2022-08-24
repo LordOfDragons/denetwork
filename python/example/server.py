@@ -50,7 +50,7 @@ class ExampleServer(dnl.Server):
         self._state.add_value(self._value_time)
         self._state.add_value(self._value_bar)
 
-    def create_connection(self: 'Server') -> dnl.connection.Connection:
+    def create_connection(self: 'ExampleServer') -> dnl.connection.Connection:
         """Create connection for each connecting client.
 
         Return:

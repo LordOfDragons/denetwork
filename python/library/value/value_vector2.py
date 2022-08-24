@@ -24,7 +24,6 @@
 
 """@package Drag[en]gine Network Library Python Module."""
 
-from ..protocol import ValueTypes
 from ..message.reader import MessageReader
 from ..message.writer import MessageWriter
 from ..math.vector2 import Vector2
@@ -45,10 +44,8 @@ class ValueVector2(Value):
         format (ValueFloat.Format): Format of value.
 
         """
-        value_types = [ValueTypes.FLOAT16,
-                       ValueTypes.FLOAT32,
-                       ValueTypes.FLOAT64]
-        Value.__init__(self, type, value_types[value_format.value])
+        Value.__init__(self, Value.Type.VECTOR2,
+                       ValueFloat._map_value_type[value_format])
 
         self._format = value_format
         self._value = Vector2()

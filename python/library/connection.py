@@ -315,8 +315,7 @@ class Connection(Endpoint.Listener):
                 w.write_ushort(Protocols.DENETWORK_PROTOCOL.value)
             self._real_remote_address = resolved
             self._remote_address = address
-
-            logging.info("Connection: Connecting to {0}",
+            logging.info("Connection: Connecting to %s",
                          str(self._real_remote_address))
 
             self._endpoint.send_datagram(resolved, message)
@@ -350,6 +349,7 @@ class Connection(Endpoint.Listener):
 
     def disconnect(self: 'Connection') -> None:
         """Disconnect from remote connection if connected."""
+        logging.info("Connection: disconnect")
         self._disconnect(True, False)
 
     def send_message(self: 'Connection', message: Message) -> None:
@@ -514,12 +514,12 @@ class Connection(Endpoint.Listener):
         """Datagram received."""
         if self._connection_state == Connection.ConnectionState.DISCONNECTED:
             return
-        if self._parent_server is None:
+        if self._parent_server is not None:
             return
         try:
             self.process_datagram(MessageReader(message))
         except Exception as e:
-            logging.error("received datagram", e)
+            logging.error("received datagram", exc_info=e)
 
     def create_endpoint(self: 'Connection') -> Endpoint:
         """Create endpoint.
@@ -537,12 +537,12 @@ class Connection(Endpoint.Listener):
 
     def connection_established(self: 'Connection') -> None:
         """Connection established. Callback for subclass."""
-        pass
+        logging.info("Connection: connection established")
 
     def connection_failed(self: 'Connection',
                           reason: 'Connection.ConnectionFailedReason') -> None:
         """Connection failed or timeout out. Callback for subclass."""
-        pass
+        logging.info("Connection: connection failed")
 
     def connection_closed(self: 'Connection') -> None:
         """Connection closed.
@@ -551,7 +551,7 @@ class Connection(Endpoint.Listener):
         the connection. Callback for subclass.
 
         """
-        pass
+        logging.info("Connection: connection closed")
 
     def message_received(self: 'Connection', message: Message) -> None:
         """Message received. Called asynchronously. Callback for subclass.
@@ -639,23 +639,23 @@ class Connection(Endpoint.Listener):
         """
         command = CommandCodes(reader.read_byte())
         if command == CommandCodes.CONNECTION_ACK:
-            self.process_connection_ack(reader)
+            self._process_connection_ack(reader)
         elif command == CommandCodes.CONNECTION_CLOSE:
-            self.process_connection_close(reader)
+            self._process_connection_close(reader)
         elif command == CommandCodes.MESSAGE:
-            self.process_message(reader)
+            self._process_message(reader)
         elif command == CommandCodes.RELIABLE_MESSAGE:
-            self.process_reliable_message(reader)
+            self._process_reliable_message(reader)
         elif command == CommandCodes.RELIABLE_LINK_STATE:
-            self.process_reliable_link_state(reader)
+            self._process_reliable_link_state(reader)
         elif command == CommandCodes.RELIABLE_ACK:
-            self.process_reliable_ack(reader)
+            self._process_reliable_ack(reader)
         elif command == CommandCodes.LINK_UP:
-            self.process_link_up(reader)
+            self._process_link_up(reader)
         elif command == CommandCodes.LINK_DOWN:
-            self.process_link_down(reader)
-        elif Command == CommandCodes.LINK_UPDATE:
-            self.process_link_update(reader)
+            self._process_link_down(reader)
+        elif command == CommandCodes.LINK_UPDATE:
+            self._process_link_update(reader)
 
     def accept_connection(self: 'Connection', server: 'Server',
                           endpoint: Endpoint, address: Address,
@@ -693,7 +693,7 @@ class Connection(Endpoint.Listener):
                 logging.info("Disconnecting")
 
                 self.update_states()
-                self.send_pending_reliables()
+                self._send_pending_reliables()
 
                 message = Message()
                 with MessageWriter(message) as w:
@@ -771,14 +771,14 @@ class Connection(Endpoint.Listener):
                     index = index + 1
                     continue
 
-                writer.write_ushort(link.identifier)
+                w.write_ushort(link.identifier)
                 state = link.state
                 if state is None:
                     del self._modified_state_links[index]
                     count = count - 1
                     continue
 
-                state.link_write_values(writer, link)
+                state.link_write_values_link(w, link)
 
                 del self._modified_state_links[index]
                 count = count - 1
@@ -815,7 +815,7 @@ class Connection(Endpoint.Listener):
             self._elapsed_connect_resend = (
                 self._elapsed_connect_resend + elapsed_time)
             if self._elapsed_connect_resend > self._connect_resend_interval:
-                logging.finest("Resent connection request")
+                logging.debug("Resent connection request")
                 self._elapsed_connect_resend = 0.0
 
                 message = Message()
@@ -836,7 +836,7 @@ class Connection(Endpoint.Listener):
         """
         self._modified_state_links.append(state_link)
 
-    def process_queued_messages(self: 'Connection') -> None:
+    def _process_queued_messages(self: 'Connection') -> None:
         """Process queued messages."""
         while True:
             message = next((x for x in self._reliable_messages_recv
@@ -845,10 +845,10 @@ class Connection(Endpoint.Listener):
                 break
 
             if message.type == CommandCodes.RELIABLE_MESSAGE:
-                self.process_reliable_message_message(
+                self._process_reliable_message_message(
                     MessageReader(message.message))
             elif message.type == CommandCodes.RELIABLE_LINK_STATE:
-                self.process_link_state(MessageReader(message.message))
+                self._process_link_state(MessageReader(message.message))
 
             del self._reliable_messages_recv[
                 self._reliable_messages_recv.index(message)]
@@ -862,7 +862,7 @@ class Connection(Endpoint.Listener):
             return
         ack = ConnectionAck(reader.read_byte())
         if ack == ConnectionAck.ACCEPTED:
-            self._protocol = Protocols(reader.read_ushhort())
+            self._protocol = Protocols(reader.read_ushort())
             self._connection_state = Connection.ConnectionState.CONNECTED
             self._elapsed_connect_resend = 0.0
             self._elapsed_connect_timeout = 0.0
@@ -881,22 +881,22 @@ class Connection(Endpoint.Listener):
             logging.info("Connection failed (invalid message)")
             self.connection_failed(ConnectionFailedReason.INVALID_MESSAGE)
 
-    def process_connection_close(self: 'Connection',
-                                 reader: MessageReader) -> None:
+    def _process_connection_close(self: 'Connection',
+                                  reader: MessageReader) -> None:
         """Process connection close."""
         self._disconnect(True, True)
 
-    def process_message(self: 'Connection',
-                        reader: MessageReader) -> None:
+    def _process_message(self: 'Connection',
+                         reader: MessageReader) -> None:
         """Process message."""
         reader.read_byte()  # flags
 
         message = Message(bytearray(len(reader.data) - reader.position))
-        reader.read(message)
+        reader.read_message(message)
         self.message_received(message)
 
-    def process_reliable_message(self: 'Connection',
-                                 reader: MessageReader) -> None:
+    def _process_reliable_message(self: 'Connection',
+                                  reader: MessageReader) -> None:
         """Process reliable message."""
         if self._connection_state != Connection.ConnectionState.CONNECTED:
             return
@@ -919,23 +919,23 @@ class Connection(Endpoint.Listener):
         self._endpoint.send_datagram(self._real_remote_address, message)
 
         if number == self._reliable_number_recv:
-            self.process_reliable_message_message(reader)
+            self._process_reliable_message_message(reader)
             self._reliable_number_recv = (
                 self._reliable_number_recv + 1) % 65535
-            self.process_queued_messages()
+            self._process_queued_messages()
         else:
-            self.add_reliable_receive(
+            self._add_reliable_receive(
                 CommandCodes.RELIABLE_MESSAGE, number, reader)
 
-    def process_reliable_message_message(self: 'Connection',
-                                         reader: MessageReader) -> None:
+    def _process_reliable_message_message(self: 'Connection',
+                                          reader: MessageReader) -> None:
         """Process reliable message message."""
         message = Message(bytearray(len(reader.data) - reader.position))
-        reader.read(message)
-        message_received(message)
+        reader.read_message(message)
+        self.message_received(message)
 
-    def process_reliable_ack(self: 'Connection',
-                             reader: MessageReader) -> None:
+    def _process_reliable_ack(self: 'Connection',
+                              reader: MessageReader) -> None:
         """Process reliable ack."""
         if self._connection_state != Connection.ConnectionState.CONNECTED:
             return
@@ -950,15 +950,15 @@ class Connection(Endpoint.Listener):
 
         if ack == ReliableAck.SUCCESS:
             message.state = RealMessage.State.DONE
-            remove_send_reliables_done()
+            _remove_send_reliables_done()
         elif ack == ReliableAck.FAILED:
-            logging.finest("Reliable ACK failed, resend")
+            logging.debug("Reliable ACK failed, resend")
             message.elapsed_resend = 0.0
             self._endpoint.send_datagram(
                 self._real_remote_address, message.message)
 
-    def process_reliable_link_state(self: 'Connection',
-                                    reader: MessageReader) -> None:
+    def _process_reliable_link_state(self: 'Connection',
+                                     reader: MessageReader) -> None:
         """Process reliable link state."""
         if self._connection_state != Connection.ConnectionState.CONNECTED:
             return
@@ -981,16 +981,16 @@ class Connection(Endpoint.Listener):
         self._endpoint.send_datagram(self._real_remote_address, message)
 
         if number == self._reliable_number_recv:
-            self.process_link_state(reader)
+            self._process_link_state(reader)
             self._reliable_number_recv = (
                 self._reliable_number_recv + 1) % 65535
-            self.process_queued_messages()
+            self._process_queued_messages()
         else:
-            self.add_reliable_receive(
+            self._add_reliable_receive(
                 CommandCodes.RELIABLE_LINK_STATE, number, reader)
 
-    def process_link_up(self: 'Connection',
-                        reader: MessageReader) -> None:
+    def _process_link_up(self: 'Connection',
+                         reader: MessageReader) -> None:
         """Process link up."""
         if self._connection_state != Connection.ConnectionState.CONNECTED:
             return
@@ -1002,8 +1002,8 @@ class Connection(Endpoint.Listener):
             return
         link.link_state = StateLink.LinkState.UP
 
-    def process_link_down(self: 'Connection',
-                          reader: MessageReader) -> None:
+    def _process_link_down(self: 'Connection',
+                           reader: MessageReader) -> None:
         """Process link down."""
         if self._connection_state != Connection.ConnectionState.CONNECTED:
             return
@@ -1015,8 +1015,8 @@ class Connection(Endpoint.Listener):
             return
         link.link_state = StateLink.LinkState.DOWN
 
-    def process_link_state(self: 'Connection',
-                           reader: MessageReader) -> None:
+    def _process_link_state(self: 'Connection',
+                            reader: MessageReader) -> None:
         """Process link state."""
         identifier = reader.read_ushort()
         read_only = reader.read_byte() == 1  # flags: 0x1=readOnly
@@ -1028,9 +1028,9 @@ class Connection(Endpoint.Listener):
 
         """create linked network state"""
         message = Message(bytearray(reader.read_ushort()))
-        reader.read(message)
+        reader.read_message(message)
 
-        state = create_state(message, read_only)
+        state = self.create_state(message, read_only)
 
         command = CommandCodes.LINK_DOWN
         if state is not None:
@@ -1052,7 +1052,8 @@ class Connection(Endpoint.Listener):
             w.write_ushort(identifier)
         self._endpoint.send_datagram(self._real_remote_address, message)
 
-    def process_link_update(self: 'Connection', reader: MessageReader) -> None:
+    def _process_link_update(self: 'Connection',
+                             reader: MessageReader) -> None:
         """Process link update."""
         if self._connection_state != Connection.ConnectionState.CONNECTED:
             return
@@ -1071,12 +1072,12 @@ class Connection(Endpoint.Listener):
                 return
             state.link_read_values(reader, link)
 
-    def add_reliable_receive(self: 'Connection', command: CommandCodes,
-                             number: int, reader: MessageReader) -> None:
+    def _add_reliable_receive(self: 'Connection', command: CommandCodes,
+                              number: int, reader: MessageReader) -> None:
         """Add reliable receive."""
         message = RealMessage()
         message.message.data = bytearray(len(reader.data) - reader.position)
-        reader.read(message.message)
+        reader.read_message(message.message)
 
         message.type = command
         message.number = number
@@ -1084,7 +1085,7 @@ class Connection(Endpoint.Listener):
 
         self._reliable_messages_recv.append(message)
 
-    def remove_send_reliables_done(self: 'Connection') -> None:
+    def _remove_send_reliables_done(self: 'Connection') -> None:
         """Remove send reliables done."""
         any_removed = False
         while self._reliable_messages_send:
@@ -1095,9 +1096,9 @@ class Connection(Endpoint.Listener):
                 self._reliable_number_send + 1) % 65535
             any_removed = True
         if any_removed:
-            self.send_pending_reliables()
+            self._send_pending_reliables()
 
-    def send_pending_reliables(self: 'Connection') -> None:
+    def _send_pending_reliables(self: 'Connection') -> None:
         """Send pending reliables."""
         send_count = 0
         for m in self._reliable_messages_send:
@@ -1126,7 +1127,7 @@ class Connection(Endpoint.Listener):
             last_time = cur_time
             try:
                 self._update_timeouts(elapsed)
-                self._updateStates()
+                self._update_states()
             except Exception:
                 logging.exception("Connection timer update")
 

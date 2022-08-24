@@ -112,7 +112,7 @@ class Server(Endpoint.Listener):
         if use_address == "*":
             addrs = self.find_public_address()
             if addrs:
-                logging.info("Found public address: {0}",  ", ".join(addrs))
+                logging.info("Found public address: %s",  ", ".join(addrs))
                 use_address = addrs[0]
             else:
                 logging.info("No public address found. Using localhost")
@@ -121,7 +121,7 @@ class Server(Endpoint.Listener):
         self._endpoint = self.create_endpoint()
         self._endpoint.open(self.resolve_address(use_address), self)
 
-        logging.info("Server: Listening on {0}", self._endpoint.address)
+        logging.info("Server: Listening on %s", self._endpoint.address)
         self._listening = True
 
     def stop_listening(self: 'Server') -> None:
@@ -275,5 +275,5 @@ class Server(Endpoint.Listener):
             w.write_ushort(protocol.value)
         self._endpoint.send_datagram(address, message)
 
-        logging.info("Server: Client connected from {0}", address)
+        logging.info("Server: Client connected from %s", address)
         self.client_connected(connection)

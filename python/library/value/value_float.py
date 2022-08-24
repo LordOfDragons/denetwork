@@ -49,6 +49,10 @@ class ValueFloat(Value):
         FLOAT64 = auto()
         """64-Bit float."""
 
+    _map_value_type = {Format.FLOAT16: ValueTypes.FLOAT16,
+                       Format.FLOAT32: ValueTypes.FLOAT32,
+                       Format.FLOAT64: ValueTypes.FLOAT64}
+
     def __init__(self: 'ValueFloat',
                  value_format: 'ValueFloat.Format') -> None:
         """Create floating value.
@@ -60,7 +64,7 @@ class ValueFloat(Value):
         value_types = [ValueTypes.FLOAT16,
                        ValueTypes.FLOAT32,
                        ValueTypes.FLOAT64]
-        Value.__init__(self, type, value_types[value_format.value])
+        Value.__init__(self, Value.Type.FLOAT, value_types[value_format.value])
 
         self._format = value_format
         self._value = 0.0

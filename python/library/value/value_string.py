@@ -36,7 +36,7 @@ class ValueString(Value):
 
     def __init__(self: 'ValueString') -> None:
         """Create string value."""
-        Value.__init__(self, ValueTypes.STRING)
+        Value.__init__(self,  Value.Type.STRING, ValueTypes.STRING)
 
         self._value = ""
         self._last_value = self._value
