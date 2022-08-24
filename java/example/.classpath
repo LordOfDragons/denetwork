@@ -8,6 +8,6 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="lib" path="build/denetwork-development/DENetworkExample-development.jar"/>
 	<classpathentry kind="lib" path="build/DENetworkExample-development.jar"/>
-	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/DENetworkLibrary"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/denetwork"/>
 	<classpathentry kind="output" path="build/jar"/>
 </classpath>

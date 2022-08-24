@@ -546,7 +546,7 @@ public class Connection implements Endpoint.Listener {
 	 */
 	public void receivedDatagram(SocketAddress address, Message message) {
 		try (CloseableReentrantLock locked = lock.open()) {
-			if (connectionState == ConnectionState.DISCONNECTED || parentServer == null) {
+			if (connectionState == ConnectionState.DISCONNECTED || parentServer != null) {
 				return;
 			}
 			try {
