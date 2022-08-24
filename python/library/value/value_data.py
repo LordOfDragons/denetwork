@@ -63,7 +63,7 @@ class ValueData(Value):
         if value is None:
             raise Exception("value is None")
         self._value = value
-        self.value_changed()
+        self._value_changed()
 
     def read(self: 'ValueData', reader: MessageReader) -> None:
         """Read value from message.

@@ -112,7 +112,7 @@ class ValueFloat(Value):
 
         """
         self._precision = max(precision, self._min_precision)
-        self.value_changed()
+        self._value_changed()
 
     def read(self: 'ValueFloat', reader: MessageReader) -> None:
         """Read value from message.

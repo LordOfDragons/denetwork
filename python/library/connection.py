@@ -137,7 +137,7 @@ class Connection(Endpoint.Listener):
         self._protocol = Protocols.DENETWORK_PROTOCOL
         self._state_links = deque()
         self._modified_state_links = deque()
-        self._next_link_identifier = 0
+        self._next_link_id = 0
         self._reliable_messages_send = deque()
         self._reliable_messages_recv = deque()
         self._reliable_number_send = 0
@@ -411,7 +411,7 @@ class Connection(Endpoint.Listener):
             raise Exception("not connected")
 
         real_message = RealMessage()
-        real_message.type = CommandCodes.RELIABLE_MESSAGE.value
+        real_message.type = CommandCodes.RELIABLE_MESSAGE
         real_message.number = (self._reliable_number_send
                                + len(self._reliable_messages_send)) % 65535
         real_message.state = RealMessage.State.PENDING
@@ -461,26 +461,26 @@ class Connection(Endpoint.Listener):
                           if x.state == state), None)
 
         if state_link is not None and (state_link.link_state
-                                       != StateLink.LinkState.down):
+                                       != StateLink.LinkState.DOWN):
             raise Exception("link with state present")
 
         """create the link if absent, assign it new identifier and add it"""
         if state_link is None:
-            self._last_next_link_id = self._next_link_identifier
+            self._last_next_link_id = self._next_link_id
             found = next((x for x in self._state_links
-                         if x.identifier == next_link_id),  None)
+                         if x.identifier == self._next_link_id),  None)
             if found is not None:
-                next_link_id = (next_link_id + 1) % 65535
-                if next_link_id == self._last_next_link_identifier:
+                self._next_link_id = (self._next_link_id + 1) % 65535
+                if self._next_link_id == self._last_next_link_id:
                     raise Exception("too many state links")
             state_link = StateLink(self, state)
-            state_link.identifier = self._next_link_identifier
+            state_link.identifier = self._next_link_id
             self._state_links.append(state_link)
             state.links.append(state_link)
 
         """add message"""
         real_message = RealMessage()
-        real_message.type = CommandCodes.RELIABLE_LINK_STATE.value
+        real_message.type = CommandCodes.RELIABLE_LINK_STATE
         real_message.number = (self._reliable_number_send
                                + len(self._reliable_messages_send)) % 65535
         real_message.state = RealMessage.State.PENDING
@@ -492,6 +492,7 @@ class Connection(Endpoint.Listener):
             w.write_byte(1 if read_only else 0)  # flags readOnly=0x1
             w.write_ushort(len(message.data))
             w.write_message(message)
+            state.link_write_values_with_verify(w)
 
         self._add_reliable_message(real_message)
         state_link.link_state = StateLink.LinkState.LISTENING
@@ -692,7 +693,7 @@ class Connection(Endpoint.Listener):
             else:
                 logging.info("Disconnecting")
 
-                self.update_states()
+                self._update_states()
                 self._send_pending_reliables()
 
                 message = Message()
@@ -741,7 +742,9 @@ class Connection(Endpoint.Listener):
         if self._parent_server is None:
             return
         self._close_endpoint()
-        del self._parent_server.connections[self]
+        index = self._parent_server.connections.index(self)
+        if index != -1:
+            del self._parent_server.connections[index]
         self._parent_server = None
 
     def _update_states(self: 'Connection') -> None:
@@ -950,7 +953,7 @@ class Connection(Endpoint.Listener):
 
         if ack == ReliableAck.SUCCESS:
             message.state = RealMessage.State.DONE
-            _remove_send_reliables_done()
+            self._remove_send_reliables_done()
         elif ack == ReliableAck.FAILED:
             logging.debug("Reliable ACK failed, resend")
             message.elapsed_resend = 0.0

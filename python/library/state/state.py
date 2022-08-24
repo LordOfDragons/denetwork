@@ -208,7 +208,7 @@ class State:
         writer (MessageWriter): Message writer.
 
         """
-        writer.write_ushhort(len(self._values))
+        writer.write_ushort(len(self._values))
         for value in self._values:
             writer.write_byte(value.data_type.value)
             value.write(writer)

@@ -157,7 +157,12 @@ class ExampleConnection(dnl.Connection):
                     with dnl.message.MessageWriter(message) as w:
                         w.write_byte(MessageCodes.DROP_CLIENT.value)
                         w.write_ushort(self._id)
-                    c.send_reliable_message(message)
+                    """This can fail if the client closes connection not us.
+                    We could track this properly but this is fair enough."""
+                    try:
+                        c.send_reliable_message(message)
+                    except Exception:
+                        pass
         else:
             self._app.quit = True
 

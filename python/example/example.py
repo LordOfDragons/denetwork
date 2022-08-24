@@ -70,7 +70,8 @@ class ExampleApp:
                 self._app_loop()
             else:
                 self._print_help()
-        except:
+        except Exception as e:
+            logging.error("Exception",  exc_info=e)
             sys.stderr.write("\n")
             sys.stderr.write(">>> Exception. Logs:\n")
             for l in self._logger.buffer:
@@ -152,6 +153,7 @@ class ExampleApp:
                 self._server.update_time()
             self._draw_screen()
             asyncio.get_event_loop().run_until_complete(asyncio.sleep(0.001))
+        self._draw_screen()
 
     def _draw_screen(self: 'ExampleApp') -> None:
         """Draw screen."""
@@ -166,8 +168,8 @@ class ExampleApp:
                                    self._server.bar, Screen.Color.RED)
 
             for c in self._server.connections:
-                if c.ready():
-                    self._screen.printBar(s, size.x, "Client#{0} Bar".format(
+                if c.ready:
+                    self._screen.print_bar(s, size.x, "Client#{0} Bar".format(
                         c.id), c.bar, Screen.Color.GREEN)
 
         if self._connection is not None:

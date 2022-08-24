@@ -50,6 +50,12 @@ class ExampleServer(dnl.Server):
         self._state.add_value(self._value_time)
         self._state.add_value(self._value_bar)
 
+    def dispose(self: 'ExampleServer') -> None:
+        """Dispose of server."""
+        while len(self.connections) > 0:
+            self.connections[0].disconnect()
+        dnl.server.Server.dispose(self)
+
     def create_connection(self: 'ExampleServer') -> dnl.connection.Connection:
         """Create connection for each connecting client.
 
@@ -136,7 +142,7 @@ class ExampleServer(dnl.Server):
         """link server state. read-only on client side"""
         message = dnl.message.Message()
         with dnl.message.MessageWriter(message) as w:
-            w.write_byte(MessageCodes.LINK_CLIENT_STATE.value)
+            w.write_byte(MessageCodes.LINK_SERVER_STATE.value)
         connection.link_state(message, self._state, True)
 
         """link all client states. this includes connecting client itself"""
@@ -146,14 +152,14 @@ class ExampleServer(dnl.Server):
                 message = dnl.message.Message()
                 with dnl.message.MessageWriter(message) as w:
                     w.write_byte(MessageCodes.LINK_CLIENT_STATE.value)
-                connection.link_state(message, self._state, False)
+                connection.link_state(message, connection._state, False)
             else:
                 """all other client states are read-only to the
                 connecting client"""
                 message = dnl.message.Message()
                 with dnl.message.MessageWriter(message) as w:
                     w.write_byte(MessageCodes.LINK_OTHER_CLIENT_STATE.value)
-                    w.write_ushort(c._id)
+                    w.write_ushort(c.id)
                 connection.link_state(message, c._state, True)
 
                 """and the connecting client state is also read-only
@@ -161,5 +167,5 @@ class ExampleServer(dnl.Server):
                 message = dnl.message.Message()
                 with dnl.message.MessageWriter(message) as w:
                     w.write_byte(MessageCodes.LINK_OTHER_CLIENT_STATE.value)
-                    w.write_ushort(self._id)
-                connection.link_state(message, self._state, True)
+                    w.write_ushort(connection.id)
+                c.link_state(message, connection._state, True)

@@ -147,24 +147,20 @@ class Server(Endpoint.Listener):
         """
         return self._connections
 
-    def received_datagram(self: 'Server', message: Message) -> None:
-        """Datagram received.
-
-        Parameters:
-        message (Message): Message.
-
-        """
+    def received_datagram(self: 'Server', address: Address,
+                          message: Message) -> None:
+        """Datagram received."""
         connection = None
         try:
             reader = MessageReader(message)
             connection = next((c for c in self._connections if
-                              c.matches(self._endpoint, self._address)), None)
+                              c.matches(self._endpoint, address)), None)
             if connection is not None:
                 connection.process_datagram(reader)
             else:
                 command = CommandCodes(reader.read_byte())
                 if command == CommandCodes.CONNECTION_REQUEST:
-                    self._process_connection_request(self._address, reader)
+                    self._process_connection_request(address, reader)
                 """else: ignore invalid package"""
         except Exception:
             logging.exception("failed processing received datagra")
@@ -265,7 +261,7 @@ class Server(Endpoint.Listener):
         """create connection"""
         connection = self.create_connection()
         connection.accept_connection(self, self._endpoint, address, protocol)
-        self._cconnections.append(connection)
+        self._connections.append(connection)
 
         """send back result"""
         message = Message()
