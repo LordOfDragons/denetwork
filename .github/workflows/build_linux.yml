@@ -42,6 +42,7 @@ jobs:
           cp README.md Examples
           cp -a cpp/example/build/denetworkcpp_example Examples
           cp -a java/example/build/DENetworkExample-${{ inputs.releaseVersion }}.jar Examples
+          cp -a python/build/example/denetworkpythonexample-${{ inputs.releaseVersion }}.zip Examples
           cp -a dragengine/example/distribute/DENetworkExample.delga Examples
           zip -r examples.zip Examples
         
@@ -50,6 +51,7 @@ jobs:
           mkdir artifacts
           cp -a cpp/library/build/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip artifacts
           cp -a java/library/build/denetworkjava-${{ inputs.releaseVersion }}.zip artifacts
+          cp -a python/build/library/denetworkpython-${{ inputs.releaseVersion }}.zip artifacts
           cp -a examples.zip artifacts
         
       - name: Store Archives
@@ -59,5 +61,6 @@ jobs:
           path: |
             artifacts/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip
             artifacts/denetworkjava-${{ inputs.releaseVersion }}.zip
+            artifacts/denetworkpython-${{ inputs.releaseVersion }}.zip
             artifacts/examples.zip
           if-no-files-found: error

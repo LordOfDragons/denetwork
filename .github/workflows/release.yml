@@ -60,5 +60,6 @@ jobs:
           artifacts: >
             denetworkcpp-unix-x64-${{ github.event.inputs.version }}.zip,
             denetworkjava-${{ github.event.inputs.version }}.zip,
+            denetworkpython-${{ github.event.inputs.version }}.zip,
             DENetworkSDK-${{ github.event.inputs.version }}.zip,
             examples.zip

@@ -65,5 +65,6 @@ jobs:
           artifacts: >
             denetworkcpp-unix-x64-nightly.zip,
             denetworkjava-nightly.zip,
+            denetworkpython-nightly.zip,
             DENetworkSDK-nightly.zip,
             examples.zip
