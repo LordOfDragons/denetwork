@@ -1015,8 +1015,6 @@ public class Connection implements Endpoint.Listener {
 	 * Synchronized by caller.
 	 */
 	private void processMessage(MessageReader reader) throws IOException {
-		/* const int flags = */ reader.readByte();
-
 		Message message = new Message();
 		message.setLength(reader.length() - reader.position());
 		reader.read(message);
