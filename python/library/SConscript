@@ -1,1 +1,34 @@
+import os, sys
 
+Import('globalEnv')
+
+versionString = globalEnv['version']
+
+env = globalEnv.Clone()
+
+# define the targets array and reports dictionary to be filled
+parent_targets = {}
+
+configGroup = 'DENetworkPython'
+
+# build scripts
+from glob_files import globFiles
+
+sources = []
+globFiles(env, '.', '*.py', sources)
+
+# archive
+targetArchive = globalEnv.targetManager.TargetArchive('DENetworkPython Archive')
+globalEnv.targetManager.add('denetworkpython_archive', targetArchive)
+
+archiveFiles = {}
+
+for s in sources:
+	archiveFiles['DENetworkLibrary-{}/{}'.format(versionString, s)] = env.File(s).srcnode()
+
+archiveFiles['DENetworkLibrary-{}/LICENSE'.format(versionString)] = env.File('#LICENSE')
+archiveFiles['DENetworkLibrary-{}/README.md'.format(versionString)] = env.File('#README.md')
+
+targetArchive.archiveFiles(env, 'denetworkpython-{}'.format(versionString), archiveFiles,
+	format=globalEnv.targetManager.TargetArchive.formatZip)
+targetArchive.aliasArchive(env, 'denetworkpython_archive')

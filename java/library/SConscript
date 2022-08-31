@@ -1,5 +1,4 @@
-import os, sys, shlex
-from ternary_variable import TernaryVariable
+import os, sys
 
 Import('globalEnv')
 

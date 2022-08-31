@@ -50,6 +50,8 @@ SConscript(dirs='cpp/library', variant_dir='cpp/library/build', duplicate=0, exp
 SConscript(dirs='cpp/example', variant_dir='cpp/example/build', duplicate=0, exports='globalEnv')
 SConscript(dirs='java/library', variant_dir='java/library/build', duplicate=0, exports='globalEnv')
 SConscript(dirs='java/example', variant_dir='java/example/build', duplicate=0, exports='globalEnv')
+SConscript(dirs='python/library', variant_dir='python/build/library', duplicate=0, exports='globalEnv')
+SConscript(dirs='python/example', variant_dir='python/build/example', duplicate=0, exports='globalEnv')
 
 # build all target
 targets = []

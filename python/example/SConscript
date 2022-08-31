@@ -1,0 +1,41 @@
+import os, sys
+
+Import('globalEnv')
+
+versionString = globalEnv['version']
+
+env = globalEnv.Clone()
+
+# define the targets array and reports dictionary to be filled
+parent_targets = {}
+
+configGroup = 'DENetworkPythonExample'
+
+# build scripts
+from glob_files import globFiles
+
+sources = []
+globFiles(env, '.', '*.py', sources)
+
+sourcesLibrary = []
+globFiles(env, '../library', '*.py', sourcesLibrary)
+print(sourcesLibrary)
+
+# archive
+targetArchive = globalEnv.targetManager.TargetArchive('DENetworkPythonExample Archive')
+globalEnv.targetManager.add('denetworkpythonexample_archive', targetArchive)
+
+archiveFiles = {}
+
+for s in sources:
+	archiveFiles['DENetworkLibraryExample-{}/{}'.format(versionString, s)] = env.File(s).srcnode()
+
+for s in sourcesLibrary:
+	archiveFiles['DENetworkLibraryExample-{}/DENetworkLibrary/{}'.format(versionString, s[11:])] = env.File(s).srcnode()
+
+archiveFiles['DENetworkLibraryExample-{}/LICENSE'.format(versionString)] = env.File('#LICENSE')
+archiveFiles['DENetworkLibraryExample-{}/README.md'.format(versionString)] = env.File('#README.md')
+
+targetArchive.archiveFiles(env, 'denetworkpythonexample-{}'.format(versionString), archiveFiles,
+	format=globalEnv.targetManager.TargetArchive.formatZip)
+targetArchive.aliasArchive(env, 'denetworkpythonexample_archive')
