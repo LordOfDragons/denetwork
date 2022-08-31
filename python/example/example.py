@@ -31,7 +31,6 @@ from input import Input
 from logger import Logger
 from io import StringIO
 import sys
-import time
 import logging
 import asyncio
 
