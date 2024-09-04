@@ -8,5 +8,6 @@ Provides support to connect to Drag[en]gine Game Engine running on another host 
 This repository provides libraries to support server and client networking for:
 - C++
 - Python
+- Java
 
 The software license is MIT to allow easy integration, typically statically linked.

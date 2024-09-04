@@ -27,12 +27,12 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Get Linux Archives
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.1.7
         with:
           name: archives-linux
       
       - name: Get Windows Archives
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.1.7
         with:
           name: archives-windows
       
