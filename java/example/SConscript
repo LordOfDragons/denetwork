@@ -27,7 +27,7 @@ globalEnv.targetManager.add('denetworkjava_example', targetJar)
 
 targetLibrary.applyBuild(envJar, targetJar)
 
-targetJar.javaVersion = '1.7'
+targetJar.javaVersion = '11'
 targetJar.manifest = 'src/Manifest.txt'
 targetJar.compileSources(envJar, 'src')
 targetJar.buildJar(envJar, 'DENetworkExample-{}'.format(versionString))

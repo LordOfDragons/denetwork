@@ -22,7 +22,7 @@ envJar.Tool('javac', 'jar')
 targetJar = globalEnv.targetManager.TargetJar('DENetwork JAR')
 globalEnv.targetManager.add('denetworkjava', targetJar)
 
-targetJar.javaVersion = '1.7'
+targetJar.javaVersion = '11'
 targetJar.compileSources(envJar, 'src')
 targetJar.buildJar(envJar, 'DENetwork-{}'.format(versionString))
 targetJar.aliasBuild(envJar, 'denetworkjava_build')
