@@ -122,7 +122,7 @@ denMessage::Ref denSocketWindows::ReceiveDatagram(denSocketAddress &address){
 	if(select(0, &fd, nullptr, nullptr, &tv) == 1){
 		const denMessage::Ref message(denMessage::Pool().Get());
 		std::string &data = message->Item().GetData();
-		size_t dataLen = 8192;
+		size_t dataLen = 65535;
 		if(data.size() < dataLen){
 			data.assign(dataLen, 0);
 		}
@@ -163,6 +163,13 @@ denMessage::Ref denSocketWindows::ReceiveDatagram(denSocketAddress &address){
 }
 
 void denSocketWindows::SendDatagram(const denMessage &message, const denSocketAddress &address){
+	if(message.GetLength() > 65500){
+		const int error = errno;
+		std::stringstream s;
+		s << "SendDatagram: message size too long: " << message.GetLength() << " (max 65500)";
+		throw std::runtime_error(s.str());
+	}
+	
 	if(pAddress.type == denSocketAddress::Type::ipv6){
 		sockaddr_in6 sa;
 		memset(&sa, 0, sizeof(sa));

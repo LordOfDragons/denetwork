@@ -59,7 +59,7 @@ public class DatagramChannelEndpoint implements Endpoint {
 	protected class ReceiveDatagramTask implements Runnable {
 		protected final String className = ReceiveDatagramTask.class.getCanonicalName();
 
-		protected final ByteBuffer buffer = ByteBuffer.allocate(8192);
+		protected final ByteBuffer buffer = ByteBuffer.allocate(65535);
 		protected final DatagramChannel channel;
 		protected final Listener listener;
 
@@ -222,6 +222,10 @@ public class DatagramChannelEndpoint implements Endpoint {
 	 */
 	@Override
 	public void sendDatagram(SocketAddress address, Message message) throws IOException {
+		if (message.getLength() > 65500) {
+			throw new IOException("Message too long: " + message.getLength() + " (max 65500)");
+		}
+		
 		try (CloseableReentrantLock locked = lock.open()) {
 			channel.send(ByteBuffer.wrap(message.getData(), 0, message.getLength()), address);
 		}
