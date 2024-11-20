@@ -139,7 +139,7 @@ denMessage::Ref denSocketWindows::ReceiveDatagram(denSocketAddress &address){
 				if(data.size() < (std::size_t)result){
 					data.assign(result, 0);
 				}
-				data.copy((char*)pBuffer.c_str(), result, 0);
+				pBuffer.copy((char*)data.c_str(), result, 0);
 				message->Item().SetLength(result);
 				return message;
 			} // connection closed returns 0 length
@@ -158,7 +158,7 @@ denMessage::Ref denSocketWindows::ReceiveDatagram(denSocketAddress &address){
 				if(data.size() < (std::size_t)result){
 					data.assign(result, 0);
 				}
-				data.copy((char*)pBuffer.c_str(), result, 0);
+				pBuffer.copy((char*)data.c_str(), result, 0);
 				message->Item().SetLength(result);
 				return message;
 			} // connection closed returns 0 length
