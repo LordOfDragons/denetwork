@@ -78,6 +78,8 @@ private:
 	static uint32_t pScopeIdFor(const sockaddr_in6 &address);
 	
 	int pSocket;
+	std::string pBuffer;
+	int pBufferLen;
 };
 
 #endif

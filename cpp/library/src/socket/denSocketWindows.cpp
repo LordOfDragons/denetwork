@@ -40,10 +40,12 @@
 
 denSocketWindows::denSocketWindows() :
 pSocket(-1),
-pWSAStarted(false)
+pWSAStarted(false),
+pBufferLen(65535)
 {
 	pWSAStartup();
 	pWSAStarted = true;
+	pBuffer.assign(pBufferLen, 0);
 }
 
 denSocketWindows::~denSocketWindows() noexcept{
@@ -122,37 +124,41 @@ denMessage::Ref denSocketWindows::ReceiveDatagram(denSocketAddress &address){
 	if(select(0, &fd, nullptr, nullptr, &tv) == 1){
 		const denMessage::Ref message(denMessage::Pool().Get());
 		std::string &data = message->Item().GetData();
-		size_t dataLen = 65535;
-		if(data.size() < dataLen){
-			data.assign(dataLen, 0);
-		}
 		
 		if(pAddress.type == denSocketAddress::Type::ipv6){
 			sockaddr_in6 sa;
 			int slen = sizeof(sa);
-			const int result = recvfrom(pSocket, (char*)data.c_str(), (int)dataLen, 0, (SOCKADDR*)&sa, &slen);
+			const int result = recvfrom(pSocket, (char*)pBuffer.c_str(), pBufferLen, 0, (SOCKADDR*)&sa, &slen);
 		
 			if(result == SOCKET_ERROR){
 				pThrowWSAError("recvfrom failed");
 			}
-
+			
 			if(result > 0){
 				address = AddressFromSocket(sa);
+				if(data.size() < (std::size_t)result){
+					data.assign(result, 0);
+				}
+				data.copy((char*)pBuffer.c_str(), result, 0);
 				message->Item().SetLength(result);
 				return message;
 			} // connection closed returns 0 length
-
+			
 		}else{
 			sockaddr_in sa;
 			int slen = sizeof(sa);
-			const int result = recvfrom(pSocket, (char*)data.c_str(), (int)dataLen, 0, (SOCKADDR*)&sa, &slen);
+			const int result = recvfrom(pSocket, (char*)pBuffer.c_str(), pBufferLen, 0, (SOCKADDR*)&sa, &slen);
 		
 			if(result == SOCKET_ERROR){
 				pThrowWSAError("recvfrom failed");
 			}
-
+			
 			if(result > 0){
 				address = AddressFromSocket(sa);
+				if(data.size() < (std::size_t)result){
+					data.assign(result, 0);
+				}
+				data.copy((char*)pBuffer.c_str(), result, 0);
 				message->Item().SetLength(result);
 				return message;
 			} // connection closed returns 0 length

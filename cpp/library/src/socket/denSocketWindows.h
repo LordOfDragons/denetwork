@@ -82,6 +82,8 @@ private:
 private:
 	SOCKET pSocket;
 	bool pWSAStarted;
+	std::string pBuffer;
+	int pBufferLen;
 
 	static int pWSAStartedCount;
 };

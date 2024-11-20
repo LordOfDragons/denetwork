@@ -26,7 +26,6 @@ package ch.dragondreams.denetwork;
 
 import java.io.IOException;
 import java.net.Inet6Address;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayDeque;

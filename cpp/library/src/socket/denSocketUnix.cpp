@@ -52,7 +52,10 @@
 #include "../denServer.h"
 
 denSocketUnix::denSocketUnix() :
-pSocket(-1){
+pSocket(-1),
+pBufferLen(65535)
+{
+	pBuffer.assign(pBufferLen, 0);
 }
 
 denSocketUnix::~denSocketUnix() noexcept{
@@ -136,15 +139,11 @@ denMessage::Ref denSocketUnix::ReceiveDatagram(denSocketAddress &address){
 	if(poll(&ufd, 1, 0) > 0){
 		const denMessage::Ref message(denMessage::Pool().Get());
 		std::string &data = message->Item().GetData();
-		size_t dataLen = 65535;
-		if(data.size() < dataLen){
-			data.assign(dataLen, 0);
-		}
 		
 		if(pAddress.type == denSocketAddress::Type::ipv6){
 			struct sockaddr_in6 sa;
 			socklen_t slen = sizeof(sa);
-			const int result = recvfrom(pSocket, (char*)data.c_str(), dataLen, 0, (struct sockaddr *)&sa, &slen);
+			const int result = recvfrom(pSocket, (char*)pBuffer.c_str(), pBufferLen, 0, (struct sockaddr *)&sa, &slen);
 			
 			if(result == -1){
 				const int error = errno;
@@ -155,6 +154,10 @@ denMessage::Ref denSocketUnix::ReceiveDatagram(denSocketAddress &address){
 			
 			if(result > 0){
 				address = AddressFromSocket(sa);
+				if(data.size() < (std::size_t)result){
+					data.assign(result, 0);
+				}
+				data.copy((char*)pBuffer.c_str(), result, 0);
 				message->Item().SetLength(result);
 				return message;
 			} // connection closed returns 0 length
@@ -162,7 +165,7 @@ denMessage::Ref denSocketUnix::ReceiveDatagram(denSocketAddress &address){
 		}else{
 			struct sockaddr_in sa;
 			socklen_t slen = sizeof(sa);
-			const int result = recvfrom(pSocket, (char*)data.c_str(), dataLen, 0, (struct sockaddr *)&sa, &slen);
+			const int result = recvfrom(pSocket, (char*)pBuffer.c_str(), pBufferLen, 0, (struct sockaddr *)&sa, &slen);
 			
 			if(result == -1){
 				const int error = errno;
@@ -173,6 +176,10 @@ denMessage::Ref denSocketUnix::ReceiveDatagram(denSocketAddress &address){
 			
 			if(result > 0){
 				address = AddressFromSocket(sa);
+				if(data.size() < (std::size_t)result){
+					data.assign(result, 0);
+				}
+				data.copy((char*)pBuffer.c_str(), result, 0);
 				message->Item().SetLength(result);
 				return message;
 			} // connection closed returns 0 length

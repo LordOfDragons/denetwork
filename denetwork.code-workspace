@@ -1,0 +1,34 @@
+{
+	"folders": [
+		{
+			"path": "cpp/library"
+		},
+		{
+			"path": "java/library"
+		},
+		{
+			"path": "python/library"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.json.liquid": "json",
+			"*.yaml.liquid": "yaml",
+			"*.md.liquid": "markdown",
+			"*.js.liquid": "liquid-javascript",
+			"*.css.liquid": "liquid-css",
+			"*.scss.liquid": "liquid-scss",
+			"algorithm": "cpp",
+			"*.ipp": "cpp",
+			"deque": "cpp",
+			"forward_list": "cpp",
+			"list": "cpp",
+			"string": "cpp",
+			"vector": "cpp",
+			"system_error": "cpp",
+			"array": "cpp",
+			"chrono": "cpp",
+			"functional": "cpp"
+		}
+	}
+}
