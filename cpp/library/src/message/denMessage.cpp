@@ -43,3 +43,18 @@ void denMessage::SetLength(size_t length){
 		pData.assign(length, 0);
 	}
 }
+
+void denMessage::SetLengthRetain(size_t length){
+	const size_t prevLength = pLength;
+	
+	pLength = length;
+	if(pData.size() >= length){
+		return;
+	}
+	
+	const std::string temp(pData);
+	pData.assign(length, 0);
+	if(prevLength > 0){
+		temp.copy((char*)pData.c_str(), prevLength);
+	}
+}

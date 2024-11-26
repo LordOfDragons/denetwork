@@ -342,6 +342,10 @@ private:
 	int pReliableNumberRecv;
 	int pReliableWindowSize;
 	
+	denMessage::Ref pLongMessage;
+	size_t pLongMessagePartSize;
+	denMessage::Ref pLongLinkStateMessage, pLongLinkStateValues;
+	
 	denLogger::Ref pLogger;
 	
 	friend class denStateLink;
@@ -369,6 +373,10 @@ private:
 	void pProcessLinkDown(denMessageReader &reader);
 	void pProcessLinkState(denMessageReader &reader);
 	void pProcessLinkUpdate(denMessageReader &reader);
+	void pProcessReliableMessageLong(denMessageReader &reader);
+	void pProcessReliableMessageMessageLong(denMessageReader &reader);
+	void pProcessReliableLinkStateLong(denMessageReader &reader);
+	void pProcessLinkStateLong(denMessageReader &reader);
 	void pAddReliableReceive(denProtocol::CommandCodes type, int number, denMessageReader &reader);
 	void pRemoveSendReliablesDone();
 	void pSendPendingReliables();

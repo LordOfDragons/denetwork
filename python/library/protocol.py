@@ -61,6 +61,12 @@ class CommandCodes(IntEnum):
     LINK_UPDATE = 9
     """Link update."""
 
+    RELIABLE_MESSAGE_LONG = 10
+    """Long reliable message."""
+
+    RELIABLE_LINK_STATE_LONG = 11
+    """Long link state."""
+
 
 class ConnectionAck(IntEnum):
 

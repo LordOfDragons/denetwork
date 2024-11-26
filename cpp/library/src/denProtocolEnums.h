@@ -111,7 +111,7 @@ namespace denProtocol{
 		linkDown = 8,
 		
 		/**
-		 * Link update: 
+		 * Link update:
 		 * [ 9 ] [ link_count:uint8 ] [ link ]{ 1..link_count }
 		 * 
 		 * link:
@@ -120,9 +120,36 @@ namespace denProtocol{
 		 * value:
 		 *    [ value_index:uint16 ] [ value_data:* ]
 		 */
-		linkUpdate = 9
+		linkUpdate = 9,
+		
+		/**
+		 * Long reliable message:
+		 * [ 10 ] [ number:uint16 ] [ flags:uint8 ] [ data ]
+		 * 
+		 * flags:
+		 *    0x1: first part of message
+		 *    0x2: last part of message
+		 */
+		reliableMessageLong = 10,
+		
+		/**
+		 * Long link state:
+		 * [ 5 ] [ number:uint16 ] [ link_id:uint16 ] [ flags ] [ message ] [ values ]
+		 * 
+		 * flags:
+		 *    0x1: create read only state
+		 *    0x2: first part of link state
+		 *    0x4: last part of link state
+		 * 
+		 * message:
+		 *    [ length:uint16 ] [ message_bytes:uint8 ]{ 1..n }
+		 * 
+		 * values:
+		 *    [ value_count:uint16 ] ( [ value_type:uint8 ] [ value_data:* ] ){ 1..n }
+		 */
+		reliableLinkStateLong = 11,
 	};
-
+	
 	/**
 	* \brief Acknowledge connection codes.
 	*/
@@ -131,7 +158,7 @@ namespace denProtocol{
 		rejected = 1,
 		noCommonProtocol = 2
 	};
-
+	
 	/**
 	* \brief Reliable acknowledge codes.
 	*/
@@ -139,7 +166,24 @@ namespace denProtocol{
 		success = 0,
 		failed = 1
 	};
-
+	
+	/**
+	* \brief Long message flags.
+	*/
+	enum class LongMessageFlags{
+		first = 0x1,
+		last = 0x2
+	};
+	
+	/**
+	* \brief Long link state flags.
+	*/
+	enum class LongLinkStateFlags{
+		readOnly = 0x1,
+		first = 0x2,
+		last = 0x4
+	};
+	
 	/**
 	* \brief State value types.
 	*/

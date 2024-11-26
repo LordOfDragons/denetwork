@@ -65,6 +65,9 @@ public:
 	/** \brief Set data length which can be less than the data size. */
 	void SetLength(size_t length);
 	
+	/** \brief Same as SetLength() but keeps content up to previous length intact. */
+	void SetLengthRetain(size_t length);
+	
 	/** \brief Pool. */
 	inline static denPool<denMessage> &Pool(){ return pPool; }
 	

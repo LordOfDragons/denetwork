@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <string.h>
 #include "denConnection.h"
 #include "denServer.h"
 #include "denRealMessage.h"
@@ -45,6 +46,7 @@ pNextLinkIdentifier(0),
 pReliableNumberSend(0),
 pReliableNumberRecv(0),
 pReliableWindowSize(10),
+pLongMessagePartSize(1357),
 pParentServer(nullptr){
 }
 
@@ -146,34 +148,75 @@ void denConnection::SendReliableMessage(const denMessage::Ref &message){
 	if(!message){
 		throw std::invalid_argument("message is nullptr");
 	}
-	if(message->Item().GetLength() < 1){
+	
+	const size_t length = message->Item().GetLength();
+	if(length < 1){
 		throw std::invalid_argument("message has 0 length");
 	}
 	if(pConnectionState != ConnectionState::connected){
 		throw std::invalid_argument("not connected");
 	}
 	
-	const denRealMessage::Ref realMessage(denRealMessage::Pool().Get());
-	realMessage->Item().type = denProtocol::CommandCodes::reliableMessage;
-	realMessage->Item().number = (pReliableNumberSend + pReliableMessagesSend.size()) % 65535;
-	realMessage->Item().state = denRealMessage::State::pending;
-	
-	{
-	denMessageWriter writer(realMessage->Item().message->Item());
-	writer.WriteByte((uint8_t)denProtocol::CommandCodes::reliableMessage);
-	writer.WriteUShort((uint16_t)realMessage->Item().number);
-	writer.Write(message->Item());
-	}
-	
-	pReliableMessagesSend.push_back(realMessage);
-	
-	// if the message fits into the window send it right now
-	if(pReliableMessagesSend.size() <= (size_t)pReliableWindowSize){
-		pSocket->SendDatagram(realMessage->Item().message->Item(), pRealRemoteAddress);
+	const int partCount = (int)((length - 1) / pLongMessagePartSize + 1);
+	if(partCount > 1){
+		const uint8_t * const data = (uint8_t*)message->Item().GetData().c_str();
+		size_t offset = 0;
+		int i;
 		
-		realMessage->Item().state = denRealMessage::State::send;
-		realMessage->Item().elapsedResend = 0.0f;
-		realMessage->Item().elapsedTimeout = 0.0f;
+		for(i=0; i<partCount; i++){
+			const denRealMessage::Ref realMessage(denRealMessage::Pool().Get());
+			realMessage->Item().type = denProtocol::CommandCodes::reliableMessageLong;
+			realMessage->Item().number = (pReliableNumberSend + pReliableMessagesSend.size()) % 65535;
+			realMessage->Item().state = denRealMessage::State::pending;
+			
+			uint8_t flags = 0;
+			if(i == 0){
+				flags |= (uint8_t)denProtocol::LongMessageFlags::first;
+			}
+			if(i == partCount - 1){
+				flags |= (uint8_t)denProtocol::LongMessageFlags::last;
+			}
+			
+			const size_t partLength = std::min(pLongMessagePartSize, length - offset);
+			
+			{
+			denMessageWriter writer(realMessage->Item().message->Item());
+			writer.WriteByte((uint8_t)denProtocol::CommandCodes::reliableMessageLong);
+			writer.WriteUShort((uint16_t)realMessage->Item().number);
+			writer.WriteByte(flags);
+			writer.Write(data + offset, partLength);
+			}
+			
+			pReliableMessagesSend.push_back(realMessage);
+			
+			offset += partLength;
+		}
+		
+		pSendPendingReliables();
+		
+	}else{
+		const denRealMessage::Ref realMessage(denRealMessage::Pool().Get());
+		realMessage->Item().type = denProtocol::CommandCodes::reliableMessage;
+		realMessage->Item().number = (pReliableNumberSend + pReliableMessagesSend.size()) % 65535;
+		realMessage->Item().state = denRealMessage::State::pending;
+		
+		{
+		denMessageWriter writer(realMessage->Item().message->Item());
+		writer.WriteByte((uint8_t)denProtocol::CommandCodes::reliableMessage);
+		writer.WriteUShort((uint16_t)realMessage->Item().number);
+		writer.Write(message->Item());
+		}
+		
+		pReliableMessagesSend.push_back(realMessage);
+		
+		// if the message fits into the window send it right now
+		if(pReliableMessagesSend.size() <= (size_t)pReliableWindowSize){
+			pSocket->SendDatagram(realMessage->Item().message->Item(), pRealRemoteAddress);
+			
+			realMessage->Item().state = denRealMessage::State::send;
+			realMessage->Item().elapsedResend = 0.0f;
+			realMessage->Item().elapsedTimeout = 0.0f;
+		}
 	}
 }
 
@@ -368,6 +411,14 @@ void denConnection::ProcessDatagram(denMessageReader& reader){
 		pProcessLinkUpdate(reader);
 		break;
 		
+	case denProtocol::CommandCodes::reliableMessageLong:
+		pProcessReliableMessageLong(reader);
+		break;
+		
+	case denProtocol::CommandCodes::reliableLinkStateLong:
+		pProcessReliableLinkStateLong(reader);
+		break;
+		
 	default:
 		// throw std::invalid_argument("Invalid command code");
 		break;
@@ -421,6 +472,7 @@ void denConnection::pDisconnect(bool notify, bool remoteClosed){
 	pReliableMessagesSend.clear();
 	pReliableNumberSend = 0;
 	pReliableNumberRecv = 0;
+	pLongMessage.reset();
 	
 	pCloseSocket();
 	
@@ -632,9 +684,19 @@ void denConnection::pProcessQueuedMessages(){
 			pProcessReliableMessageMessage(reader);
 			}break;
 			
+		case denProtocol::CommandCodes::reliableMessageLong:{
+			denMessageReader reader((*iter)->Item().message->Item());
+			pProcessReliableMessageMessageLong(reader);
+			}break;
+			
 		case denProtocol::CommandCodes::reliableLinkState:{
 			denMessageReader reader((*iter)->Item().message->Item());
 			pProcessLinkState(reader);
+			}break;
+			
+		case denProtocol::CommandCodes::reliableLinkStateLong:{
+			denMessageReader reader((*iter)->Item().message->Item());
+			pProcessLinkStateLong(reader);
 			}break;
 			
 		default:
@@ -701,6 +763,7 @@ void denConnection::pProcessConnectionClose(denMessageReader&){
 void denConnection::pProcessMessage(denMessageReader &reader){
 	const denMessage::Ref message(denMessage::Pool().Get());
 	message->Item().SetLength(reader.GetLength() - reader.GetPosition());
+	message->Item().SetTimestamp(std::chrono::system_clock::now());
 	reader.Read(message->Item());
 	
 	MessageReceived(message);
@@ -748,6 +811,7 @@ void denConnection::pProcessReliableMessage(denMessageReader &reader){
 void denConnection::pProcessReliableMessageMessage(denMessageReader &reader){
 	denMessage::Ref message(denMessage::Pool().Get());
 	message->Item().SetLength(reader.GetLength() - reader.GetPosition());
+	message->Item().SetTimestamp(std::chrono::system_clock::now());
 	reader.Read(message->Item());
 	
 	MessageReceived(message);
@@ -895,6 +959,7 @@ void denConnection::pProcessLinkState(denMessageReader &reader){
 	// create linked network state
 	denMessage::Ref message(denMessage::Pool().Get());
 	message->Item().SetLength(reader.ReadUShort());
+	message->Item().SetTimestamp(std::chrono::system_clock::now());
 	reader.Read(message->Item());
 	
 	const denState::Ref state(CreateState(message, readOnly));
@@ -963,6 +1028,201 @@ void denConnection::pProcessLinkUpdate(denMessageReader &reader){
 	}
 }
 
+void denConnection::pProcessReliableMessageLong(denMessageReader &reader){
+	if(pConnectionState != ConnectionState::connected){
+		return;
+	}
+	
+	const int number = reader.ReadUShort();
+	bool validNumber;
+	
+	if(number < pReliableNumberRecv){
+		validNumber = number < (pReliableNumberRecv + pReliableWindowSize) % 65535;
+		
+	}else{
+		validNumber = number < pReliableNumberRecv + pReliableWindowSize;
+	}
+	if(!validNumber){
+		return;
+	}
+	
+	const denMessage::Ref ackMessage(denMessage::Pool().Get());
+	{
+	denMessageWriter ackWriter(ackMessage->Item());
+	ackWriter.WriteByte((uint8_t)denProtocol::CommandCodes::reliableAck);
+	ackWriter.WriteUShort((uint16_t)number);
+	ackWriter.WriteByte((uint8_t)denProtocol::ReliableAck::success);
+	}
+	pSocket->SendDatagram(ackMessage->Item(), pRealRemoteAddress);
+	
+	if(number == pReliableNumberRecv){
+		pProcessReliableMessageMessageLong(reader);
+		pReliableNumberRecv = (pReliableNumberRecv + 1) % 65535;
+		pProcessQueuedMessages();
+		
+	}else{
+		pAddReliableReceive(denProtocol::CommandCodes::reliableMessageLong, number, reader);
+	}
+}
+
+void denConnection::pProcessReliableMessageMessageLong(denMessageReader &reader){
+	const uint8_t flags = reader.ReadByte();
+	if((flags & (uint8_t)denProtocol::LongMessageFlags::first) != 0){
+		pLongMessage = denMessage::Pool().Get();
+		pLongMessage->Item().SetLength(0);
+	}
+	
+	if(!pLongMessage){
+		return;
+	}
+	
+	{
+	denMessage &message = pLongMessage->Item();
+	const size_t length = reader.GetLength() - reader.GetPosition();
+	const size_t offset = message.GetLength();
+	message.SetLengthRetain(offset + length);
+	reader.Read((uint8_t*)message.GetData().c_str() + offset, length);
+	}
+	
+	if((flags & (uint8_t)denProtocol::LongMessageFlags::last) != 0){
+		const denMessage::Ref message(pLongMessage);
+		pLongMessage.reset();
+		
+		message->Item().SetTimestamp(std::chrono::system_clock::now());
+		MessageReceived(message);
+		
+	}else{
+		MessageProgress(pLongMessage->Item().GetLength());
+	}
+}
+
+void denConnection::pProcessReliableLinkStateLong(denMessageReader &reader){
+	if(pConnectionState != ConnectionState::connected){
+		return;
+	}
+	
+	const int number = reader.ReadUShort();
+	bool validNumber;
+	
+	if( number < pReliableNumberRecv ){
+		validNumber = number < (pReliableNumberRecv + pReliableWindowSize) % 65535;
+		
+	}else{
+		validNumber = number < pReliableNumberRecv + pReliableWindowSize;
+	}
+	if( ! validNumber ){
+		return;
+	}
+	
+	const denMessage::Ref ackMessage(denMessage::Pool().Get());
+	{
+	denMessageWriter ackWriter(ackMessage->Item());
+	ackWriter.WriteByte((uint8_t)denProtocol::CommandCodes::reliableAck);
+	ackWriter.WriteUShort((uint16_t)number);
+	ackWriter.WriteByte((uint8_t)denProtocol::ReliableAck::success);
+	}
+	pSocket->SendDatagram(ackMessage->Item(), pRealRemoteAddress);
+	
+	if(number == pReliableNumberRecv){
+		pProcessLinkStateLong(reader);
+		pReliableNumberRecv = (pReliableNumberRecv + 1) % 65535;
+		pProcessQueuedMessages();
+		
+	}else{
+		pAddReliableReceive(denProtocol::CommandCodes::reliableLinkStateLong, number, reader);
+	}
+}
+
+void denConnection::pProcessLinkStateLong(denMessageReader &reader){
+	const int identifier = reader.ReadUShort();
+	const uint8_t flags = reader.ReadByte();
+	
+	StateLinks::const_iterator iterLink(std::find_if(pStateLinks.cbegin(),
+	pStateLinks.cend(), [&](const denStateLink::Ref &each){
+		return each->GetIdentifier() == identifier;
+	}));
+	
+	if(iterLink != pStateLinks.cend() && (*iterLink)->GetLinkState() != denStateLink::State::down){
+		return;
+	}
+	
+	if((flags & (uint8_t)denProtocol::LongLinkStateFlags::first) != 0){
+		pLongLinkStateMessage = denMessage::Pool().Get();
+		pLongLinkStateMessage->Item().SetLength(0);
+		
+		pLongLinkStateValues = denMessage::Pool().Get();
+		pLongLinkStateValues->Item().SetLength(0);
+	}
+	
+	if(!pLongLinkStateMessage || !pLongLinkStateValues){
+		return;
+	}
+	
+	// message
+	{
+	denMessage &message = pLongLinkStateMessage->Item();
+	const size_t length = reader.ReadUShort();
+	const size_t offset = message.GetLength();
+	message.SetLengthRetain(offset + length);
+	reader.Read((uint8_t*)message.GetData().c_str() + offset, length);
+	}
+	
+	// state values
+	{
+	denMessage &values = pLongLinkStateValues->Item();
+	const size_t length = reader.GetLength() - reader.GetPosition();
+	const size_t offset = values.GetLength();
+	values.SetLengthRetain(offset + length);
+	reader.Read((uint8_t*)values.GetData().c_str() + offset, length);
+	}
+	
+	if((flags & (uint8_t)denProtocol::LongMessageFlags::last) == 0){
+		return;
+	}
+	
+	// create linked network state
+	denProtocol::CommandCodes code = denProtocol::CommandCodes::linkDown;
+	
+	{
+	const denMessage::Ref message(pLongLinkStateMessage);
+	pLongLinkStateMessage.reset();
+	
+	const denMessage::Ref values(pLongLinkStateValues);
+	pLongLinkStateValues.reset();
+	
+	const bool readOnly = (flags & (uint8_t)denProtocol::LongLinkStateFlags::readOnly) != 0;
+	const denState::Ref state(CreateState(message, readOnly));
+	
+	if(state){
+		{
+		denMessageReader valueReader(values->Item());
+		if(!state->LinkReadAndVerifyAllValues(valueReader)){
+			return;
+		}
+		}
+		if(iterLink != pStateLinks.cend()){
+			return;
+		}
+		
+		const denStateLink::Ref link(std::make_shared<denStateLink>(*this, *state));
+		link->SetIdentifier(identifier);
+		pStateLinks.push_back(link);
+		state->pLinks.push_back(link);
+		
+		link->SetLinkState(denStateLink::State::up);
+		code = denProtocol::CommandCodes::linkUp;
+	}
+	}
+	
+	const denMessage::Ref message(denMessage::Pool().Get());
+	{
+	denMessageWriter writer(message->Item());
+	writer.WriteByte((uint8_t)code);
+	writer.WriteUShort((uint16_t)identifier);
+	}
+	pSocket->SendDatagram(message->Item(), pRealRemoteAddress);
+}
+
 void denConnection::pAddReliableReceive(denProtocol::CommandCodes type, int number, denMessageReader &reader){
 	denRealMessage::Ref message(denRealMessage::Pool().Get());
 	message->Item().message->Item().SetLength(reader.GetLength() - reader.GetPosition());
@@ -994,21 +1254,28 @@ void denConnection::pRemoveSendReliablesDone(){
 }
 
 void denConnection::pSendPendingReliables(){
-	Messages::const_iterator iter;
-	int sendCount = 0;
+	int freeSlots = pReliableWindowSize;
+	for(const denRealMessage::Ref &eachMessage : pReliableMessagesSend){
+		if(eachMessage->Item().state == denRealMessage::State::send){
+			freeSlots--;
+		}
+	}
+	if(freeSlots < 1){
+		return;
+	}
 	
-	for(iter = pReliableMessagesSend.cbegin(); iter != pReliableMessagesSend.cend(); iter++){
-		if((*iter)->Item().state != denRealMessage::State::pending){
+	for(const denRealMessage::Ref &eachMessage : pReliableMessagesSend){
+		denRealMessage &realMessage = eachMessage->Item();
+		if(realMessage.state != denRealMessage::State::pending){
 			continue;
 		}
 		
-		pSocket->SendDatagram((*iter)->Item().message->Item(), pRealRemoteAddress);
+		pSocket->SendDatagram(realMessage.message->Item(), pRealRemoteAddress);
 		
-		(*iter)->Item().state = denRealMessage::State::send;
-		(*iter)->Item().elapsedResend = 0.0f;
-		(*iter)->Item().elapsedTimeout = 0.0f;
-		
-		if(++sendCount == pReliableWindowSize){
+		realMessage.state = denRealMessage::State::send;
+		realMessage.elapsedResend = 0.0f;
+		realMessage.elapsedTimeout = 0.0f;
+		if(--freeSlots == 0){
 			break;
 		}
 	}
