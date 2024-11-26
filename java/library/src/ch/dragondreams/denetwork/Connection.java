@@ -29,6 +29,7 @@ import java.net.Inet6Address;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayDeque;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.Queue;
@@ -46,6 +47,8 @@ import ch.dragondreams.denetwork.message.MessageReader;
 import ch.dragondreams.denetwork.message.MessageWriter;
 import ch.dragondreams.denetwork.protocol.CommandCodes;
 import ch.dragondreams.denetwork.protocol.ConnectionAck;
+import ch.dragondreams.denetwork.protocol.LongLinkStateFlags;
+import ch.dragondreams.denetwork.protocol.LongMessageFlags;
 import ch.dragondreams.denetwork.protocol.Protocols;
 import ch.dragondreams.denetwork.protocol.ReliableAck;
 import ch.dragondreams.denetwork.state.State;
@@ -132,6 +135,11 @@ public class Connection implements Endpoint.Listener {
 	private int reliableWindowSize = 10;
 
 	private Server parentServer = null;
+
+	Message longMessage = null;
+	int longMessagePartSize = 1357;
+	Message longLinkStateMessage = null;
+	Message longLinkStateValues = null;
 
 	private final CloseableReentrantLock lock = new CloseableReentrantLock();
 
@@ -405,33 +413,72 @@ public class Connection implements Endpoint.Listener {
 			if (message == null) {
 				throw new IllegalArgumentException("message is null");
 			}
-			if (message.getLength() < 1) {
+			
+			int length = message.getLength();
+			if (length < 1) {
 				throw new IllegalArgumentException("message has 0 length");
 			}
 			if (connectionState != ConnectionState.CONNECTED) {
 				throw new IllegalArgumentException("not connected");
 			}
+			
+			int partCount = (int)((length - 1) / longMessagePartSize + 1);
+			if (partCount > 1) {
+				byte[] data = message.getData();
+				int offset = 0;
+				int i;
+				
+				for (i=0; i<partCount; i++) {
+					RealMessage realMessage = new RealMessage();
+					realMessage.type = CommandCodes.RELIABLE_MESSAGE_LONG;
+					realMessage.number = (reliableNumberSend + reliableMessagesSend.size()) % 65535;
+					realMessage.state = RealMessage.State.PENDING;
+					
+					int flags = 0;
+					if (i == 0) {
+						flags |= LongMessageFlags.FIRST.value;
+					}
+					if (i == partCount - 1) {
+						flags |= LongMessageFlags.LAST.value;
+					}
+					
+					int partLength = Math.min(longMessagePartSize, length - offset);
+					
+					try (MessageWriter writer = new MessageWriter(realMessage.message)) {
+						writer.writeByte((byte) CommandCodes.RELIABLE_MESSAGE_LONG.value);
+						writer.writeUShort(realMessage.number);
+						writer.writeByte((byte) flags);
+						writer.write(data, offset, partLength);
+					}
+					
+					reliableMessagesSend.add(realMessage);
+					offset += partLength;
+				}
+				
+				sendPendingReliables();
+				
+			}else{
+				RealMessage realMessage = new RealMessage();
+				realMessage.type = CommandCodes.RELIABLE_MESSAGE;
+				realMessage.number = (reliableNumberSend + reliableMessagesSend.size()) % 65535;
+				realMessage.state = RealMessage.State.PENDING;
 
-			RealMessage realMessage = new RealMessage();
-			realMessage.type = CommandCodes.RELIABLE_MESSAGE;
-			realMessage.number = (reliableNumberSend + reliableMessagesSend.size()) % 65535;
-			realMessage.state = RealMessage.State.PENDING;
+				try (MessageWriter writer = new MessageWriter(realMessage.message)) {
+					writer.writeByte((byte) CommandCodes.RELIABLE_MESSAGE.value);
+					writer.writeUShort(realMessage.number);
+					writer.write(message);
+				}
 
-			try (MessageWriter writer = new MessageWriter(realMessage.message)) {
-				writer.writeByte((byte) CommandCodes.RELIABLE_MESSAGE.value);
-				writer.writeUShort(realMessage.number);
-				writer.write(message);
-			}
+				reliableMessagesSend.add(realMessage);
 
-			reliableMessagesSend.add(realMessage);
+				// if the message fits into the window send it right now
+				if (reliableMessagesSend.size() <= reliableWindowSize) {
+					endpoint.sendDatagram(realRemoteAddress, realMessage.message);
 
-			// if the message fits into the window send it right now
-			if (reliableMessagesSend.size() <= reliableWindowSize) {
-				endpoint.sendDatagram(realRemoteAddress, realMessage.message);
-
-				realMessage.state = RealMessage.State.SEND;
-				realMessage.elapsedResend = 0.0f;
-				realMessage.elapsedTimeout = 0.0f;
+					realMessage.state = RealMessage.State.SEND;
+					realMessage.elapsedResend = 0.0f;
+					realMessage.elapsedTimeout = 0.0f;
+				}
 			}
 		}
 	}
@@ -694,6 +741,14 @@ public class Connection implements Endpoint.Listener {
 			processLinkUpdate(reader);
 			break;
 
+		case RELIABLE_MESSAGE_LONG:
+			processReliableMessageLong(reader);
+			break;
+
+		case RELIABLE_LINK_STATE_LONG:
+			processReliableLinkStateLong(reader);
+			break;
+
 		default:
 			// throw new IllegalArgumentException("Invalid command code");
 			break;
@@ -745,6 +800,9 @@ public class Connection implements Endpoint.Listener {
 			reliableMessagesSend.clear();
 			reliableNumberSend = 0;
 			reliableNumberRecv = 0;
+			longMessage = null;
+			longLinkStateMessage = null;
+			longLinkStateValues = null;
 		}
 
 		closeEndpoint();
@@ -907,6 +965,7 @@ public class Connection implements Endpoint.Listener {
 		}
 	}
 
+	/*
 	private void invalidateState(State state) {
 		ListIterator<StateLink> iter = stateLinks.listIterator();
 		while (iter.hasNext()) {
@@ -921,6 +980,7 @@ public class Connection implements Endpoint.Listener {
 			}
 		}
 	}
+	*/
 
 	/**
 	 * Internal use only.
@@ -954,6 +1014,14 @@ public class Connection implements Endpoint.Listener {
 
 			case RELIABLE_LINK_STATE:
 				processLinkState(new MessageReader(message.message));
+				break;
+
+			case RELIABLE_MESSAGE_LONG:
+				processReliableMessageMessageLong(new MessageReader(message.message));
+				break;
+
+			case RELIABLE_LINK_STATE_LONG:
+				processLinkStateLong(new MessageReader(message.message));
 				break;
 
 			default:
@@ -1311,6 +1379,192 @@ public class Connection implements Endpoint.Listener {
 	/**
 	 * Synchronized by caller.
 	 */
+	private void processReliableMessageLong(MessageReader reader) throws IOException {
+		if (connectionState != ConnectionState.CONNECTED) {
+			return;
+		}
+
+		int number = reader.readUShort();
+		boolean validNumber;
+
+		if (number < reliableNumberRecv) {
+			validNumber = number < (reliableNumberRecv + reliableWindowSize) % 65535;
+
+		} else {
+			validNumber = number < reliableNumberRecv + reliableWindowSize;
+		}
+		if (!validNumber) {
+			return;
+		}
+
+		Message ackMessage = new Message();
+		try (MessageWriter writer = new MessageWriter(ackMessage)) {
+			writer.writeByte((byte) CommandCodes.RELIABLE_ACK.value);
+			writer.writeUShort(number);
+			writer.writeByte((byte) ReliableAck.SUCCESS.value);
+		}
+		endpoint.sendDatagram(realRemoteAddress, ackMessage);
+
+		if (number == reliableNumberRecv) {
+			processReliableMessageMessageLong(reader);
+			reliableNumberRecv = (reliableNumberRecv + 1) % 65535;
+			processQueuedMessages();
+
+		} else {
+			addReliableReceive(CommandCodes.RELIABLE_MESSAGE_LONG, number, reader);
+		}
+	}
+
+	/**
+	 * Synchronized by caller.
+	 */
+	private void processReliableMessageMessageLong(MessageReader reader) throws IOException {
+		int flags = reader.readByte();
+		if ((flags & LongMessageFlags.FIRST.value) != 0) {
+			longMessage = new Message();
+		}
+		if (longMessage == null) {
+			return;
+		}
+		
+		int length = reader.length() - reader.position();
+		int offset = longMessage.getLength();
+		longMessage.setLengthRetain(offset + length);
+		reader.read(longMessage.getData(), offset, length);
+		
+		if ((flags & LongMessageFlags.LAST.value) != 0) {
+			Message message = longMessage;
+			longMessage = null;
+			
+			message.setTimestamp(new Date());
+			messageReceived(message);
+			
+		}else{
+			messageProgress(longMessage.getLength());
+		}
+	}
+
+	/**
+	 * Synchronized by caller.
+	 */
+	private void processReliableLinkStateLong(MessageReader reader) throws IOException {
+		if (connectionState != ConnectionState.CONNECTED) {
+			return;
+		}
+
+		int number = reader.readUShort();
+		boolean validNumber;
+
+		if (number < reliableNumberRecv) {
+			validNumber = number < (reliableNumberRecv + reliableWindowSize) % 65535;
+
+		} else {
+			validNumber = number < reliableNumberRecv + reliableWindowSize;
+		}
+		if (!validNumber) {
+			return;
+		}
+
+		Message ackMessage = new Message();
+		try (MessageWriter writer = new MessageWriter(ackMessage)) {
+			writer.writeByte((byte) CommandCodes.RELIABLE_ACK.value);
+			writer.writeUShort(number);
+			writer.writeByte((byte) ReliableAck.SUCCESS.value);
+		}
+		endpoint.sendDatagram(realRemoteAddress, ackMessage);
+
+		if (number == reliableNumberRecv) {
+			processLinkStateLong(reader);
+			reliableNumberRecv = (reliableNumberRecv + 1) % 65535;
+			processQueuedMessages();
+
+		} else {
+			addReliableReceive(CommandCodes.RELIABLE_LINK_STATE_LONG, number, reader);
+		}
+	}
+	
+	/**
+	 * Synchronized by caller.
+	 */
+	private void processLinkStateLong(MessageReader reader) throws IOException {
+		int identifier = reader.readUShort();
+		int flags = reader.readByte();
+		
+		StateLink link = null;
+		for (StateLink each : stateLinks) {
+			if (each.getIdentifier() == identifier) {
+				link = each;
+				break;
+			}
+		}
+		if (link != null && link.getLinkState() != StateLink.LinkState.DOWN) {
+			return;
+		}
+		
+		if ((flags & LongLinkStateFlags.FIRST.value) != 0) {
+			longLinkStateMessage = new Message();
+			longLinkStateValues = new Message();
+		}
+		if (longLinkStateMessage == null || longLinkStateValues == null) {
+			return;
+		}
+		
+		// message
+		int length = reader.readUShort();
+		int offset = longLinkStateMessage.getLength();
+		longLinkStateMessage.setLengthRetain(offset + length);
+		reader.read(longLinkStateMessage.getData(), offset, length);
+		
+		// state values
+		length = reader.length() - reader.position();
+		offset = longLinkStateValues.getLength();
+		longLinkStateValues.setLengthRetain(offset + length);
+		reader.read(longLinkStateValues.getData(), offset, length);
+		
+		if ((flags & LongMessageFlags.LAST.value) == 0) {
+			return;
+		}
+		
+		// create linked network state
+		Message message = longLinkStateMessage;
+		longLinkStateMessage = null;
+		
+		Message values = longLinkStateValues;
+		longLinkStateValues = null;
+		
+		CommandCodes code = CommandCodes.LINK_DOWN;
+		
+		boolean readOnly = (flags & LongLinkStateFlags.READ_ONLY.value) != 0;
+		State state = createState(message, readOnly);
+		
+		if (state != null) {
+			if (!state.linkReadAndVerifyAllValues(new MessageReader(values))) {
+				return;
+			}
+			if (link != null) {
+				return;
+			}
+
+			link = new StateLink(this, state);
+			link.setIdentifier(identifier);
+			stateLinks.add(link);
+			state.getLinks().add(link);
+
+			link.setLinkState(StateLink.LinkState.UP);
+			code = CommandCodes.LINK_UP;
+		}
+		
+		message = new Message();
+		try (MessageWriter writer = new MessageWriter(message)) {
+			writer.writeByte((byte) code.value);
+			writer.writeUShort(identifier);
+		}
+		endpoint.sendDatagram(realRemoteAddress, message);
+	}
+	
+	/**
+	 * Synchronized by caller.
+	 */
 	private void addReliableReceive(CommandCodes type, int number, MessageReader reader) {
 		RealMessage message = new RealMessage();
 		message.message.setLength(reader.length() - reader.position());
@@ -1348,20 +1602,29 @@ public class Connection implements Endpoint.Listener {
 	 * Synchronized by caller.
 	 */
 	private void sendPendingReliables() throws IOException {
-		int sendCount = 0;
-
+		int freeSlots = reliableWindowSize;
+		for (RealMessage each : reliableMessagesSend) {
+			if (each.state == RealMessage.State.SEND) {
+				freeSlots--;
+			}
+		}
+		if (freeSlots < 1) {
+			return;
+		}
+		
 		for (RealMessage each : reliableMessagesSend) {
 			if (each.state != RealMessage.State.PENDING) {
 				continue;
 			}
-
+			
 			endpoint.sendDatagram(realRemoteAddress, each.message);
 
 			each.state = RealMessage.State.SEND;
 			each.elapsedResend = 0.0f;
 			each.elapsedTimeout = 0.0f;
-
-			if (++sendCount == reliableWindowSize) {
+			
+			freeSlots--;
+			if (freeSlots == 0) {
 				break;
 			}
 		}

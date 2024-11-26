@@ -76,6 +76,28 @@ public class Message {
 	}
 
 	/**
+	 * Same as setLength() but keeps content up to previous length intact.
+	 */
+	public void setLengthRetain(int length) {
+		if (length < 0) {
+			throw new IllegalArgumentException("length < 0");
+		}
+		
+		int prevLength = length;
+		
+		this.length = length;
+		if(data.length >= length){
+			return;
+		}
+		
+		byte[] temp = data;
+		data = new byte[length];
+		if (prevLength > 0){
+			System.arraycopy(temp, 0, data, prevLength, length);
+		}
+	}
+
+	/**
 	 * Message timestamp.
 	 */
 	public Date getTimestamp() {

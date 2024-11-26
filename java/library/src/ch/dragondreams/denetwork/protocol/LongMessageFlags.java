@@ -25,81 +25,15 @@
 package ch.dragondreams.denetwork.protocol;
 
 /**
- * Protocol command codes.
+ * Long message flags.
  */
-public enum CommandCodes {
-	/**
-	 *  Connection Request.
-	 */
-	CONNECTION_REQUEST(0),
-
-	/**
-	 * Connection Acknowledge.
-	 */
-	CONNECTION_ACK(1),
-
-	/**
-	 * Close Connection.
-	 */
-	CONNECTION_CLOSE(2),
-
-	/**
-	 * Unreliable message.
-	 */
-	MESSAGE(3),
-
-	/**
-	 * Reliable message.
-	 */
-	RELIABLE_MESSAGE(4),
-
-	/**
-	 * Link state.
-	 */
-	RELIABLE_LINK_STATE(5),
-
-	/**
-	 * Reliable acknowledge.
-	 */
-	RELIABLE_ACK(6),
-
-	/**
-	 * Link up.
-	 */
-	LINK_UP(7),
-
-	/**
-	 * Link down.
-	 */
-	LINK_DOWN(8),
-
-	/**
-	 * Link update.
-	 */
-	LINK_UPDATE(9),
-
-	/**
-	 * Long reliable message.
-	 */
-	RELIABLE_MESSAGE_LONG(10),
-
-	/**
-	 * Long link state.
-	 */
-	RELIABLE_LINK_STATE_LONG(11);
+public enum LongMessageFlags {
+	FIRST(0x1),
+	LAST(0x2);
 
 	public final int value;
 
-	private CommandCodes(int value) {
+	private LongMessageFlags(int value) {
 		this.value = value;
-	}
-
-	public static CommandCodes withValue(int value) {
-		for (CommandCodes each : values()) {
-			if (each.value == value) {
-				return each;
-			}
-		}
-		return null;
 	}
 }

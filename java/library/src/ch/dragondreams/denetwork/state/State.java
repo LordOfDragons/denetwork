@@ -45,12 +45,6 @@ public class State {
 	private LinkedList<StateLink> links = new LinkedList<>();
 
 	/**
-	 * Update state.
-	 */
-	private void update() {
-	}
-
-	/**
 	 * Read values from message.
 	 */
 	public void linkReadValues(MessageReader reader, StateLink link) {
@@ -75,6 +69,7 @@ public class State {
 	/**
 	 * Read all values from message.
 	 */
+	/*
 	private void linkReadAllValues(MessageReader reader, StateLink link) {
 		int i, count = values.size();
 
@@ -90,6 +85,7 @@ public class State {
 			link.setChanged(false);
 		}
 	}
+	*/
 
 	/**
 	 * Read all values from message including types.
@@ -124,11 +120,13 @@ public class State {
 	 *
 	 * @param withTypes Include types.
 	 */
+	/*
 	private void linkWriteValues(MessageWriter writer) {
 		for (Value each : values) {
 			each.write(writer);
 		}
 	}
+	*/
 
 	/**
 	 * Write all values to message.
