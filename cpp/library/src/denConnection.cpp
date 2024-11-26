@@ -473,6 +473,8 @@ void denConnection::pDisconnect(bool notify, bool remoteClosed){
 	pReliableNumberSend = 0;
 	pReliableNumberRecv = 0;
 	pLongMessage.reset();
+	pLongLinkStateMessage.reset();
+	pLongLinkStateValues.reset();
 	
 	pCloseSocket();
 	

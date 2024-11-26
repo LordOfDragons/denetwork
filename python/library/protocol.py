@@ -102,6 +102,31 @@ class ReliableAck(IntEnum):
     """Received reliable message is invalid. Sender has to resend it."""
 
 
+class LongMessageFlags(IntEnum):
+
+    """Long message flags."""
+
+    FIRST = 0x1
+    """First part of reliable message."""
+
+    LAST = 0x2
+    """Last part of reliable message."""
+
+
+class LongLinkStateFlags(IntEnum):
+
+    """Long link state flags."""
+
+    READ_ONLY = 0x1
+    """Create read-only link state."""
+
+    FIRST = 0x2
+    """First part of link state."""
+
+    LAST = 0x4
+    """Last part of link state."""
+
+
 class ValueTypes(IntEnum):
 
     """State value types."""
