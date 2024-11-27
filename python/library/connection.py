@@ -1278,14 +1278,12 @@ class Connection(Endpoint.Listener):
 
     def _send_pending_reliables(self: 'Connection') -> None:
         """Send pending reliables."""
-        free_slots = self._reliable_window_size
+        counter = 0
         for m in self._reliable_messages_send:
-            if m.state == RealMessage.State.SEND:
-                free_slots = free_slots - 1
-        if free_slots < 1:
-            return
+            if counter == self._reliable_window_size:
+                break
+            counter = counter + 1
 
-        for m in self._reliable_messages_send:
             if m.state != RealMessage.State.PENDING:
                 continue
 
@@ -1294,10 +1292,6 @@ class Connection(Endpoint.Listener):
             m.state = RealMessage.State.SEND
             m.elapsed_resend = 0.0
             m.elapsed_timeout = 0.0
-
-            free_slots = free_slots - 1
-            if free_slots == 0:
-                break
 
     async def _task_update(self: 'Connection') -> None:
         """Update task."""

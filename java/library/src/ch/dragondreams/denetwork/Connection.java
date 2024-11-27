@@ -1602,17 +1602,11 @@ public class Connection implements Endpoint.Listener {
 	 * Synchronized by caller.
 	 */
 	private void sendPendingReliables() throws IOException {
-		int freeSlots = reliableWindowSize;
+		int counter = 0;
 		for (RealMessage each : reliableMessagesSend) {
-			if (each.state == RealMessage.State.SEND) {
-				freeSlots--;
+			if (counter++ == reliableWindowSize) {
+				break;
 			}
-		}
-		if (freeSlots < 1) {
-			return;
-		}
-		
-		for (RealMessage each : reliableMessagesSend) {
 			if (each.state != RealMessage.State.PENDING) {
 				continue;
 			}
@@ -1622,11 +1616,6 @@ public class Connection implements Endpoint.Listener {
 			each.state = RealMessage.State.SEND;
 			each.elapsedResend = 0.0f;
 			each.elapsedTimeout = 0.0f;
-			
-			freeSlots--;
-			if (freeSlots == 0) {
-				break;
-			}
 		}
 	}
 

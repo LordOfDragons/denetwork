@@ -1255,17 +1255,12 @@ void denConnection::pRemoveSendReliablesDone(){
 }
 
 void denConnection::pSendPendingReliables(){
-	int freeSlots = pReliableWindowSize;
+	int counter = 0;
 	for(const denRealMessage::Ref &eachMessage : pReliableMessagesSend){
-		if(eachMessage->Item().state == denRealMessage::State::send){
-			freeSlots--;
+		if(counter++ == pReliableWindowSize){
+			break;
 		}
-	}
-	if(freeSlots < 1){
-		return;
-	}
-	
-	for(const denRealMessage::Ref &eachMessage : pReliableMessagesSend){
+		
 		denRealMessage &realMessage = eachMessage->Item();
 		if(realMessage.state != denRealMessage::State::pending){
 			continue;
@@ -1276,8 +1271,5 @@ void denConnection::pSendPendingReliables(){
 		realMessage.state = denRealMessage::State::send;
 		realMessage.elapsedResend = 0.0f;
 		realMessage.elapsedTimeout = 0.0f;
-		if(--freeSlots == 0){
-			break;
-		}
 	}
 }
