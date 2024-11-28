@@ -134,7 +134,7 @@ namespace denProtocol{
 		
 		/**
 		 * Long link state:
-		 * [ 5 ] [ number:uint16 ] [ link_id:uint16 ] [ flags ] [ message ] [ values ]
+		 * [ 11 ] [ number:uint16 ] [ link_id:uint16 ] [ flags ] [ message ] [ values ]
 		 * 
 		 * flags:
 		 *    0x1: create read only state

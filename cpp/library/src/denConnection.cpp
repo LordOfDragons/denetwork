@@ -33,6 +33,8 @@
 #include "message/denMessageWriter.h"
 #include "socket/denSocketShared.h"
 
+// #define DO_SPECIAL_DEBUG
+
 denConnection::denConnection() :
 pConnectionState(ConnectionState::disconnected),
 pConnectResendInterval(1.0f),
@@ -192,6 +194,15 @@ void denConnection::SendReliableMessage(const denMessage::Ref &message){
 			offset += partLength;
 		}
 		
+#ifdef DO_SPECIAL_DEBUG
+		if(GetLogger()){
+			std::stringstream ss;
+			ss << "SendReliablemessage: len=" << length << " parts=" << partCount << " num="
+				<< pReliableNumberSend + pReliableMessagesSend.size() - partCount << " -> "
+				<< pReliableNumberSend + pReliableMessagesSend.size() - 1;
+			GetLogger()->Log(denLogger::LogSeverity::info, ss.str());
+		}
+#endif
 		pSendPendingReliables();
 		
 	}else{
@@ -208,6 +219,14 @@ void denConnection::SendReliableMessage(const denMessage::Ref &message){
 		}
 		
 		pReliableMessagesSend.push_back(realMessage);
+#ifdef DO_SPECIAL_DEBUG
+		if(GetLogger()){
+			std::stringstream ss;
+			ss << "SendReliablemessage: len=" << length << " num="
+				<< pReliableNumberSend + pReliableMessagesSend.size() - 1;
+			GetLogger()->Log(denLogger::LogSeverity::info, ss.str());
+		}
+#endif
 		
 		// if the message fits into the window send it right now
 		if(pReliableMessagesSend.size() <= (size_t)pReliableWindowSize){
@@ -785,6 +804,17 @@ void denConnection::pProcessReliableMessage(denMessageReader &reader){
 	}else{
 		validNumber = number < pReliableNumberRecv + pReliableWindowSize;
 	}
+	
+#ifdef DO_SPECIAL_DEBUG
+	if(GetLogger()){
+		std::stringstream ss;
+		ss << "pProcessReliableMessage: num=" << number << " window="
+			<< pReliableNumberRecv << " -> "
+			<< (pReliableNumberRecv + pReliableWindowSize) % 65535
+			<< " valid=" << validNumber;
+		GetLogger()->Log(denLogger::LogSeverity::info, ss.str());
+	}
+#endif
 	if(!validNumber){
 		//throw std::invalid_argument("Reliable message: invalid sequence number.");
 		return;
@@ -815,6 +845,13 @@ void denConnection::pProcessReliableMessageMessage(denMessageReader &reader){
 	message->Item().SetTimestamp(std::chrono::system_clock::now());
 	reader.Read(message->Item());
 	
+#ifdef DO_SPECIAL_DEBUG
+	if(GetLogger()){
+		std::stringstream ss;
+		ss << "pProcessReliableMessageMessage: len=" << message->Item().GetLength();
+		GetLogger()->Log(denLogger::LogSeverity::info, ss.str());
+	}
+#endif
 	MessageReceived(message);
 }
 
@@ -831,6 +868,15 @@ void denConnection::pProcessReliableAck(denMessageReader &reader){
 		pReliableMessagesSend.end(), [&](const denRealMessage::Ref &each){
 			return (*each).Item().number == number;
 		}));
+		
+#ifdef DO_SPECIAL_DEBUG
+	if(GetLogger()){
+		std::stringstream ss;
+		ss << "pProcessReliableAck: num=" << number << " next=" << pReliableNumberRecv
+			<< " found=" << (iter != pReliableMessagesSend.cend());
+		GetLogger()->Log(denLogger::LogSeverity::info, ss.str());
+	}
+#endif
 	if(iter == pReliableMessagesSend.cend()){
 		//throw std::invalid_argument("Reliable ack: no reliable transmission with this number waiting for an ack!");
 		return;
@@ -1043,6 +1089,17 @@ void denConnection::pProcessReliableMessageLong(denMessageReader &reader){
 	}else{
 		validNumber = number < pReliableNumberRecv + pReliableWindowSize;
 	}
+	
+#ifdef DO_SPECIAL_DEBUG
+	if(GetLogger()){
+		std::stringstream ss;
+		ss << "pProcessReliableMessageLong: num=" << number << " window="
+			<< pReliableNumberRecv << " -> "
+			<< (pReliableNumberRecv + pReliableWindowSize) % 65535
+			<< " valid=" << validNumber;
+		GetLogger()->Log(denLogger::LogSeverity::info, ss.str());
+	}
+#endif
 	if(!validNumber){
 		return;
 	}
@@ -1089,10 +1146,24 @@ void denConnection::pProcessReliableMessageMessageLong(denMessageReader &reader)
 		const denMessage::Ref message(pLongMessage);
 		pLongMessage.reset();
 		
+#ifdef DO_SPECIAL_DEBUG
+		if(GetLogger()){
+			std::stringstream ss;
+			ss << "pProcessReliableMessageMessageLong: finished len=" << message->Item().GetLength();
+			GetLogger()->Log(denLogger::LogSeverity::info, ss.str());
+		}
+#endif
 		message->Item().SetTimestamp(std::chrono::system_clock::now());
 		MessageReceived(message);
 		
 	}else{
+#ifdef DO_SPECIAL_DEBUG
+		if(GetLogger()){
+			std::stringstream ss;
+			ss << "pProcessReliableMessageMessageLong: progress len=" << pLongMessage->Item().GetLength();
+			GetLogger()->Log(denLogger::LogSeverity::info, ss.str());
+		}
+#endif
 		MessageProgress(pLongMessage->Item().GetLength());
 	}
 }
@@ -1255,6 +1326,14 @@ void denConnection::pRemoveSendReliablesDone(){
 }
 
 void denConnection::pSendPendingReliables(){
+#ifdef DO_SPECIAL_DEBUG
+	if(GetLogger()){
+		std::stringstream ss;
+		ss << "pSendPendingReliables: count=" << pReliableMessagesSend.size()
+			<< " num=" << pReliableNumberSend;
+		GetLogger()->Log(denLogger::LogSeverity::info, ss.str());
+	}
+#endif
 	int counter = 0;
 	for(const denRealMessage::Ref &eachMessage : pReliableMessagesSend){
 		if(counter++ == pReliableWindowSize){
@@ -1266,6 +1345,13 @@ void denConnection::pSendPendingReliables(){
 			continue;
 		}
 		
+#ifdef DO_SPECIAL_DEBUG
+		if(GetLogger()){
+			std::stringstream ss;
+			ss << "SendReliablemessage: send num=" << realMessage.number;
+			GetLogger()->Log(denLogger::LogSeverity::info, ss.str());
+		}
+#endif
 		pSocket->SendDatagram(realMessage.message->Item(), pRealRemoteAddress);
 		
 		realMessage.state = denRealMessage::State::send;
