@@ -224,7 +224,7 @@ void denServer::ProcessConnectionRequest(const denSocketAddress &address, denMes
 	
 	denProtocol::Protocols protocol = denProtocol::Protocols::DENetworkProtocol;
 	
-	// create connection 
+	// create connection
 	const denConnection::Ref connection(CreateConnection());
 	connection->AcceptConnection(*this, pSocket, address, protocol);
 	pConnections.push_back(connection);
