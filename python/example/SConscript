@@ -19,7 +19,6 @@ globFiles(env, '.', '*.py', sources)
 
 sourcesLibrary = []
 globFiles(env, '../library', '*.py', sourcesLibrary)
-print(sourcesLibrary)
 
 # archive
 targetArchive = globalEnv.targetManager.TargetArchive('DENetworkPythonExample Archive')
