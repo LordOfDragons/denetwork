@@ -58,7 +58,7 @@ jobs:
             - Connect to game sessions as client
             See included README.md and examples.zip for use.
           artifacts: >
-            denetworkcpp-unix-x64-${{ github.event.inputs.version }}.zip,
+            denetworkcpp-unix-x64-${{ github.event.inputs.version }}.tar.bz2,
             denetworkjava-${{ github.event.inputs.version }}.zip,
             denetworkpython-${{ github.event.inputs.version }}.zip,
             DENetworkSDK-${{ github.event.inputs.version }}.zip,

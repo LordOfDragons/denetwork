@@ -148,5 +148,5 @@ archiveFiles['denetworkcpp-{}-x64-{}/README.md'.format(platformName, versionStri
 
 targetArchive.archiveFiles(envLibrary, 'denetworkcpp-{}-x64-{}'.format(platformName, versionString),
 	{**targetLibrary.archiveFiles, **archiveFiles},
-	format=globalEnv.targetManager.TargetArchive.formatZip)
+	format=globalEnv.targetManager.TargetArchive.formatTarBz2)
 targetArchive.aliasArchive(envLibrary, 'denetworkcpp_archive')

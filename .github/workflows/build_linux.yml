@@ -49,7 +49,7 @@ jobs:
       - name: Move Artifacts
         run: |
           mkdir artifacts
-          cp -a cpp/library/build/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip artifacts
+          cp -a cpp/library/build/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.tar.bz2 artifacts
           cp -a java/library/build/denetworkjava-${{ inputs.releaseVersion }}.zip artifacts
           cp -a python/build/library/denetworkpython-${{ inputs.releaseVersion }}.zip artifacts
           cp -a examples.zip artifacts
@@ -59,7 +59,7 @@ jobs:
         with:
           name: ${{ inputs.artifactArchive }}
           path: |
-            artifacts/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.zip
+            artifacts/denetworkcpp-unix-x64-${{ inputs.releaseVersion }}.tar.bz2
             artifacts/denetworkjava-${{ inputs.releaseVersion }}.zip
             artifacts/denetworkpython-${{ inputs.releaseVersion }}.zip
             artifacts/examples.zip
