@@ -29,7 +29,7 @@ jobs:
           New-Item -Path build\DENetwork\DENetworkSDK\Library\x64 -ItemType Directory
           
           Copy-Item -Filter *.h -Path cpp\library\src -Recurse -Destination build\DENetwork\DENetworkSDK\Include
-          Move-Item build\DENetwork\SDK\Include\src build\DENetwork\DENetworkSDK\Include\denetwork
+          Move-Item build\DENetwork\DENetworkSDK\Include\src build\DENetwork\DENetworkSDK\Include\denetwork
           
           Copy-Item cpp\vs2022\x64\Release\DENetwork.lib build\DENetwork\DENetworkSDK\Library\x64
           Copy-Item cpp\vs2022\x64\Release\DENetwork.pdb build\DENetwork\DENetworkSDK\Library\x64
