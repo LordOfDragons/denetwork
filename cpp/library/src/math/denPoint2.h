@@ -43,7 +43,7 @@ public:
 	}
 	
 	/** \brief Create point. */
-	inline denPoint2(uint64_t x, uint64_t y) : x(x), y(y){
+	inline denPoint2(uint64_t ax, uint64_t ay) : x(ax), y(ay){
 	}
 	
 	/** \brief Create copy of point. */

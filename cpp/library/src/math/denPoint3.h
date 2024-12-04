@@ -44,7 +44,7 @@ public:
 	}
 	
 	/** \brief Create point. */
-	inline denPoint3(uint64_t x, uint64_t y, uint64_t z) : x(x), y(y), z(z){
+	inline denPoint3(uint64_t ax, uint64_t ay, uint64_t az) : x(ax), y(ay), z(az){
 	}
 	
 	/** \brief Create copy of point. */

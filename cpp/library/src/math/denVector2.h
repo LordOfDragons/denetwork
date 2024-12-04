@@ -43,7 +43,7 @@ public:
 	}
 	
 	/** \brief Create vector. */
-	inline denVector2(double x, double y) : x(x), y(y){
+	inline denVector2(double ax, double ay) : x(ax), y(ay){
 	}
 	
 	/** \brief Create copy of vector. */

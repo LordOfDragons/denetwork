@@ -44,7 +44,7 @@ public:
 	}
 	
 	/** \brief Create vector. */
-	inline denVector3(double x, double y, double z) : x(x), y(y), z(z){
+	inline denVector3(double ax, double ay, double az) : x(ax), y(ay), z(az){
 	}
 	
 	/** \brief Create copy of vector. */

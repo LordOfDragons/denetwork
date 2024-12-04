@@ -45,7 +45,7 @@ public:
 	}
 	
 	/** \brief Create vector. */
-	inline denQuaternion(double x, double y, double z, double w) : x(x), y(y), z(z), w(w){
+	inline denQuaternion(double ax, double ay, double az, double aw) : x(ax), y(ay), z(az), w(aw){
 	}
 	
 	/** \brief Create copy of vector. */
