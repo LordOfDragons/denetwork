@@ -25,17 +25,17 @@ jobs:
         
       - name: Archive
         run: |
-          New-Item -Path build\DENetwork\SDK\Include -ItemType Directory
-          New-Item -Path build\DENetwork\SDK\Library\x64 -ItemType Directory
+          New-Item -Path build\DENetwork\DENetworkSDK\Include -ItemType Directory
+          New-Item -Path build\DENetwork\DENetworkSDK\Library\x64 -ItemType Directory
           
-          Copy-Item -Filter *.h -Path cpp\library\src -Recurse -Destination build\DENetwork\SDK\Include
-          Move-Item build\DENetwork\SDK\Include\src build\DENetwork\SDK\Include\denetwork
+          Copy-Item -Filter *.h -Path cpp\library\src -Recurse -Destination build\DENetwork\DENetworkSDK\Include
+          Move-Item build\DENetwork\SDK\Include\src build\DENetwork\DENetworkSDK\Include\denetwork
           
-          Copy-Item cpp\vs2022\x64\Release\DENetwork.lib build\DENetwork\SDK\Library\x64
-          Copy-Item cpp\vs2022\x64\Release\DENetwork.pdb build\DENetwork\SDK\Library\x64
+          Copy-Item cpp\vs2022\x64\Release\DENetwork.lib build\DENetwork\DENetworkSDK\Library\x64
+          Copy-Item cpp\vs2022\x64\Release\DENetwork.pdb build\DENetwork\DENetworkSDK\Library\x64
           
-          Copy-Item LICENSE build\DENetwork
-          Copy-Item README.md build\DENetwork
+          Copy-Item LICENSE build\DENetwork\DENetworkSDK
+          Copy-Item README.md build\DENetwork\DENetworkSDK
           
           Compress-Archive -Path build\DENetwork\* -DestinationPath DENetworkSDK-${{ inputs.releaseVersion }}.zip
 
