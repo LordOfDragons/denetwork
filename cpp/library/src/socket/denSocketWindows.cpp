@@ -254,6 +254,8 @@ denSocketAddress denSocketWindows::ResolveAddress(const std::string &address){
 		}
 	}
 	
+	pWSAStartup();
+
 	addrinfo *result = NULL;
 	if(getaddrinfo(node.c_str(), NULL, &hints, &result)){
 		pThrowWSAError("getaddrinfo");
