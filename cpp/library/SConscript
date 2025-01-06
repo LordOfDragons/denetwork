@@ -114,6 +114,8 @@ platformName = env['TARGET_PLATFORM']
 if env['crosscompile'] == 'android':
 	platformName = 'android'
 	platformArch = env['android_arch']
+elif platformName == 'linux':
+	platformName = 'unix'
 
 envLibrary = env.Clone()
 
