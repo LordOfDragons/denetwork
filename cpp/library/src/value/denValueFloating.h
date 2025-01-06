@@ -74,7 +74,7 @@ public:
 	
 	/** \brief Set precision. */
 	void SetPrecision(T precision){
-		pPrecision = std::max(precision, pMinPrecision);
+		pPrecision = std::fmaxf(precision, pMinPrecision);
 		pValueChanged();
 	}
 	

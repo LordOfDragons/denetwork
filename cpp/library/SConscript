@@ -37,6 +37,8 @@ env.Append(CPPFLAGS = ['-Wall'])
 if env['with_warnerrors']:
 	env.Append(CPPFLAGS = ['-Werror'])
 
+env.Append(CPPFLAGS = ['-Wno-unused-function'])
+
 # determine sanitize flags to use
 env.Replace(SANITIZE_FLAGS = [])
 
@@ -106,10 +108,12 @@ env.Append(CPPFLAGS = env['SANITIZE_FLAGS'])
 env.Append(LINKFLAGS = env['SANITIZE_FLAGS'])
 
 # library
-platformName = 'unix'
+platformArch = 'x64'
+platformName = env['TARGET_PLATFORM']
 
-if env['TARGET_PLATFORM'] == 'beos':
-	platformName = 'beos'
+if env['crosscompile'] == 'android':
+	platformName = 'android'
+	platformArch = env['android_arch']
 
 envLibrary = env.Clone()
 
@@ -132,8 +136,10 @@ targetLibrary.installCutDirs(envLibrary, 'denetwork-{}/include/denetwork'.format
 targetLibrary.install.extend(envLibrary.Install('denetwork-{}/lib'.format(versionString), library))
 targetLibrary.aliasInstall(envLibrary, 'denetworkcpp')
 
-targetLibrary.archiveCutDirs(envLibrary, 'denetworkcpp-{}-x64-{}/include/denetwork'.format(platformName, versionString), headers, 1)
-targetLibrary.archiveLibrary(envLibrary, 'denetworkcpp-{}-x64-{}/lib'.format(platformName, versionString), library)
+targetLibrary.archiveCutDirs(envLibrary, 'denetworkcpp-{}-{}-{}/include/denetwork'.format(
+	platformName, platformArch, versionString), headers, 1)
+targetLibrary.archiveLibrary(envLibrary, 'denetworkcpp-{}-{}-{}/lib'.format(
+	platformName, platformArch, versionString), library)
 
 targetLibrary.addParametersBuildCPP(envLibrary, library,
 	'denetwork-{}/include'.format(versionString), linkStatic=True)
@@ -143,10 +149,13 @@ targetArchive = globalEnv.targetManager.TargetArchive('DENetworkCPP Archive')
 globalEnv.targetManager.add('denetworkcpp_archive', targetArchive)
 
 archiveFiles = {}
-archiveFiles['denetworkcpp-{}-x64-{}/LICENSE'.format(platformName,  versionString)] = envLibrary.File('#LICENSE')
-archiveFiles['denetworkcpp-{}-x64-{}/README.md'.format(platformName, versionString)] = envLibrary.File('#README.md')
+archiveFiles['denetworkcpp-{}-{}-{}/LICENSE'.format(
+	platformName, platformArch, versionString)] = envLibrary.File('#LICENSE')
+archiveFiles['denetworkcpp-{}-{}-{}/README.md'.format(
+	platformName, platformArch, versionString)] = envLibrary.File('#README.md')
 
-targetArchive.archiveFiles(envLibrary, 'denetworkcpp-{}-x64-{}'.format(platformName, versionString),
+targetArchive.archiveFiles(envLibrary, 'denetworkcpp-{}-{}-{}'.format(
+	platformName, platformArch, versionString),
 	{**targetLibrary.archiveFiles, **archiveFiles},
 	format=globalEnv.targetManager.TargetArchive.formatTarBz2)
 targetArchive.aliasArchive(envLibrary, 'denetworkcpp_archive')
