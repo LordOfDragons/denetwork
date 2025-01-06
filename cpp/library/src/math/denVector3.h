@@ -63,6 +63,11 @@ public:
 		return denVector3(fabs(x), fabs(y), fabs(z));
 	}
 	
+	/** \brief Largest. */
+	inline denVector3 Largest(const denVector3 &vector) const{
+		return denVector3(fmax(x, vector.x), fmax(y, vector.y), fmax(z, vector.z));
+	}
+	
 	/** \brief Assign. */
 	inline denVector3 &operator=(const denVector3 &vector){
 		x = vector.x;
@@ -148,5 +153,9 @@ public:
 namespace std{
 	inline denVector3 abs(const denVector3 &v){
 		return v.Absolute();
+	}
+	
+	inline denVector3 fmax(const denVector3 &a, const denVector3 &b){
+		return a.Largest(b);
 	}
 }

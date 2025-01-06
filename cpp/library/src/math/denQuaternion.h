@@ -36,28 +36,29 @@ public:
 	double z;
 	double w;
 	
-	/** \brief Create vector. */
+	/** \brief Create quaternion. */
 	inline denQuaternion() : x(0.0), y(0.0), z(0.0), w(1.0){
 	}
 	
-	/** \brief Create vector. */
+	/** \brief Create quaternion. */
 	inline denQuaternion(double value) : x(value), y(value), z(value), w(value){
 	}
 	
-	/** \brief Create vector. */
+	/** \brief Create quaternion. */
 	inline denQuaternion(double ax, double ay, double az, double aw) : x(ax), y(ay), z(az), w(aw){
 	}
 	
-	/** \brief Create copy of vector. */
-	inline denQuaternion(const denQuaternion &vector) : x(vector.x), y(vector.y), z(vector.z), w(vector.w){
+	/** \brief Create copy of quaternion. */
+	inline denQuaternion(const denQuaternion &quaternion) :
+	x(quaternion.x), y(quaternion.y), z(quaternion.z), w(quaternion.w){
 	}
 	
 	/** \brief Equal. */
-	inline bool Equals(const denQuaternion &vector, double threshold = DENM_THRESHOLD_DOUBLE) const{
-		return std::fabs(vector.x - x) < threshold
-			&& std::fabs(vector.y - y) < threshold
-			&& std::fabs(vector.z - z) < threshold
-			&& std::fabs(vector.w - w) < threshold;
+	inline bool Equals(const denQuaternion &quaternion, double threshold = DENM_THRESHOLD_DOUBLE) const{
+		return std::fabs(quaternion.x - x) < threshold
+			&& std::fabs(quaternion.y - y) < threshold
+			&& std::fabs(quaternion.z - z) < threshold
+			&& std::fabs(quaternion.w - w) < threshold;
 	}
 	
 	/** \brief Absolute value. */
@@ -65,60 +66,66 @@ public:
 		return denQuaternion(fabs(x), fabs(y), fabs(z), fabs(w));
 	}
 	
+	/** \brief Largest. */
+	inline denQuaternion Largest(const denQuaternion &quaternion) const{
+		return denQuaternion(fmax(x, quaternion.x), fmax(y, quaternion.y),
+			fmax(z, quaternion.z), fmax(w, quaternion.w));
+	}
+	
 	/** \brief Assign. */
-	inline denQuaternion &operator=(const denQuaternion &vector){
-		x = vector.x;
-		y = vector.y;
-		z = vector.z;
-		w = vector.w;
+	inline denQuaternion &operator=(const denQuaternion &quaternion){
+		x = quaternion.x;
+		y = quaternion.y;
+		z = quaternion.z;
+		w = quaternion.w;
 		return *this;
 	}
 	
 	/** \brief Equals. */
-	inline bool operator==(const denQuaternion &vector) const{
-		return Equals(vector);
+	inline bool operator==(const denQuaternion &quaternion) const{
+		return Equals(quaternion);
 	}
 	
 	/** \brief Compare. */
-	inline bool operator<(const denQuaternion &vector) const{
-		return x < vector.x && y < vector.y && z < vector.z && w < vector.w;
+	inline bool operator<(const denQuaternion &quaternion) const{
+		return x < quaternion.x && y < quaternion.y && z < quaternion.z && w < quaternion.w;
 	}
 	
-	inline bool operator<=(const denQuaternion &vector) const{
-		return x <= vector.x && y <= vector.y && z <= vector.z && w <= vector.w;
+	inline bool operator<=(const denQuaternion &quaternion) const{
+		return x <= quaternion.x && y <= quaternion.y && z <= quaternion.z && w <= quaternion.w;
 	}
 	
-	inline bool operator>(const denQuaternion &vector) const{
-		return x > vector.x && y > vector.y && z > vector.z && w > vector.w;
+	inline bool operator>(const denQuaternion &quaternion) const{
+		return x > quaternion.x && y > quaternion.y && z > quaternion.z && w > quaternion.w;
 	}
 	
-	inline bool operator>=(const denQuaternion &vector) const{
-		return x >= vector.x && y >= vector.y && z >= vector.z && w >= vector.w;
+	inline bool operator>=(const denQuaternion &quaternion) const{
+		return x >= quaternion.x && y >= quaternion.y && z >= quaternion.z && w >= quaternion.w;
 	}
 	
 	/** \brief Add. */
-	inline denQuaternion operator+(const denQuaternion &vector) const{
-		return denQuaternion(x + vector.x, y + vector.y, z + vector.z, w + vector.w);
+	inline denQuaternion operator+(const denQuaternion &quaternion) const{
+		return denQuaternion(x + quaternion.x, y + quaternion.y, z + quaternion.z, w + quaternion.w);
 	}
 	
-	inline denQuaternion &operator+=(const denQuaternion &vector){
-		x += vector.x;
-		y += vector.y;
-		z += vector.z;
-		w += vector.w;
+	inline denQuaternion &operator+=(const denQuaternion &quaternion){
+		x += quaternion.x;
+		y += quaternion.y;
+		z += quaternion.z;
+		w += quaternion.w;
 		return *this;
 	}
 	
 	/** \brief Subtract. */
-	inline denQuaternion operator-(const denQuaternion &vector) const{
-		return denQuaternion(x - vector.x, y - vector.y, z - vector.z, w - vector.w);
+	inline denQuaternion operator-(const denQuaternion &quaternion) const{
+		return denQuaternion(x - quaternion.x, y - quaternion.y, z - quaternion.z, w - quaternion.w);
 	}
 	
-	inline denQuaternion &operator-=(const denQuaternion &vector){
-		x -= vector.x;
-		y -= vector.y;
-		z -= vector.z;
-		w -= vector.w;
+	inline denQuaternion &operator-=(const denQuaternion &quaternion){
+		x -= quaternion.x;
+		y -= quaternion.y;
+		z -= quaternion.z;
+		w -= quaternion.w;
 		return *this;
 	}
 	
@@ -151,5 +158,9 @@ public:
 namespace std{
 	inline denQuaternion abs(const denQuaternion &q){
 		return q.Absolute();
+	}
+	
+	inline denQuaternion fmax(const denQuaternion &a, const denQuaternion &b){
+		return a.Largest(b);
 	}
 }
