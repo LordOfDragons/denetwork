@@ -30,10 +30,11 @@ jobs:
       
       - name: Distribute Example
         id: distribute
-        uses: LordOfDragons/build-delga@v1
+        uses: LordOfDragons/build-delga@v2
         with:
           projectFile: 'dragengine/example/example.degp'
           profile: 'Release'
+          outputDir: 'deigde-output'
         
       - name: Archive Examples
         run: |
@@ -56,6 +57,7 @@ jobs:
         
       - name: Store Archives
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: ${{ inputs.artifactArchive }}
           path: |
@@ -63,4 +65,5 @@ jobs:
             artifacts/denetworkjava-${{ inputs.releaseVersion }}.zip
             artifacts/denetworkpython-${{ inputs.releaseVersion }}.zip
             artifacts/examples.zip
+            deigde-output
           if-no-files-found: error
