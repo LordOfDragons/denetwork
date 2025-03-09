@@ -92,11 +92,11 @@ jobs:
             Created: ${{ steps.date.outputs.date }}
             
             Builds are potentially unstable. Use at own risk.
-          artifacts: >
-            denetworkcpp-unix-x64-nightly.tar.bz2,
-            denetworkcpp-android-armv8-nightly.tar.bz2,
-            denetworkcpp-android-armv7-nightly.tar.bz2,
-            denetworkjava-nightly.zip,
-            denetworkpython-nightly.zip,
-            DENetworkSDK-nightly.zip,
-            examples.zip
+          artifacts: |
+            artifacts/denetworkcpp-unix-x64-nightly.tar.bz2
+            artifacts/denetworkcpp-android-armv8-nightly.tar.bz2
+            artifacts/denetworkcpp-android-armv7-nightly.tar.bz2
+            artifacts/denetworkjava-nightly.zip
+            artifacts/denetworkpython-nightly.zip
+            artifacts/DENetworkSDK-nightly.zip
+            artifacts/examples.zip
