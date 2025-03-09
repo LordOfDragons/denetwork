@@ -89,9 +89,9 @@ jobs:
             See included README.md and examples.zip for use.
           artifacts: |
             artifacts/denetworkcpp-unix-x64-${{ github.event.inputs.version }}.tar.bz2
-            artifacts/denetworkcpp-android-armv8-${{ github.event.inputs.version }}.tar.bz2
-            artifacts/denetworkcpp-android-armv7-${{ github.event.inputs.version }}.tar.bz2
+            denetworkcpp-android-armv8-${{ github.event.inputs.version }}.tar.bz2
+            denetworkcpp-android-armv7-${{ github.event.inputs.version }}.tar.bz2
             artifacts/denetworkjava-${{ github.event.inputs.version }}.zip
             artifacts/denetworkpython-${{ github.event.inputs.version }}.zip
-            artifacts/DENetworkSDK-${{ github.event.inputs.version }}.zip
+            DENetworkSDK-${{ github.event.inputs.version }}.zip
             artifacts/examples.zip
