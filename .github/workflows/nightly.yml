@@ -5,7 +5,7 @@ on:
     branches:
       - 'main'
   workflow_dispatch:
- 
+
 jobs:
   build_linux:
     uses: ./.github/workflows/build_linux.yml
@@ -47,22 +47,22 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Get Linux Archives
-        uses: actions/download-artifact@v4.1.7
+        uses: actions/download-artifact@v4
         with:
           name: archives-linux
       
       - name: Get Windows Archives
-        uses: actions/download-artifact@v4.1.7
+        uses: actions/download-artifact@v4
         with:
           name: archives-windows
       
       - name: Get Android ArmV8 Archives
-        uses: actions/download-artifact@v4.1.7
+        uses: actions/download-artifact@v4
         with:
           name: archives-android-armv8
       
       - name: Get Android ArmV7 Archives
-        uses: actions/download-artifact@v4.1.7
+        uses: actions/download-artifact@v4
         with:
           name: archives-android-armv7
       
@@ -92,11 +92,11 @@ jobs:
             Created: ${{ steps.date.outputs.date }}
             
             Builds are potentially unstable. Use at own risk.
-          artifacts: >
-            denetworkcpp-unix-x64-nightly.tar.bz2,
-            denetworkcpp-android-armv8-nightly.tar.bz2,
-            denetworkcpp-android-armv7-nightly.tar.bz2,
-            denetworkjava-nightly.zip,
-            denetworkpython-nightly.zip,
-            DENetworkSDK-nightly.zip,
-            examples.zip
+          artifacts: |
+            artifacts/denetworkcpp-unix-x64-nightly.tar.bz2
+            denetworkcpp-android-armv8-nightly.tar.bz2
+            denetworkcpp-android-armv7-nightly.tar.bz2
+            artifacts/denetworkjava-nightly.zip
+            artifacts/denetworkpython-nightly.zip
+            DENetworkSDK-nightly.zip
+            artifacts/examples.zip
