@@ -134,10 +134,11 @@ class Connection(Endpoint.Listener):
         self._connection_state = Connection.ConnectionState.DISCONNECTED
         self._connect_resend_interval = 1.0
         self._connect_timeout = 5.0
-        self.reliable_resend_interval = 0.5
+        self._reliable_resend_interval = 0.5
         self._reliable_timeout = 3.0
         self._elapsed_connect_resend = 0.0
         self._elapsed_connect_timeout = 0.0
+        self._asyncio_sleep_time = 0.005
         self._protocol = Protocols.DENETWORK_PROTOCOL
         self._state_links = deque()
         self._modified_state_links = deque()
@@ -273,6 +274,26 @@ class Connection(Endpoint.Listener):
 
         """
         self._reliable_timeout = max(value, 0.01)
+
+    @property
+    def asyncio_sleep_time(self: 'Connection') -> float:
+        """Asyncio sleep time in seconds.
+
+        Return:
+        float: Sleep time in seconds.
+
+        """
+        return self._asyncio_sleep_time
+    
+    @asyncio_sleep_time.setter
+    def asyncio_sleep_time(self: 'Connection', value: float) -> None:
+        """Set asyncio sleep time in seconds.
+
+        Parameters:
+        value (float): Sleep time in seconds.
+
+        """
+        self._asyncio_sleep_time = max(value, 0.001)
 
     @property
     def connection_state(self: 'Connection') -> 'Connection.ConnectionState':
@@ -1297,7 +1318,7 @@ class Connection(Endpoint.Listener):
         """Update task."""
         last_time = time_ns()
         while True:
-            await asyncio.sleep(0.005)
+            await asyncio.sleep(self._asyncio_sleep_time)
             if self._update_task is None:
                 break
             cur_time = time_ns()
