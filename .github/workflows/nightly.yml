@@ -75,6 +75,23 @@ jobs:
           git tag -f nightly
           git push -f origin nightly
       
+      - name: Sign Artifacts
+        run: |
+          files=(
+            artifacts/denetworkcpp-unix-x64-nightly.tar.bz2
+            denetworkcpp-android-armv8-nightly.tar.bz2
+            denetworkcpp-android-armv7-nightly.tar.bz2
+            artifacts/denetworkjava-nightly.zip
+            artifacts/denetworkpython-nightly.zip
+            DENetworkSDK-nightly.zip
+            artifacts/examples.zip
+            )
+          for file in "${files[@]}"; do
+            gpg2 --personal-digest-preferences SHA512 --armor --yes --detach-sign \
+              --local-user A58A91BCA5C3B2C34CD57ACB8040F88D27F1D0AA \
+              --output "${file}.asc" $file
+          done
+      
       - name: Upload Artifacts
         uses: ncipollo/release-action@v1
         with:
@@ -99,4 +116,5 @@ jobs:
             artifacts/denetworkjava-nightly.zip
             artifacts/denetworkpython-nightly.zip
             DENetworkSDK-nightly.zip
-            artifacts/examples.zip
+            artifacts/examples.zip,
+            *.asc
