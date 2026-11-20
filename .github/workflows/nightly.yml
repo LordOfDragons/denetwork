@@ -122,5 +122,5 @@ jobs:
             artifacts/denetworkjava-nightly.zip
             artifacts/denetworkpython-nightly.zip
             DENetworkSDK-nightly.zip
-            artifacts/examples.zip,
+            artifacts/examples.zip
             *.asc

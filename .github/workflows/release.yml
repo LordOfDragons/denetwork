@@ -117,5 +117,5 @@ jobs:
             artifacts/denetworkjava-${{ github.event.inputs.version }}.zip
             artifacts/denetworkpython-${{ github.event.inputs.version }}.zip
             DENetworkSDK-${{ github.event.inputs.version }}.zip
-            artifacts/examples.zip,
+            artifacts/examples.zip
             *.asc
