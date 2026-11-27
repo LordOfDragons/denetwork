@@ -119,5 +119,7 @@ jobs:
             artifacts/denetworkpython-${{ github.event.inputs.version }}.zip
             DENetworkSDK-${{ github.event.inputs.version }}.zip
             artifacts/examples.zip
+            artifacts/*.asc
+            artifacts/*.sha256sum
             *.asc
             *.sha256sum
